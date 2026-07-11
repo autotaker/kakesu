@@ -176,7 +176,7 @@ Agent Run
 | Run metadata | run、agent、task、model、status、開始終了、stop reason | Runの正本 | 長期 |
 | Step metadata | step sequence、response ID、種別、開始終了、status | Run履歴の正本 | 長期 |
 | Request context | Contract／State／Progress／Mailbox等のversionと参照、request digest | 各Storeが正本 | 長期 |
-| 完全なrequest body | 原則保存しない。必要時だけ暗号化blob | 派生コピー | 短期 |
+| 完全なrequest body | 原則保存しない。必要時だけEvidence DBの暗号化BLOB | 派生コピー | 短期 |
 | 完成output item | item type、ID、status、必要field、raw digest | Run Evidence | Policy依存 |
 | 通常message text | textまたは暗号化blob参照 | Run Evidence | 短期、Artifact昇格可 |
 | Function Call | name、call ID、検証済みarguments、schema version | Tool要求の正本 | 長期 |
@@ -201,9 +201,9 @@ Agent Run
 
 ### ReasoningとCompaction item
 
-Reasoning本文は保存対象にしない。API継続に必要なreasoning itemや`encrypted_content`は内容を解釈せず、provider continuation blobとして暗号化保存できる。opaqueなcompaction itemも同様にAPI Context継続用の短期blobとして扱い、Task Progress、Episode、監査上の判断根拠には使わない。
+Reasoning本文は保存対象にしない。API継続に必要なreasoning itemや`encrypted_content`は内容を解釈せず、Evidence DBのprovider continuation BLOBとして暗号化保存できる。opaqueなcompaction itemも同様にAPI Context継続用の短期BLOBとして扱い、Task Progress、Episode、監査上の判断根拠には使わない。
 
-standalone `/responses/compact`の出力はAPI仕様に従い全体を変更せず次inputへ渡す必要があるため、次Run／Stepがconsumeするまで暗号化blobとして保持する。その後はRetention Policyに従って削除できる。
+standalone `/responses/compact`の出力はAPI仕様に従い全体を変更せず次inputへ渡す必要があるため、次Run／StepがconsumeするまでEvidence DBへ暗号化BLOBとして保持する。その後はRetention Policyに従って削除できる。
 
 ### Progress Maintenance Response
 

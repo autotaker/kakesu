@@ -119,14 +119,15 @@ type AgentRun = {
 
 ## 5. Completion Review
 
-Acceptance ReviewerはTask Ownerではなく、一回限りのReview Runとして表す。
+Acceptance ReviewerはTask OwnerでもHarness管理のAgentでもない。永続化するのは一回の判定結果であり、内部のLLM sessionはAgent Runとして保存しない。
 
 ```typescript
 type CompletionReview = {
   review_id: string;
   task_id: string;
   candidate_version: number;
-  reviewer_run_id: string;
+  reviewer_profile_version: string;
+  input_digest: string;
   decision: "accept" | "reject" | "insufficient_evidence";
   rationale: string;
   decided_at: string;
@@ -200,7 +201,7 @@ erDiagram
       uuid snapshot_id PK
       uuid workspace_id FK
       string content_digest
-      string storage_ref
+      string evidence_ref
       datetime created_at
     }
 
@@ -238,7 +239,8 @@ erDiagram
       uuid review_id PK
       uuid task_id FK
       int candidate_version
-      uuid reviewer_run_id
+      string reviewer_profile_version
+      string input_digest
       string decision
       text rationale
       datetime decided_at
@@ -256,7 +258,7 @@ erDiagram
     TASK_EPISODE {
       uuid episode_id PK
       uuid task_id FK
-      string storage_ref
+      string evidence_ref
       string digest
       datetime compiled_at
     }

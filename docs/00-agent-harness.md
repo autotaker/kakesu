@@ -200,7 +200,7 @@ type AgentAction =
 
 すべての長時間Actionは`timeout_ms`を受け取る。期限内に完了しなければ処理を止めず、`async_id`を返す。最終結果はTask Mailboxへ配送する。
 
-詳細は[05-tools-and-async.md](05-tools-and-async.md)を参照。
+詳細は[06-tools-and-async.md](06-tools-and-async.md)を参照。
 
 ## 8. 親子関係
 
@@ -241,7 +241,7 @@ Work Agent
 
 親Agentは子のEffectを承認しない。Effectの`origin_task_id`と`delegation_chain`を保持し、Spawnによる権限ロンダリングを防ぐ。
 
-詳細は[06-governance.md](06-governance.md)を参照。
+詳細は[07-governance.md](07-governance.md)を参照。
 
 ## 10. 長期記憶
 
@@ -256,7 +256,7 @@ Task Events + Outcome + Evidence
   → Harness Injection
 ```
 
-詳細は[07-long-term-memory.md](07-long-term-memory.md)と[08-semantic-wiki-schema.md](08-semantic-wiki-schema.md)を参照。
+詳細は[08-long-term-memory.md](08-long-term-memory.md)と[09-semantic-wiki-schema.md](09-semantic-wiki-schema.md)を参照。
 
 ## 11. 非目的
 

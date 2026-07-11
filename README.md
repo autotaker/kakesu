@@ -8,19 +8,21 @@
 2. [Agent・Task・Workspaceのドメインモデル](docs/01-domain-model.md)
 3. [Taskライフサイクル](docs/02-task-lifecycle.md)
 4. [Agentライフサイクル](docs/03-agent-lifecycle.md)
-5. [Responses APIランタイム](docs/04-runtime-and-responses-api.md)
+5. [組み込みAgent](docs/04-built-in-agents.md)
+6. [Responses APIランタイム](docs/05-runtime-and-responses-api.md)
 
 ## サブ設計書
 
 | 文書 | 内容 |
 |---|---|
-| [05-tools-and-async.md](docs/05-tools-and-async.md) | LLMツール、タイムアウト、`async_id`、Mailbox |
-| [06-governance.md](docs/06-governance.md) | Sandbox境界、Policy Cascade、独立Policy Judge |
-| [07-long-term-memory.md](docs/07-long-term-memory.md) | Task Episodeと独立Wiki Agentによる長期記憶 |
-| [08-semantic-wiki-schema.md](docs/08-semantic-wiki-schema.md) | Concept / Schema / Script / Case PatternのMarkdown設計 |
-| [09-running-example.md](docs/09-running-example.md) | Root Taskを最後まで処理する具体例 |
-| [10-data-model.md](docs/10-data-model.md) | ER図、テーブル、制約、イベント |
-| [11-implementation-and-tests.md](docs/11-implementation-and-tests.md) | 実装分割、検証項目、障害試験 |
+| [04-built-in-agents.md](docs/04-built-in-agents.md) | L1/L2/L3とHarnessのAgent管理から独立した組み込みAgent群 |
+| [06-tools-and-async.md](docs/06-tools-and-async.md) | LLMツール、タイムアウト、`async_id`、Mailbox |
+| [07-governance.md](docs/07-governance.md) | Sandbox境界、Policy Cascade、独立Policy Judge |
+| [08-long-term-memory.md](docs/08-long-term-memory.md) | Task Episodeと独立Wiki Agentによる長期記憶 |
+| [09-semantic-wiki-schema.md](docs/09-semantic-wiki-schema.md) | Concept / Schema / Script / Case PatternのMarkdown設計 |
+| [10-running-example.md](docs/10-running-example.md) | Root Taskを最後まで処理する具体例 |
+| [11-data-model.md](docs/11-data-model.md) | ER図、テーブル、制約、イベント |
+| [12-implementation-and-tests.md](docs/12-implementation-and-tests.md) | 実装分割、検証項目、障害試験 |
 
 ## 付属物
 
@@ -28,7 +30,7 @@
 - `schemas/judge-tools.json`: Policy Judge / Acceptance Reviewer用Function Tool定義
 - `schemas/domain-types.ts`: 主要なTypeScript型
 - `examples/semantic/`: 最小frontmatterを使ったSemantic Wikiの実例
-- `examples/episodic/`: Task Episodeの実例
+- `examples/episodic/`: Task Episode Schemaの説明用実例。runtime保存形式ではない
 - `sources/OPENAI_API_NOTES.md`: Responses APIに関する公式仕様確認メモ
 
 ## 中核不変条件

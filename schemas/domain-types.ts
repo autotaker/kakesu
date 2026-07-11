@@ -288,6 +288,45 @@ export interface EpisodeStatement {
   epistemicStatus: "observed" | "owner_asserted" | "compiler_inferred";
 }
 
+export interface EvidenceRecord {
+  evidenceId: string;
+  kind:
+    | "agent_run_item"
+    | "tool_log"
+    | "artifact"
+    | "workspace_snapshot"
+    | "decision"
+    | "review"
+    | "effect"
+    | "episode";
+  taskId?: string;
+  contentType: string;
+  contentDigest: string;
+  byteLength: number;
+  retentionClass: "long" | "policy" | "short";
+  redactionStatus: "none" | "redacted" | "encrypted";
+  createdAt: string;
+}
+
+export interface EvidenceBlobChunk {
+  evidenceId: string;
+  chunkIndex: number;
+  content: Uint8Array;
+}
+
+export interface EvidenceQueryRequest {
+  sql: string;
+  params?: Array<string | number | boolean | null>;
+  maxRows?: number;
+}
+
+export interface EvidenceQueryResult {
+  columns: string[];
+  rows: unknown[][];
+  truncated: boolean;
+  nextCursor?: string;
+}
+
 export interface TaskEpisode {
   episodeId: string;
   taskId: string;

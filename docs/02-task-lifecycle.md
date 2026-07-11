@@ -147,7 +147,7 @@ type ProgressItem = {
 
 ProgressはOwner assertedな作業認識であり、Task ContractやCompletion Reviewを置き換えない。Harnessは一定の通常Response Stepごとに専用Maintenance Responseを開始し、`update_progress`だけをFunction Toolとして許可・強制する。更新はoptimistic `progress_version`とTask Event watermarkを検証して永続化する。
 
-Progress Refreshの周期、失敗時の扱い、Responses API呼び出しは[04-runtime-and-responses-api.md](04-runtime-and-responses-api.md)を正本とする。
+Progress Refreshの周期、失敗時の扱い、Responses API呼び出しは[05-runtime-and-responses-api.md](05-runtime-and-responses-api.md)を正本とする。
 
 ## 6. AskとEscalation
 

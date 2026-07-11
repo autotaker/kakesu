@@ -37,6 +37,9 @@ Governance Aggregate
 Memory Aggregate
   episode_compilation_jobs
   task_episodes
+  evidence_records
+  evidence_blobs
+  evidence_links
   memory_context_requests
   wiki_commits
 ```
@@ -92,7 +95,7 @@ append-only。`event_id`、`task_id`、`sequence_no`、`event_type`、`payload_r
 
 ### `agent_run_steps` / `agent_run_items`
 
-Responses API呼び出し単位のStep metadataと、完成したoutput itemの正規化記録を保存する。同じOwner Assignment内で単調増加する`assignment_event_sequence`を持ち、Runをまたぐ再開Contextの選択に使う。request本文やStreaming deltaを無条件には保存せず、Context version／参照／digestと完成itemを基本とする。保存対象、Retention、Reasoning、Compaction item、Redactionの正本は[04-runtime-and-responses-api.md](04-runtime-and-responses-api.md)の「Agent Run Record Policy」とする。
+Responses API呼び出し単位のStep metadataと、完成したoutput itemの正規化記録を保存する。同じOwner Assignment内で単調増加する`assignment_event_sequence`を持ち、Runをまたぐ再開Contextの選択に使う。request本文やStreaming deltaを無条件には保存せず、Context version／参照／digestと完成itemを基本とする。保存対象、Retention、Reasoning、Compaction item、Redactionの正本は[05-runtime-and-responses-api.md](05-runtime-and-responses-api.md)の「Agent Run Record Policy」とする。
 
 ### `agent_resources`
 
@@ -149,7 +152,7 @@ Taskと1:1。source workspace、mode、storage ref、statusを持つ。
 
 ### `artifacts`
 
-immutable content digestとlogical refを持つ。Task Outcome、Effect payload、Episodeから参照される。
+immutable content digestとlogical refを持つ。Artifact本文はfilesystemへ保存せず、Evidence DBの`evidence_blobs`を参照する。Task Outcome、Effect payload、Episodeから参照される。
 
 ### `effect_requests`
 
@@ -161,11 +164,26 @@ Judge decision、applied policy IDs、rationale、decision input digestを保存
 
 ### `task_episodes`
 
-Task終端後に一件。Episode内容のstorage refとdigestを持つ。
+Task終端後に一件。Episode本文をEvidence DBのBLOBとして保持し、`evidence_ref`とdigestを持つ。runtimeではEpisode Markdownファイルを生成しない。
 
 ### `episode_compilation_jobs`
 
-終端TaskごとのEpisode Agent調査Jobを保存する。status、Episode Agent Run、step/token使用量、Evidence参照、attempt、errorを持つ。`task_id`で冪等化し、Job失敗や`needs_operator`はTask状態へ影響させない。
+終端TaskごとのEpisode Agent調査Jobを保存する。status、step/token使用量の集計、Evidence参照、attempt、errorを持つが、Agent ID、Agent Run、Response ID、tool call履歴は持たない。`task_id`で冪等化し、Job失敗や`needs_operator`はTask状態へ影響させない。
+
+### `evidence_records` / `evidence_blobs` / `evidence_links`
+
+Evidence LayerはSQLiteを初期実装の正本とする。
+
+| table | 役割 |
+|---|---|
+| `evidence_records` | kind、task、content type、digest、size、retention、redaction metadata |
+| `evidence_blobs` | compressed/encrypted contentのchunk BLOB |
+| `evidence_links` | Episode Statement、Artifact、Run Item等の根拠関係 |
+| `evidence_text` | 検索対象textのFTS index。再構築可能 |
+
+Evidence IDとcontent digestをuniqueにし、metadata insertとBLOB保存を同一Transactionで確定する。Evidence contentを個別ファイル、sidecar JSON、Markdownへ二重保存しない。
+
+Episode Compilation Job開始時に、対象`task_id`へ固定した`episode_*` read-only viewをconnection上へ公開する。Episode Agentはbase tableへアクセスせず、単一`query_evidence` ToolからこれらのviewだけをSQL queryする。
 
 ## 3. 詳細ER図
 
@@ -313,7 +331,7 @@ Policy Decision commitと実行を同一Transactionにできない。Outbox + id
 - Task Events / Outcomes / Effect Audit: 長期保持
 - Agent response logs: retention policyに従う
 - terminal logs: Artifact化された重要部分以外は短期化可能
-- Workspace: Task終端後にsnapshotし、実体はpolicyで削除
+- Workspace: Task終端後にEvidence DBへsnapshotを取り込み、作業実体はpolicyで削除
 - Task Episode:長期保持
 - Semantic Wiki: Git履歴付きで長期保持
 
