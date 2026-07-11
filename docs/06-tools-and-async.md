@@ -149,6 +149,8 @@ type ParentDecision = {
 
 External EffectのPolicy承認には使わない。
 
+Root Taskでは親Ownerの`reply_to_child`を使わない。Root Authorityが`submit_task_escalation_decision` ingressへ回答し、Harnessがrequest ID、Authority identity、idempotency keyを検証する。決定保存とContract version更新またはCancellation、`AsyncCompleted`配送を同一Transactionで確定する。
+
 
 ## 7. `reply_to_child`
 
@@ -170,7 +172,7 @@ reply_to_child({
 })
 ```
 
-`advice`は子を拘束しない。`contract_decision`はHarnessがContract versionを更新してから子へ配送する。
+`advice`は子を拘束しない。`contract_decision`はHarnessがContract versionを更新してから子へ配送する。`terminate: true`ではContract更新を行わず、Authority決定として対象子Taskを理由付きで`cancelled`へ確定し、通常のcascadeを適用する。
 
 ## 8. `request_effect`
 
@@ -279,7 +281,7 @@ report_memory_error({
 })
 ```
 
-Work AgentはWikiを直接修正しない。報告はMemory PlaneのError Queueへ入り、Wiki AgentがEpisodeやEvidenceと照合して別Runで修正する。
+Work AgentはWikiを直接修正しない。報告はMemory PlaneのError Queueへ入り、Wiki AgentがEpisodeやEvidenceと照合して別のWiki maintenance Job内の一時API sessionで修正する。
 
 ## 13. Mailboxイベント
 
@@ -330,11 +332,14 @@ type MailboxEvent =
 await_async({
   async_ids: string[],
   mode: "all" | "any",
-  timeout_ms?: number
+  timeout_ms?: number,
+  idempotency_key: string
 })
 ```
 
-期限内に条件が成立しなければ、待機条件そのものを表す新しい`async_id`を返す。元Operationを複製するのではなく、複数Operationを束ねるWait Group Operationである。条件成立時に`AsyncCompleted`がMailboxへ届く。OwnerがTaskを停止して待つ場合、HarnessはこのWait GroupをContinuationの`WaitCondition`へ結び、Taskを`waiting`へ遷移する。
+期限内に条件が成立しなければ、待機条件そのものを表す新しい`async_id`を返す。元Operationを複製するのではなく、複数Operationを束ねるWait Group Operationである。同じTask、正規化済み`async_ids`、mode、`idempotency_key`の再試行では同じWait Groupを返す。条件成立時に`AsyncCompleted`がMailboxへ届く。OwnerがTaskを停止して待つ場合、HarnessはこのWait GroupをContinuationの`WaitCondition`へ結び、Taskを`waiting`へ遷移する。
+
+`reply_to_child`ではHarnessが`request_id`から元Aggregateを解決し、Askには`response_kind: advice`だけを許可して`contract_patch = null`かつ`terminate = null | false`を強制する。Escalationには`response_kind: contract_decision`だけを許可する。Schemaだけでなく、この意味検証を適用前に必須とする。
 
 ## 15. `cancel_async`
 

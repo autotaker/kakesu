@@ -169,11 +169,11 @@ Child Owner asks → Parent Owner advises → Child Owner interprets and decides
 Child Task escalates → Parent Task decides → Harness revises/clarifies Child Contract → Child Owner follows decision
 ```
 
-親の決定が既存Contractの解釈確定だけなら、`contract_patch`は不要である。作業継続が不適切なら`terminate`を返せる。
+親の決定が既存Contractの解釈確定だけなら、`contract_patch`は不要である。作業継続が不適切なら`terminate: true`を返せる。HarnessはAuthorityとrequest状態を検証し、当該TaskをCancellation理由付きで`cancelled`へ確定して通常の子孫cascadeとOwner解放を適用する。Agent自身がTaskを終端する操作ではない。
 
 親がさらに上位へ上げる場合、子のContinuationを直接渡さない。親Taskが自分のEscalationを作り、回答を受けて子向け決定を生成する。
 
-Root Taskには親Taskがないため、HarnessはEscalationをRoot Authorityである人間へ配送する。人間はContractの明確化・変更、追加資源や権限の付与、またはCancellationを決定する。Root Owner Agentが達成不能を理由にTaskを終端させることはできない。
+Root Taskには親Taskがないため、HarnessはEscalationをRoot Authorityである人間へ配送する。人間は`submit_task_escalation_decision` ingressからContractの明確化・変更、追加資源や権限の付与、またはCancellationを決定する。Harnessは`EscalationDecision`保存、Contract更新またはCancellation、Mailbox/async完了を同一Transactionで確定する。Root Owner Agentが達成不能を理由にTaskを終端させることはできない。
 
 ## 7. 完了候補とAcceptance Review
 
@@ -201,7 +201,7 @@ type CompletionCandidate = {
 
 ### Acceptance Reviewer
 
-軽量な独立Runへ次だけを渡す。
+Owner Agent Runから分離した一時API sessionへ次だけを渡す。このsessionはHarness管理のAgent Runではない。
 
 - Objective
 - Acceptance
@@ -213,11 +213,16 @@ type CompletionCandidate = {
 Reviewerはコード品質や新しい要件を評価しない。
 
 ```typescript
-type AcceptanceReviewDecision =
-  | { decision: "accept"; rationale: string }
-  | { decision: "reject"; rationale: string; unmet: string[] }
-  | { decision: "insufficient_evidence"; rationale: string; required: string[] };
+type AcceptanceReviewDecision = {
+  decision: "accept" | "reject" | "insufficient_evidence";
+  rationale: string;
+  unmet_acceptance: string[];
+  required_evidence: string[];
+  evidence_refs: string[];
+};
 ```
+
+Structured Outputでは全fieldを必須にし、該当しない配列は空にする。Harnessはdecisionごとの組合せを意味検証する。
 
 `reject`と`insufficient_evidence`はいずれもTaskを`running`へ戻す。前者はAcceptance未達の修正、後者はEvidence追加というOwnerの能動作業を要求する。Evidence取得に別の非同期結果が必要になった場合だけ、Ownerが対応するToolを呼び、その結果を表す`WaitCondition`で`waiting`へ遷移する。
 

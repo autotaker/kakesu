@@ -27,7 +27,8 @@
 ## 付属物
 
 - `schemas/work-agent-tools.json`: Responses API向け作業エージェント用Function Tool定義
-- `schemas/judge-tools.json`: Policy Judge / Acceptance Reviewer用Function Tool定義
+- `schemas/built-in-agent-outputs.json`: Acceptance Reviewer / Policy Judge用Structured Output定義
+- `schemas/authority-tools.json`: 外部Authority adapter用Effect／Task Escalation回答Tool定義
 - `schemas/domain-types.ts`: 主要なTypeScript型
 - `examples/semantic/`: 最小frontmatterを使ったSemantic Wikiの実例
 - `examples/episodic/`: Task Episode Schemaの説明用実例。runtime保存形式ではない

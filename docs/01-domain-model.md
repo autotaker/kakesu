@@ -124,17 +124,17 @@ Acceptance ReviewerはTask OwnerでもHarness管理のAgentでもない。永続
 ```typescript
 type CompletionReview = {
   review_id: string;
+  review_job_id: string;
   task_id: string;
   candidate_version: number;
   reviewer_profile_version: string;
   input_digest: string;
-  decision: "accept" | "reject" | "insufficient_evidence";
-  rationale: string;
+  decision: AcceptanceReviewDecision;
   decided_at: string;
 };
 ```
 
-同じTaskで複数回のReviewを許す。
+`AcceptanceReviewDecision`は全判定で`evidence_refs`を持ち、`reject`では`unmet_acceptance`、`insufficient_evidence`では`required_evidence`も保存する。同じTaskで複数回のReviewを許す。
 
 ## 6. ER図
 
@@ -150,6 +150,8 @@ erDiagram
     TASK ||--o{ TASK_EVENT : records
     TASK ||--o{ MAILBOX_ENTRY : receives
     TASK ||--o{ ASYNC_OPERATION : owns
+    TASK ||--o{ COMPLETION_REVIEW_JOB : schedules
+    COMPLETION_REVIEW_JOB ||--o| COMPLETION_REVIEW : produces
     TASK ||--o{ COMPLETION_REVIEW : reviewed_by
     TASK ||--o| TASK_OUTCOME : produces
     TASK ||--o| TASK_EPISODE : compiles_to
@@ -208,7 +210,8 @@ erDiagram
     TASK_EVENT {
       uuid event_id PK
       uuid task_id FK
-      uuid actor_agent_id FK
+      string actor_kind
+      string actor_ref
       string event_type
       string payload_ref
       datetime created_at
@@ -237,13 +240,33 @@ erDiagram
 
     COMPLETION_REVIEW {
       uuid review_id PK
+      uuid review_job_id FK
       uuid task_id FK
       int candidate_version
       string reviewer_profile_version
       string input_digest
       string decision
-      text rationale
+      text decision_json
       datetime decided_at
+    }
+
+    COMPLETION_REVIEW_JOB {
+      uuid review_job_id PK
+      uuid task_id FK
+      int candidate_version
+      string candidate_snapshot_ref
+      string candidate_digest
+      string input_snapshot_ref
+      string input_digest
+      int contract_version
+      string reviewer_profile_version
+      string output_schema_version
+      string status
+      int attempt
+      string lease_owner
+      datetime lease_expires_at
+      datetime invocation_deadline_at
+      string last_error_ref
     }
 
     TASK_OUTCOME {
@@ -299,7 +322,7 @@ WHERE status NOT IN ('completed', 'cancelled');
 
 ## 8. OwnerとRole
 
-Agentは一つのTaskを持つ間、Owner Roleを担う。Policy Judge、Acceptance Reviewer、Wiki Agentは作業TaskのOwnerではない専用Roleとして動かす。
+Agentは一つのTaskを持つ間、Owner Roleを担う。Policy Judge、Acceptance Reviewer、Wiki AgentはHarness管理Agentではなく、作業TaskのOwnerにならない専用LLMコンポーネントとして動かす。
 
 ```text
 Work Agent   : Taskを所有する

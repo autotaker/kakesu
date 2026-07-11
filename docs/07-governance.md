@@ -119,7 +119,9 @@ Policy文書は自然言語本文と最小メタデータを持つ。下位Polic
 
 ## 7. Independent Policy Judge
 
-Judgeは作業Agentと別Context・別Run・別Tool setで動く。
+Judgeは作業Agentと別Context・一時API session・別Tool setで動く。このsessionはHarness管理のAgent Runではない。
+
+最終判定は`text.format: json_schema`によるStructured Outputで受け取り、判定を確定するFunction Toolは使用しない。
 
 ### 持たないもの
 
@@ -196,7 +198,7 @@ authorities:
     principal: data-owner
 ```
 
-Authority Agentを使う場合も、`submit_authority_decision`だけを持たせ、EffectはGatewayが実行する。
+Authorityは人間または外部サービスのprincipalであり、Harness管理Agentにも組み込みAgentにも分類しない。LLMを使う外部adapterを構成する場合も、そのsessionは本Harnessの管理外とし、`submit_authority_decision` ingressだけを持たせる。Effectは常にGatewayが実行する。
 
 ## 9. 権限ロンダリング対策
 

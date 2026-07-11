@@ -203,7 +203,7 @@ Agent Run
 
 Reasoning本文は保存対象にしない。API継続に必要なreasoning itemや`encrypted_content`は内容を解釈せず、Evidence DBのprovider continuation BLOBとして暗号化保存できる。opaqueなcompaction itemも同様にAPI Context継続用の短期BLOBとして扱い、Task Progress、Episode、監査上の判断根拠には使わない。
 
-standalone `/responses/compact`の出力はAPI仕様に従い全体を変更せず次inputへ渡す必要があるため、次Run／StepがconsumeするまでEvidence DBへ暗号化BLOBとして保持する。その後はRetention Policyに従って削除できる。
+standalone `/responses/compact`の出力はAPI仕様に従い全体を変更せず次inputへ渡す必要があるため、Evidence DBへ暗号化BLOBとして保持する。successor Stepが`completed`として永続確定するか、`failed`かつ再構築可能なrequest Snapshot／Resume Cursor／非再試行決定がcommitされるまでは削除しない。`consumed_by_step_id`と参照状態を保存し、そのdurable boundary後だけRetention Policyに従って削除できる。
 
 ### Progress Maintenance Response
 

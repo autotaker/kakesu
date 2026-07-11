@@ -24,7 +24,8 @@
 | Path | Role |
 |---|---|
 | `schemas/work-agent-tools.json` | Responses API function definitions for Work Agents |
-| `schemas/judge-tools.json` | Function definitions for reviewers and policy/authority judges |
+| `schemas/built-in-agent-outputs.json` | Structured Output schemas for built-in Reviewer and Policy Judge components |
+| `schemas/authority-tools.json` | Effect and Task Escalation ingress functions for external Authority adapters |
 | `schemas/domain-types.ts` | Canonical logical TypeScript types |
 | `examples/semantic/` | Concept / Schema / Script / Case Pattern examples |
 | `examples/episodic/T-110.md` | Documentation example for the Task Episode schema, not runtime storage |

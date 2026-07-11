@@ -154,13 +154,23 @@ type EpisodeCompilationJob = {
     | "needs_operator";
   step_count: number;
   input_tokens: number;
+  output_tokens: number;
+  max_steps: number;
+  input_token_budget: number;
+  output_token_budget: number;
+  artifact_read_byte_budget: number;
+  deadline_at: string;
+  profile_version: string;
+  output_schema_version: string;
+  lease_owner?: string;
+  lease_expires_at?: string;
   evidence_refs: string[];
   attempt: number;
   last_error_ref?: string;
 };
 ```
 
-Memory PlaneはTask終端EventからJobを冪等に生成する。Jobは処理の再試行と重複防止のための機能固有レコードであり、Agent Runではない。内部Response ID、tool call履歴、stepごとの入出力は永続化しない。Job失敗は終端Taskの状態を戻さず、再試行後も解消しなければ`needs_operator`にする。
+Memory PlaneはTask終端EventからJobを冪等に生成する。Jobは処理の再試行と重複防止のための機能固有レコードであり、Agent Runではない。内部Response ID、tool call履歴、stepごとの入出力は永続化しない。workerはlease付きでJobをclaimし、heartbeatで期限を更新する。期限切れの`investigating` / `validating` Jobは`attempt`を増やして再claimし、部分Responseを破棄して新しい一時sessionで初期索引から再調査する。Job失敗は終端Taskの状態を戻さず、再試行後も解消しなければ`needs_operator`にする。
 
 ### 初期Context
 
@@ -203,6 +213,8 @@ episode_evidence_text
 
 各viewはCompilation Jobの`task_id`へ固定される。SQLite connectionは`query_only`、base table非公開、extension無効とし、Authorizerで`INSERT / UPDATE / DELETE / DDL / PRAGMA / ATTACH / DETACH`を拒否する。Harnessはquery timeout、VM step、row、返却bytes、BLOB chunkの上限を強制する。
 
+Control/Execution DBがEvidence SQLiteと別DBの場合、Memory PlaneはJob開始前に終端TaskのContract、Progress、Task/Agent Run Event、Child Outcome、Decision、Review、Effect、Artifact索引をwatermarkとdigest付きterminal snapshotとしてEvidence DBへ取り込む。そのsnapshotからJob scopeのTEMP/read-only viewを構築してからAgent用connectionを開く。Agent用connection自身による`ATTACH`は禁止し、実行中にControl DBの変化を直接参照させない。
+
 Episode AgentはSQLの`LIMIT`とkeyset paginationを使って必要なEvidenceだけを複数Stepで調査する。巨大BLOBを一度に返さず、text viewまたはchunk indexを指定して読む。
 
 次の操作は許可しない。
@@ -240,7 +252,7 @@ Evidenceが不足している間はFunction Callを返し、Harnessが同じ`cal
 
 ### 上限
 
-Harnessは`max_steps`、input/output token budget、Artifact読取bytes、Job deadlineを設定する。上限へ近づいた場合は「確認できない事項を`unresolved`へ残し、利用済みEvidenceだけで確定する」旨を次inputへ追加する。上限超過やStructured Output未生成が続く場合はJobを再試行または`needs_operator`にする。
+Memory PlaneはJob作成時に`max_steps`、input/output token budget、Artifact読取bytes、Job deadline、profile/output schema versionを固定する。上限へ近づいた場合は「確認できない事項を`unresolved`へ残し、利用済みEvidenceだけで確定する」旨を次inputへ追加する。上限超過やStructured Output未生成が続く場合はJobを再試行または`needs_operator`にする。
 
 ### 出力と検証
 
@@ -511,5 +523,5 @@ Work AgentはWikiファイルを直接探索しない
 HarnessがWiki Agentを強制的に呼ぶ
 Semantic記憶は単一Claim一覧ではない
 Semantic本文の事実・説明は文または段落単位でEpisodeへリンクする
-Wiki更新とTask実行は別Run
+Wiki更新はWork Agent Runから分離したWiki maintenance Jobで実行する
 ```

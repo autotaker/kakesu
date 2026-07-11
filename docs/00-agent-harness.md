@@ -190,7 +190,6 @@ type AgentAction =
   | ReplyToChild
   | RequestExternalEffect
   | CompleteCandidate
-  | FailTask
   | CancelChildTask
   | ReportContextGap
   | ReportMemoryError
@@ -275,7 +274,7 @@ Ownerごとのactive Taskは最大1
 TaskごとのWorkspaceは1つ
 子TaskのOwnerは親TaskのOwnerと独立
 Owner以外はCompletion Candidateを提出できない
-ReviewerはTask Ownerと別Run
+ReviewerはOwner Agent Runから分離した一時API sessionで動作し、Harness Agent Runには登録しない
 親Ownerは直接の子だけをcancelできる
 External EffectはGateway以外から実行できない
 Policy JudgeはCredentialと作業Toolを持たない

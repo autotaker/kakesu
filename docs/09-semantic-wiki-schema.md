@@ -186,7 +186,7 @@ New Episode
 ```markdown
 ## 現在の理解
 
-ReviewerはOwnerと別Runであるべきだが、同一モデル利用時に十分な独立性が得られるかは未確定である。
+ReviewerはOwner Agent Runから分離した一時API sessionであるべきだが、同一モデル利用時に十分な独立性が得られるかは未確定である。
 
 ## 未解決
 

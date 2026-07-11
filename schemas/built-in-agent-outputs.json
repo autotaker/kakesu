@@ -1,0 +1,46 @@
+{
+  "acceptance_review": {
+    "type": "json_schema",
+    "name": "acceptance_review_decision",
+    "strict": true,
+    "schema": {
+      "type": "object",
+      "properties": {
+        "decision": { "type": "string", "enum": ["accept", "reject", "insufficient_evidence"] },
+        "rationale": { "type": "string" },
+        "unmet_acceptance": { "type": "array", "items": { "type": "string" } },
+        "required_evidence": { "type": "array", "items": { "type": "string" } },
+        "evidence_refs": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["decision", "rationale", "unmet_acceptance", "required_evidence", "evidence_refs"],
+      "additionalProperties": false
+    }
+  },
+  "policy_decision": {
+    "type": "json_schema",
+    "name": "policy_decision",
+    "strict": true,
+    "schema": {
+      "type": "object",
+      "properties": {
+        "decision": { "type": "string", "enum": ["allow", "deny", "require_authority", "insufficient_information"] },
+        "rationale": { "type": "string" },
+        "applied_policy_ids": { "type": "array", "items": { "type": "string" } },
+        "authority_ref": { "type": ["string", "null"] },
+        "question": { "type": ["string", "null"] },
+        "required_evidence": { "type": "array", "items": { "type": "string" } },
+        "conditions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": { "type": { "type": "string" }, "value": { "type": "string" } },
+            "required": ["type", "value"],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": ["decision", "rationale", "applied_policy_ids", "authority_ref", "question", "required_evidence", "conditions"],
+      "additionalProperties": false
+    }
+  }
+}

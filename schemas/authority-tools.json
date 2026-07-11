@@ -1,0 +1,48 @@
+[
+  {
+    "type": "function",
+    "name": "submit_authority_decision",
+    "description": "外部Authority principalまたはadapterが例外・高リスク判断を返す。組み込みAgent用Toolではなく、Effectを直接実行しない。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "authority_request_id": { "type": "string" },
+        "decision": { "type": "string", "enum": ["approve", "deny"] },
+        "rationale": { "type": "string" },
+        "conditions": { "type": "array", "items": { "type": "string" } },
+        "timeout_ms": { "type": ["integer", "null"], "minimum": 0 },
+        "idempotency_key": { "type": ["string", "null"] }
+      },
+      "required": ["authority_request_id", "decision", "rationale", "conditions", "timeout_ms", "idempotency_key"],
+      "additionalProperties": false
+    },
+    "strict": true
+  },
+  {
+    "type": "function",
+    "name": "submit_task_escalation_decision",
+    "description": "Root Authority principalまたはadapterがRoot Task EscalationへContract判断を返す。External Effect承認には使用しない。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "escalation_request_id": { "type": "string" },
+        "message": { "type": "string" },
+        "contract_patch": {
+          "type": ["object", "null"],
+          "properties": {
+            "objective": { "type": ["string", "null"] },
+            "acceptance": { "type": ["string", "null"] },
+            "instructions": { "type": ["string", "null"] }
+          },
+          "required": ["objective", "acceptance", "instructions"],
+          "additionalProperties": false
+        },
+        "terminate": { "type": "boolean" },
+        "idempotency_key": { "type": "string" }
+      },
+      "required": ["escalation_request_id", "message", "contract_patch", "terminate", "idempotency_key"],
+      "additionalProperties": false
+    },
+    "strict": true
+  }
+]

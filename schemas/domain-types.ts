@@ -40,6 +40,16 @@ export interface Task {
   endedAt?: string;
 }
 
+export interface TaskEvent {
+  eventId: string;
+  taskId: string;
+  actorKind: "work_agent" | "harness" | "authority" | "internal_component";
+  actorRef: string;
+  eventType: string;
+  payloadRef: string;
+  createdAt: string;
+}
+
 export interface Workspace {
   workspaceId: string;
   taskId: string;
@@ -171,13 +181,56 @@ export type WaitCondition =
   | { kind: "effect"; effectId: string }
   | { kind: "timer"; wakeAt: string };
 
+export type ParentRequestStatus = "pending" | "resolved" | "cancelled";
+
+export interface AskRequest {
+  requestId: string;
+  childTaskId: string;
+  parentTaskId: string;
+  childOwnerAgentId: string;
+  parentOwnerAgentId: string;
+  contractVersion: number;
+  question: string;
+  status: ParentRequestStatus;
+  asyncId: string;
+}
+
+export interface AskAdvice {
+  requestId: string;
+  advice: string;
+  responderAgentId: string;
+  resolvedAt: string;
+}
+
+export interface EscalationRequest {
+  requestId: string;
+  requesterTaskId: string;
+  authorityTaskId?: string;
+  rootAuthorityRef?: string;
+  contractVersion: number;
+  question: string;
+  proposedOptions: string[];
+  status: ParentRequestStatus;
+  asyncId: string;
+}
+
+export interface EscalationDecision {
+  requestId: string;
+  authorityRef: string;
+  decision: string;
+  contractPatch?: Partial<TaskContract>;
+  terminate: boolean;
+  resolvedAt: string;
+}
+
 export interface Suspension {
   reason: string;
   source:
     | "agent_run_failure"
     | "runtime_failure"
     | "workspace_failure"
-    | "resource_unavailable";
+    | "resource_unavailable"
+    | "built_in_job_failure";
   recoveryOwner: "harness" | "operator";
   recoveryPolicy: "automatic" | "manual";
   retryCount: number;
@@ -221,14 +274,43 @@ export interface CompletionCandidate {
   contractVersion: number;
 }
 
-export type AcceptanceReviewDecision =
-  | { decision: "accept"; rationale: string }
-  | { decision: "reject"; rationale: string; unmetAcceptance: string[] }
-  | {
-      decision: "insufficient_evidence";
-      rationale: string;
-      requiredEvidence: string[];
-    };
+export interface AcceptanceReviewDecision {
+  decision: "accept" | "reject" | "insufficient_evidence";
+  rationale: string;
+  unmetAcceptance: string[];
+  requiredEvidence: string[];
+  evidenceRefs: string[];
+}
+
+export interface CompletionReviewJob {
+  reviewJobId: string;
+  taskId: string;
+  candidateVersion: number;
+  candidateSnapshotRef: string;
+  candidateDigest: string;
+  inputSnapshotRef: string;
+  inputDigest: string;
+  contractVersion: number;
+  reviewerProfileVersion: string;
+  outputSchemaVersion: string;
+  status: "pending" | "reviewing" | "completed" | "needs_operator";
+  attempt: number;
+  leaseOwner?: string;
+  leaseExpiresAt?: string;
+  invocationDeadlineAt: string;
+  lastErrorRef?: string;
+}
+
+export interface CompletionReview {
+  reviewId: string;
+  reviewJobId: string;
+  taskId: string;
+  candidateVersion: number;
+  reviewerProfileVersion: string;
+  inputDigest: string;
+  decision: AcceptanceReviewDecision;
+  decidedAt: string;
+}
 
 export interface NormalizedEffect {
   effectId: string;
@@ -252,30 +334,15 @@ export interface NormalizedEffect {
   evidenceRefs: string[];
 }
 
-export type PolicyDecision =
-  | {
-      decision: "allow";
-      rationale: string;
-      appliedPolicyIds: string[];
-      conditions?: ExecutionCondition[];
-    }
-  | {
-      decision: "deny";
-      rationale: string;
-      appliedPolicyIds: string[];
-    }
-  | {
-      decision: "require_authority";
-      rationale: string;
-      appliedPolicyIds: string[];
-      authorityRef: string;
-      question: string;
-    }
-  | {
-      decision: "insufficient_information";
-      rationale: string;
-      requiredEvidence: string[];
-    };
+export interface PolicyDecision {
+  decision: "allow" | "deny" | "require_authority" | "insufficient_information";
+  rationale: string;
+  appliedPolicyIds: string[];
+  authorityRef: string | null;
+  question: string | null;
+  requiredEvidence: string[];
+  conditions: ExecutionCondition[];
+}
 
 export interface ExecutionCondition {
   type: string;
@@ -360,11 +427,19 @@ export interface TaskEpisode {
 export interface EpisodeCompilationJob {
   jobId: string;
   taskId: string;
-  episodeAgentId: string;
   status: "pending" | "investigating" | "validating" | "completed" | "needs_operator";
-  runId?: string;
   stepCount: number;
   inputTokens: number;
+  outputTokens: number;
+  maxSteps: number;
+  inputTokenBudget: number;
+  outputTokenBudget: number;
+  artifactReadByteBudget: number;
+  deadlineAt: string;
+  profileVersion: string;
+  outputSchemaVersion: string;
+  leaseOwner?: string;
+  leaseExpiresAt?: string;
   evidenceRefs: string[];
   attempt: number;
   lastErrorRef?: string;
