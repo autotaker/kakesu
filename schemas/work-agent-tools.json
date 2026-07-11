@@ -1,0 +1,736 @@
+[
+  {
+    "type": "function",
+    "name": "terminal",
+    "description": "Sandbox内でコマンドを実行する。Sandbox外への直接通信やCredential利用はできない。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "command": {
+          "type": "string"
+        },
+        "cwd": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "timeout_ms": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "description": "同期的に待つ上限。超過後も処理は継続し、async_idを返す。"
+        },
+        "idempotency_key": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "同一Task・同一Tool内の冪等キー。"
+        }
+      },
+      "required": [
+        "command",
+        "cwd",
+        "timeout_ms",
+        "idempotency_key"
+      ],
+      "additionalProperties": false
+    },
+    "strict": true
+  },
+  {
+    "type": "function",
+    "name": "delegate",
+    "description": "独立したObjectiveとAcceptanceを持つ子Task Proposalを提出する。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "objective": {
+          "type": "string"
+        },
+        "acceptance": {
+          "type": "string"
+        },
+        "instructions": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "owner_profile": {
+          "type": "string",
+          "enum": [
+            "L1",
+            "L2",
+            "L3"
+          ]
+        },
+        "workspace_mode": {
+          "type": "string",
+          "enum": [
+            "fork",
+            "shared_readonly",
+            "empty"
+          ]
+        },
+        "dependency": {
+          "type": "string",
+          "enum": [
+            "required",
+            "optional"
+          ]
+        },
+        "artifact_refs": {
+          "anyOf": [
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "timeout_ms": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "description": "同期的に待つ上限。超過後も処理は継続し、async_idを返す。"
+        },
+        "idempotency_key": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "同一Task・同一Tool内の冪等キー。"
+        }
+      },
+      "required": [
+        "objective",
+        "acceptance",
+        "instructions",
+        "owner_profile",
+        "workspace_mode",
+        "dependency",
+        "artifact_refs",
+        "timeout_ms",
+        "idempotency_key"
+      ],
+      "additionalProperties": false
+    },
+    "strict": true
+  },
+  {
+    "type": "function",
+    "name": "ask_parent",
+    "description": "Child Owner Agentが判断責任を保持したままParent Owner Agentへ助言を求めるAgent間コミュニケーション。Task Contractは変更しない。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "message": {
+          "type": "string"
+        },
+        "artifact_refs": {
+          "anyOf": [
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "timeout_ms": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "description": "同期的に待つ上限。超過後も処理は継続し、async_idを返す。"
+        },
+        "idempotency_key": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "同一Task・同一Tool内の冪等キー。"
+        }
+      },
+      "required": [
+        "message",
+        "artifact_refs",
+        "timeout_ms",
+        "idempotency_key"
+      ],
+      "additionalProperties": false
+    },
+    "strict": true
+  },
+  {
+    "type": "function",
+    "name": "escalate_parent",
+    "description": "Objective・Acceptance・優先順位などTask Contract上の判断責任をChild TaskからParent Taskへ移すTask間プロトコル。External Effect承認には使わない。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "message": {
+          "type": "string"
+        },
+        "artifact_refs": {
+          "anyOf": [
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "timeout_ms": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "description": "同期的に待つ上限。超過後も処理は継続し、async_idを返す。"
+        },
+        "idempotency_key": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "同一Task・同一Tool内の冪等キー。"
+        }
+      },
+      "required": [
+        "message",
+        "artifact_refs",
+        "timeout_ms",
+        "idempotency_key"
+      ],
+      "additionalProperties": false
+    },
+    "strict": true
+  },
+  {
+    "type": "function",
+    "name": "reply_to_child",
+    "description": "Parent Ownerが子へ応答する。Askにはadvice、Escalationにはcontract_decisionを使う。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "request_id": {
+          "type": "string"
+        },
+        "response_kind": {
+          "type": "string",
+          "enum": [
+            "advice",
+            "contract_decision"
+          ]
+        },
+        "message": {
+          "type": "string"
+        },
+        "contract_patch": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "objective": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "acceptance": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "instructions": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "objective",
+                "acceptance",
+                "instructions"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "terminate": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "timeout_ms": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "description": "同期的に待つ上限。超過後も処理は継続し、async_idを返す。"
+        },
+        "idempotency_key": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "同一Task・同一Tool内の冪等キー。"
+        }
+      },
+      "required": [
+        "request_id",
+        "response_kind",
+        "message",
+        "contract_patch",
+        "terminate",
+        "timeout_ms",
+        "idempotency_key"
+      ],
+      "additionalProperties": false
+    },
+    "strict": true
+  },
+  {
+    "type": "function",
+    "name": "request_effect",
+    "description": "Sandbox外へ作用するExternal EffectをEffect Gatewayへ要求する。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "effect_type": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string"
+        },
+        "payload_ref": {
+          "type": "string"
+        },
+        "explanation": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "timeout_ms": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "description": "同期的に待つ上限。超過後も処理は継続し、async_idを返す。"
+        },
+        "idempotency_key": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "同一Task・同一Tool内の冪等キー。"
+        }
+      },
+      "required": [
+        "effect_type",
+        "target",
+        "payload_ref",
+        "explanation",
+        "timeout_ms",
+        "idempotency_key"
+      ],
+      "additionalProperties": false
+    },
+    "strict": true
+  },
+  {
+    "type": "function",
+    "name": "complete_candidate",
+    "description": "OwnerがTaskの完了候補を提出し、軽量Acceptance Reviewを開始する。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "owner_judgement": {
+          "type": "string"
+        },
+        "outcome_ref": {
+          "type": "string"
+        },
+        "artifact_refs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "evidence_refs": {
+          "anyOf": [
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "contract_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "timeout_ms": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "description": "同期的に待つ上限。超過後も処理は継続し、async_idを返す。"
+        },
+        "idempotency_key": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "同一Task・同一Tool内の冪等キー。"
+        }
+      },
+      "required": [
+        "owner_judgement",
+        "outcome_ref",
+        "artifact_refs",
+        "evidence_refs",
+        "contract_version",
+        "timeout_ms",
+        "idempotency_key"
+      ],
+      "additionalProperties": false
+    },
+    "strict": true
+  },
+  {
+    "type": "function",
+    "name": "fail_task",
+    "description": "Ownerが現行ContractではTaskを達成不能と判断し、failed終端を申告する。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "reason": {
+          "type": "string"
+        },
+        "retryable": {
+          "type": "boolean"
+        },
+        "artifact_refs": {
+          "anyOf": [
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "timeout_ms": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "description": "同期的に待つ上限。超過後も処理は継続し、async_idを返す。"
+        },
+        "idempotency_key": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "同一Task・同一Tool内の冪等キー。"
+        }
+      },
+      "required": [
+        "reason",
+        "retryable",
+        "artifact_refs",
+        "timeout_ms",
+        "idempotency_key"
+      ],
+      "additionalProperties": false
+    },
+    "strict": true
+  },
+  {
+    "type": "function",
+    "name": "cancel_child_task",
+    "description": "現在Taskの直接の子Taskへキャンセル要求を出す。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "child_task_id": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "cancellation_policy": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": [
+                "cascade",
+                "detach_children",
+                "transfer_children"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "timeout_ms": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "description": "同期的に待つ上限。超過後も処理は継続し、async_idを返す。"
+        },
+        "idempotency_key": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "同一Task・同一Tool内の冪等キー。"
+        }
+      },
+      "required": [
+        "child_task_id",
+        "reason",
+        "cancellation_policy",
+        "timeout_ms",
+        "idempotency_key"
+      ],
+      "additionalProperties": false
+    },
+    "strict": true
+  },
+  {
+    "type": "function",
+    "name": "report_context_gap",
+    "description": "Harnessが注入した長期記憶Contextの不足・矛盾を報告し、Wiki Agentへの追加問い合わせを要求する。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "message": {
+          "type": "string"
+        },
+        "memory_refs": {
+          "anyOf": [
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "artifact_refs": {
+          "anyOf": [
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "timeout_ms": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "description": "同期的に待つ上限。超過後も処理は継続し、async_idを返す。"
+        },
+        "idempotency_key": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "同一Task・同一Tool内の冪等キー。"
+        }
+      },
+      "required": [
+        "message",
+        "memory_refs",
+        "artifact_refs",
+        "timeout_ms",
+        "idempotency_key"
+      ],
+      "additionalProperties": false
+    },
+    "strict": true
+  },
+  {
+    "type": "function",
+    "name": "report_memory_error",
+    "description": "注入された記憶に明白な誤りがあることを報告する。Wikiを直接編集しない。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "memory_ref": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        },
+        "evidence_refs": {
+          "anyOf": [
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "timeout_ms": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "description": "同期的に待つ上限。超過後も処理は継続し、async_idを返す。"
+        },
+        "idempotency_key": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "同一Task・同一Tool内の冪等キー。"
+        }
+      },
+      "required": [
+        "memory_ref",
+        "message",
+        "evidence_refs",
+        "timeout_ms",
+        "idempotency_key"
+      ],
+      "additionalProperties": false
+    },
+    "strict": true
+  },
+  {
+    "type": "function",
+    "name": "await_async",
+    "description": "既存async operationの完了条件を待つ。期限超過時はpending状態を返し、新しいasync operationは作らない。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "async_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "mode": {
+          "type": "string",
+          "enum": [
+            "all",
+            "any"
+          ]
+        },
+        "timeout_ms": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "description": "同期的に待つ上限。超過後も処理は継続し、async_idを返す。"
+        }
+      },
+      "required": [
+        "async_ids",
+        "mode",
+        "timeout_ms"
+      ],
+      "additionalProperties": false
+    },
+    "strict": true
+  },
+  {
+    "type": "function",
+    "name": "cancel_async",
+    "description": "既存async operationの取消を要求する。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "async_id": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "timeout_ms": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "description": "同期的に待つ上限。超過後も処理は継続し、async_idを返す。"
+        },
+        "idempotency_key": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "同一Task・同一Tool内の冪等キー。"
+        }
+      },
+      "required": [
+        "async_id",
+        "reason",
+        "timeout_ms",
+        "idempotency_key"
+      ],
+      "additionalProperties": false
+    },
+    "strict": true
+  }
+]
