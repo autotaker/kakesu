@@ -35,6 +35,7 @@ Governance Aggregate
   authority_requests
 
 Memory Aggregate
+  episode_compilation_jobs
   task_episodes
   memory_context_requests
   wiki_commits
@@ -162,6 +163,10 @@ Judge decision、applied policy IDs、rationale、decision input digestを保存
 
 Task終端後に一件。Episode内容のstorage refとdigestを持つ。
 
+### `episode_compilation_jobs`
+
+終端TaskごとのEpisode Agent調査Jobを保存する。status、Episode Agent Run、step/token使用量、Evidence参照、attempt、errorを持つ。`task_id`で冪等化し、Job失敗や`needs_operator`はTask状態へ影響させない。
+
 ## 3. 詳細ER図
 
 ```mermaid
@@ -183,6 +188,8 @@ erDiagram
     TASKS ||--o{ MAILBOX_ENTRIES : receives
     TASKS ||--o{ COMPLETION_REVIEWS : reviewed
     TASKS ||--o| TASK_OUTCOMES : ends_with
+    TASKS ||--o| EPISODE_COMPILATION_JOBS : compiles
+    EPISODE_COMPILATION_JOBS ||--o| TASK_EPISODES : produces
     TASKS ||--|| WORKSPACES : uses
     WORKSPACES ||--o{ WORKSPACE_SNAPSHOTS : snapshots
     TASKS ||--o{ ARTIFACTS : creates

@@ -343,4 +343,4 @@ Context CompactionはTask状態遷移ではない。必要に応じて`ContextCo
 
 ## 12. Episode生成
 
-`completed`または`cancelled`へ入った後、Episode Compilerを非同期起動する。`suspended`は非終端なのでEpisodeを確定せず、Task Progress、Resume Cursor、障害Evidenceを保存する。
+`completed`または`cancelled`へ入った後、Episode Agentを非同期起動する。`suspended`は非終端なのでEpisodeを確定せず、Task Progress、Resume Cursor、障害Evidenceを保存する。

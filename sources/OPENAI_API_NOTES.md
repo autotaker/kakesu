@@ -54,6 +54,7 @@
 - `text.format`を使って、すべてのAgent Response Stepを`{ action, progress_delta }`のような共通Envelopeにすることはできない。
 - Tool Callが出るStepにも別の構造化text outputが必ず出ることを前提にしない。
 - 本設計ではHarnessが一定の通常Response Stepごとに別のMaintenance Responseを開始し、利用可能Toolを`update_progress`だけに限定したうえで`tool_choice`に同Functionを指定する。これはResponses APIによる自動付加ではなく、Harnessが明示的に追加するFunction Calling Stepである。
+- Episode AgentではRead-only Function Tools、`tool_choice: "auto"`、Task Episode用`text.format: json_schema`を最初から同時指定する。ModelがEvidence不足時にFunction Call、十分な時にSchema準拠messageを返す通常Tool Loopとして扱い、Harness側で調査Phaseと最終生成Phaseを切り替えない。
 
 ## Conversation state
 

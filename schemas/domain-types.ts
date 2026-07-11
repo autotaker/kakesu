@@ -318,6 +318,19 @@ export interface TaskEpisode {
   evidenceRefs: string[];
 }
 
+export interface EpisodeCompilationJob {
+  jobId: string;
+  taskId: string;
+  episodeAgentId: string;
+  status: "pending" | "investigating" | "validating" | "completed" | "needs_operator";
+  runId?: string;
+  stepCount: number;
+  inputTokens: number;
+  evidenceRefs: string[];
+  attempt: number;
+  lastErrorRef?: string;
+}
+
 export interface EpisodeTransition {
   at: string;
   eventType: string;
