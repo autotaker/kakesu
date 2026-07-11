@@ -32,7 +32,9 @@ Task Episode                  = Episodic Memory Unit
 
 ## 3. Task Episode
 
-Taskが`completed`、`failed`、`cancelled`のいずれかに入った後、Episode Compilerが一つの不変記録を作る。
+Taskが`completed`または`cancelled`に入った後、Episode Compilerが一つの不変記録を作る。`suspended`中はTask Progress、Resume Cursor、障害Evidenceを保存するが、Episodeを確定しない。
+
+Episode CompilerはTask Progressの履歴をCourseとUnresolvedの主要入力にする。ただしProgressはOwner assertedなので、Task Events、Tool結果、Artifact、Completion Reviewと照合し、観測事実と混同しない。
 
 ```typescript
 type TaskEpisode = {
@@ -60,7 +62,7 @@ type TaskEpisode = {
   };
 
   outcome: {
-    status: "completed" | "failed" | "cancelled";
+    status: "completed" | "cancelled";
     owner_judgement: string;
     acceptance_review_ref?: string;
     artifact_refs: string[];
@@ -94,6 +96,8 @@ Task Episode
 ```
 
 通常の記憶検索ではEpisodeを読む。根拠確認や矛盾解消のときだけ低位Evidenceへ掘る。
+
+Agent response logの具体的な保存範囲とRetentionは[04-runtime-and-responses-api.md](04-runtime-and-responses-api.md)の「Agent Run Record Policy」を正本とする。Episodeに必要な主張を短期Run logだけへ依存させない。
 
 ## 5. Episode Compiler
 
@@ -133,7 +137,7 @@ type EpisodeStatement = {
 
 Semantic WikiはEpisodeの要約集ではない。複数Episodeから抽象化・統合された認知モデルである。
 
-詳細は[07-semantic-wiki-schema.md](07-semantic-wiki-schema.md)を参照。
+詳細は[08-semantic-wiki-schema.md](08-semantic-wiki-schema.md)を参照。
 
 ## 7. Wiki Agent
 

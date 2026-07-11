@@ -6,12 +6,18 @@
 Task Aggregate
   task
   task_contract_versions
+  task_progress
+  task_progress_events
   task_events
   task_outcome
   completion_reviews
 
 Execution Aggregate
   agent_runs
+  agent_run_steps
+  agent_run_items
+  agent_resources
+  resume_cursors
   continuations
   async_operations
   mailbox_entries
@@ -71,13 +77,45 @@ Task状態とTask Eventは同一Transactionで更新する。他AggregateとはO
 
 Contract変更の履歴を保存する。過去のCompletion CandidateがどのContractを基準にしたか追跡できる。
 
+### `task_progress` / `task_progress_events`
+
+現在のTodo形式Progressとappend-onlyな更新履歴を保存する。`task_progress`は`task_id`、`version`、`current_focus_id`、Task EventとAgent Run Eventのwatermark、`updated_at`を持ち、itemは子tableまたはJSONとして保持できる。更新はOwner Agentの認識であり、Acceptance達成の正本ではない。
+
 ### `task_events`
 
 append-only。`event_id`、`task_id`、`sequence_no`、`event_type`、`payload_ref`、`actor_ref`を持つ。
 
 ### `agent_runs`
 
-一Taskの実行セッション。`previous_response_id`は補助列で、復元の必須条件にしない。
+一Taskの実行セッション。`previous_response_id`は補助列で、復元の必須条件にしない。`normal_step_count`と`last_progress_refresh_step`を持ち、Maintenance Responseを除いたStep周期でProgress Refreshを起動する。
+
+### `agent_run_steps` / `agent_run_items`
+
+Responses API呼び出し単位のStep metadataと、完成したoutput itemの正規化記録を保存する。同じOwner Assignment内で単調増加する`assignment_event_sequence`を持ち、Runをまたぐ再開Contextの選択に使う。request本文やStreaming deltaを無条件には保存せず、Context version／参照／digestと完成itemを基本とする。保存対象、Retention、Reasoning、Compaction item、Redactionの正本は[04-runtime-and-responses-api.md](04-runtime-and-responses-api.md)の「Agent Run Record Policy」とする。
+
+### `agent_resources`
+
+| 列 | 説明 |
+|---|---|
+| `resource_id` | Agent Resource ID |
+| `agent_id` | Resourceを所有する論理Agent |
+| `assignment_id` | assignment scopeのOwner割当ID、nullable |
+| `run_id` | run scopeの場合のAgent Run、nullable |
+| `kind` | process / server / worktree / temporary_directory |
+| `resource_ref` | Process ManagerやWorkspace Manager上の参照 |
+| `lifetime` | run / assignment / agent |
+| `cleanup_policy` | stop / delete / retain |
+| `status` | active / cleanup_pending / cleaning / released / needs_operator |
+| `retry_count` | Cleanup試行回数 |
+| `last_error_ref` | 最終Cleanupエラー、nullable |
+
+AgentまたはTool実行基盤がResourceを登録し、HarnessがCleanup開始、再試行、Operator移管を管理する。Task終端後もCleanup状態は独立して進み、Task状態を変更しない。
+
+### `resume_cursors`
+
+Run切替境界ごとの最小再開位置を保存する。`cursor_id`、`task_id`、`agent_id`、`source_run_id`、`contract_version`、`task_version`、`progress_version`、Workspace参照、Task Event・Agent Run Event・Mailboxのwatermark、`created_at`を持つ。
+
+Cursorは意味的要約を持たない。Task、Contract、Progress、Mailbox、Async Operation、Artifact、Workspaceの正本を置き換えない。新Runが参照したCursor IDを`agent_runs`へ記録し、再開元を監査可能にする。
 
 ### `continuations`
 
@@ -133,6 +171,13 @@ erDiagram
     TASKS ||--o{ TASK_CONTRACT_VERSIONS : versions
     TASKS ||--o{ TASK_EVENTS : emits
     TASKS ||--o{ AGENT_RUNS : runs
+    AGENT_RUNS ||--o{ AGENT_RUN_STEPS : contains
+    AGENT_RUN_STEPS ||--o{ AGENT_RUN_ITEMS : emits
+    AGENTS ||--o{ AGENT_RESOURCES : owns
+    AGENT_RUNS ||--o{ AGENT_RESOURCES : may_create
+    TASKS ||--|| TASK_PROGRESS : tracks
+    TASK_PROGRESS ||--o{ TASK_PROGRESS_EVENTS : changes
+    AGENT_RUNS ||--o{ RESUME_CURSORS : resumes_from
     TASKS ||--o{ CONTINUATIONS : suspends
     TASKS ||--o{ ASYNC_OPERATIONS : starts
     TASKS ||--o{ MAILBOX_ENTRIES : receives
@@ -194,7 +239,7 @@ erDiagram
 ```sql
 CREATE UNIQUE INDEX one_active_task_per_owner
 ON tasks(owner_agent_id)
-WHERE status NOT IN ('completed', 'failed', 'cancelled');
+WHERE status NOT IN ('completed', 'cancelled');
 
 CREATE UNIQUE INDEX one_workspace_per_task
 ON workspaces(task_id);

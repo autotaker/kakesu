@@ -30,12 +30,12 @@ cancel  = 実処理を停止する
 | `terminal` | Sandbox内コマンド | 長時間process |
 | `delegate` | 子Task生成と実行 | 子Task完了待ち |
 | `ask_parent` | Child OwnerからParent OwnerへのAgent間助言要求 | 親Response待ち |
-| `escalate_parent` | Child TaskからParent Taskへ作業契約判断を移す | 親決定待ち |
+| `escalate` | Taskから上位Authorityへ作業契約判断を移す | 上位決定待ち |
 | `reply_to_child` | 子のAsk/Escalationへ応答 | 子Mailbox配送待ち |
 | `request_effect` | External Effect要求 | Judge / Authority / 外部実行待ち |
 | `complete_candidate` | 完了候補提出 | Acceptance Review待ち |
-| `fail_task` | 達成不能の終端申告 | Outcome確定待ち |
-| `cancel_child_task` | 直接子Taskの停止 | graceful cancellation待ち |
+| `update_progress` | Harnessが強制する定期Progress更新 | Maintenance Response内で同期完了 |
+| `cancel_child_task` | 直接子Taskの責任撤回 | HarnessによるCancellation確定 |
 | `report_context_gap` | Wiki Agentへ追加Context要求 | Wiki応答待ち |
 | `report_memory_error` | 注入記憶の誤りを報告 | Memory Plane受付待ち |
 | `await_async` | 複数Operationの待機条件設定 | 指定Operation待ち |
@@ -91,7 +91,7 @@ Completed value:
 ```typescript
 type ChildTaskResult = {
   task_id: string;
-  status: "completed" | "failed" | "cancelled";
+  status: "completed" | "cancelled";
   summary: string;
   artifact_refs: string[];
   workspace_snapshot_ref?: string;
@@ -120,12 +120,12 @@ type ParentAdvice = {
 };
 ```
 
-## 6. `escalate_parent`
+## 6. `escalate`
 
-親子Task間でTask Contract上の判断責任を移転するToolである。呼び出しと応答はOwner Agentが実行するが、Agent間の単なる相談ではない。
+Taskから上位AuthorityへTask Contract上の判断責任を移転するToolである。Child TaskではParent Taskへ、Root Taskでは人間のRoot AuthorityへHarnessが配送する。呼び出しはOwner Agentが実行するが、Agent間の単なる相談ではない。
 
 ```typescript
-escalate_parent({
+escalate({
   message: string,
   artifact_refs?: string[],
   timeout_ms?: number,
@@ -216,21 +216,27 @@ complete_candidate({
 Acceptance Reviewが期限内に終われば結果を直接返す。超えれば`async_id`を返し、Reviewer判断をMailboxへ送る。
 
 
-## 10. `fail_task`
+## 10. `update_progress`
 
-Ownerが現行ContractではTaskを達成できないと判断した場合に提出する。
+Harnessが定期Maintenance Responseで利用可能な唯一のToolとして提示し、`tool_choice`で強制する。Work Agentの通常Actionとして呼び出すことには依存しない。
 
 ```typescript
-fail_task({
-  reason: string,
-  retryable: boolean,
-  artifact_refs?: string[],
-  timeout_ms?: number,
-  idempotency_key?: string
+update_progress({
+  based_on_progress_version: number,
+  through_task_event_sequence: number,
+  through_agent_run_event_sequence: number,
+  current_focus_id?: string,
+  items: Array<{
+    item_id: string,
+    description: string,
+    status: "pending" | "in_progress" | "completed" | "blocked" | "cancelled",
+    evidence_refs: string[],
+    blocker?: string
+  }>
 })
 ```
 
-Harnessは呼び出し元がOwnerであることを確認し、Outcomeを固定して`failed`へ遷移する。失敗TaskもEpisode化する。
+Harnessはversion、Task／Agent Run Event watermark、Evidence参照、item IDの一意性、既存非終端itemの欠落を検証し、Task Progressと`ProgressRefreshed` Eventを同一Transactionで保存する。itemを削除する場合は省略せず`cancelled`として残す。このToolはTask Actionを進めず、同じ`call_id`の`function_call_output`を永続化した時点でMaintenance処理を終了する。
 
 ## 11. `cancel_child_task`
 
@@ -244,7 +250,7 @@ cancel_child_task({
 })
 ```
 
-Harnessはrequesterが親Task Ownerで、対象が直接子であることを検証する。
+Harnessはrequesterが親Task Ownerで、対象が直接子であることを検証し、Taskを直ちに`cancelled`へ確定する。Agent processやworktreeの停止・削除は別のAgent Resource Cleanupとして非同期に追跡する。
 
 ## 12. Memory Gap
 
@@ -328,7 +334,7 @@ await_async({
 })
 ```
 
-期限内に条件が成立しなければ、待機条件そのものを表す新しい`async_id`を返す。元Operationを複製するのではなく、複数Operationを束ねるWait Group Operationである。条件成立時に`AsyncCompleted`がMailboxへ届く。OwnerがTaskを停止して待つ場合、HarnessはこのWait GroupをContinuationへ結び、`waiting_*`へ遷移する。
+期限内に条件が成立しなければ、待機条件そのものを表す新しい`async_id`を返す。元Operationを複製するのではなく、複数Operationを束ねるWait Group Operationである。条件成立時に`AsyncCompleted`がMailboxへ届く。OwnerがTaskを停止して待つ場合、HarnessはこのWait GroupをContinuationの`WaitCondition`へ結び、Taskを`waiting`へ遷移する。
 
 ## 15. `cancel_async`
 

@@ -7,19 +7,20 @@
 1. [エージェントハーネス設計書本体](docs/00-agent-harness.md)
 2. [Agent・Task・Workspaceのドメインモデル](docs/01-domain-model.md)
 3. [Taskライフサイクル](docs/02-task-lifecycle.md)
-4. [Responses APIランタイム](docs/03-runtime-and-responses-api.md)
+4. [Agentライフサイクル](docs/03-agent-lifecycle.md)
+5. [Responses APIランタイム](docs/04-runtime-and-responses-api.md)
 
 ## サブ設計書
 
 | 文書 | 内容 |
 |---|---|
-| [04-tools-and-async.md](docs/04-tools-and-async.md) | LLMツール、タイムアウト、`async_id`、Mailbox |
-| [05-governance.md](docs/05-governance.md) | Sandbox境界、Policy Cascade、独立Policy Judge |
-| [06-long-term-memory.md](docs/06-long-term-memory.md) | Task Episodeと独立Wiki Agentによる長期記憶 |
-| [07-semantic-wiki-schema.md](docs/07-semantic-wiki-schema.md) | Concept / Schema / Script / Case PatternのMarkdown設計 |
-| [08-running-example.md](docs/08-running-example.md) | Root Taskを最後まで処理する具体例 |
-| [09-data-model.md](docs/09-data-model.md) | ER図、テーブル、制約、イベント |
-| [10-implementation-and-tests.md](docs/10-implementation-and-tests.md) | 実装分割、検証項目、障害試験 |
+| [05-tools-and-async.md](docs/05-tools-and-async.md) | LLMツール、タイムアウト、`async_id`、Mailbox |
+| [06-governance.md](docs/06-governance.md) | Sandbox境界、Policy Cascade、独立Policy Judge |
+| [07-long-term-memory.md](docs/07-long-term-memory.md) | Task Episodeと独立Wiki Agentによる長期記憶 |
+| [08-semantic-wiki-schema.md](docs/08-semantic-wiki-schema.md) | Concept / Schema / Script / Case PatternのMarkdown設計 |
+| [09-running-example.md](docs/09-running-example.md) | Root Taskを最後まで処理する具体例 |
+| [10-data-model.md](docs/10-data-model.md) | ER図、テーブル、制約、イベント |
+| [11-implementation-and-tests.md](docs/11-implementation-and-tests.md) | 実装分割、検証項目、障害試験 |
 
 ## 付属物
 

@@ -11,18 +11,12 @@ export interface Agent {
 }
 
 export type TaskStatus =
-  | "created"
   | "ready"
   | "running"
-  | "waiting_child"
-  | "waiting_parent"
-  | "waiting_effect"
+  | "waiting"
   | "suspended"
   | "reviewing_completion"
-  | "waiting_evidence"
-  | "cancellation_requested"
   | "completed"
-  | "failed"
   | "cancelled";
 
 export interface TaskContract {
@@ -62,26 +56,133 @@ export interface AgentRun {
   status: "running" | "stopped" | "failed" | "completed";
   previousResponseId?: string;
   continuationId?: string;
+  resumeCursorId?: string;
+  stopReason?: "waiting" | "compacted" | "shutdown";
+  normalStepCount: number;
+  lastProgressRefreshStep: number;
   startedAt: string;
   endedAt?: string;
+}
+
+export interface AgentRunStep {
+  stepId: string;
+  runId: string;
+  sequence: number;
+  assignmentEventSequence: number;
+  kind: "normal" | "progress_maintenance";
+  responseId?: string;
+  status: "running" | "completed" | "failed";
+  requestContextDigest: string;
+  contractVersion: number;
+  taskVersion: number;
+  progressVersion: number;
+  startedAt: string;
+  endedAt?: string;
+}
+
+export interface AgentRunItem {
+  itemId: string;
+  stepId: string;
+  outputIndex: number;
+  type: string;
+  status?: string;
+  rawDigest: string;
+  contentRef?: string;
+  retentionClass: "long" | "policy" | "short";
+}
+
+export interface AgentResource {
+  resourceId: string;
+  agentId: string;
+  assignmentId?: string;
+  runId?: string;
+  kind: "process" | "server" | "worktree" | "temporary_directory";
+  resourceRef: string;
+  lifetime: "run" | "assignment" | "agent";
+  cleanupPolicy: "stop" | "delete" | "retain";
+  status:
+    | "active"
+    | "cleanup_pending"
+    | "cleaning"
+    | "released"
+    | "needs_operator";
+}
+
+export interface ResumeCursor {
+  cursorId: string;
+  taskId: string;
+  agentId: string;
+  sourceRunId: string;
+  contractVersion: number;
+  taskVersion: number;
+  progressVersion: number;
+  workspaceSnapshotRef: string;
+  lastConsumedMailboxSequence: number;
+  lastObservedTaskEventSequence: number;
+  lastObservedAgentRunEventSequence: number;
+  createdAt: string;
+}
+
+export interface TaskProgress {
+  taskId: string;
+  version: number;
+  currentFocusId?: string;
+  lastObservedTaskEventSequence: number;
+  lastObservedAgentRunEventSequence: number;
+  items: ProgressItem[];
+  updatedAt: string;
+}
+
+export interface ProgressItem {
+  itemId: string;
+  description: string;
+  status: "pending" | "in_progress" | "completed" | "blocked" | "cancelled";
+  evidenceRefs: string[];
+  blocker?: string;
+}
+
+export interface AgentRunEventView {
+  assignmentEventSequence: number;
+  runId: string;
+  stepId: string;
+  kind: "message" | "function_call" | "function_result" | "error" | "maintenance";
+  summary?: string;
+  ref?: string;
+  occurredAt: string;
 }
 
 export interface Continuation {
   continuationId: string;
   taskId: string;
   runId: string;
-  reason:
-    | "waiting_child"
-    | "waiting_parent"
-    | "waiting_effect"
-    | "waiting_review"
-    | "suspended";
+  reason: "waiting" | "reviewing_completion" | "suspended";
+  waitCondition?: WaitCondition;
   awaitedEventIds: string[];
   previousResponseId?: string;
   pendingCallId?: string;
   contractVersion: number;
   workspaceSnapshotRef: string;
   contextSnapshotRef: string;
+}
+
+export type WaitCondition =
+  | { kind: "child"; asyncIds: string[]; mode: "all" | "any" }
+  | { kind: "parent"; requestId: string }
+  | { kind: "effect"; effectId: string }
+  | { kind: "timer"; wakeAt: string };
+
+export interface Suspension {
+  reason: string;
+  source:
+    | "agent_run_failure"
+    | "runtime_failure"
+    | "workspace_failure"
+    | "resource_unavailable";
+  recoveryOwner: "harness" | "operator";
+  recoveryPolicy: "automatic" | "manual";
+  retryCount: number;
+  suspendedAt: string;
+  nextRetryAt?: string;
 }
 
 export type ToolResult<T> =
@@ -205,7 +306,7 @@ export interface TaskEpisode {
     childEpisodeRefs: string[];
   };
   outcome: {
-    status: "completed" | "failed" | "cancelled";
+    status: "completed" | "cancelled";
     ownerJudgement: string;
     acceptanceReviewRef?: string;
     artifactRefs: string[];

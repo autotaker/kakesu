@@ -16,6 +16,8 @@ type Agent = {
 
 AgentはLLMの一回のResponseでもOS processでもない。再起動しても同じAgentが同じTaskのOwnerとして再開できる。
 
+Agentの生成、Owner割当、Run、中断復帰、解放は[03-agent-lifecycle.md](03-agent-lifecycle.md)を正本とする。
+
 ## 2. Task
 
 Taskは、単一Ownerが責任を持つ完了判定可能な作業単位である。
@@ -59,6 +61,10 @@ type Task = {
 
 別Ownerへ完了責任を移す場合にSubtaskになる。
 
+### Task Progress
+
+TaskはOwner Agentの作業認識をTodo形式のProgress Ledgerとして持つ。Progressは一定のResponse StepごとにHarnessが強制するMaintenance Responseで更新し、ContractやAcceptance判定とは分離する。現在値と更新履歴を永続化し、Compaction後の意味的な再開情報とEpisode生成へ利用する。
+
 ## 3. Workspace
 
 Taskには一つの論理Workspaceを割り当てる。
@@ -82,7 +88,7 @@ type Workspace = {
 | `shared_readonly` | 親のWorkspaceを読み取り専用Viewとして参照する |
 | `empty` | 独立した空Workspaceから開始する |
 
-実体ストレージを共有しても、Taskごとの論理Workspace IDは分ける。
+実体ストレージを共有しても、Taskごとの論理Workspace IDは分ける。Git worktree、container、local processなどの物理実行ResourceはWorkspace Aggregateに含めず、Agent ResourceとしてHarnessがLifecycleとCleanupを管理する。
 
 ## 4. Agent Run
 
@@ -94,6 +100,10 @@ type AgentRun = {
   status: "running" | "stopped" | "failed" | "completed";
   previous_response_id?: string;
   continuation_id?: string;
+  resume_cursor_id?: string;
+  stop_reason?: "waiting" | "compacted" | "shutdown";
+  normal_step_count: number;
+  last_progress_refresh_step: number;
   started_at: string;
   ended_at?: string;
 };
@@ -131,6 +141,7 @@ type CompletionReview = {
 erDiagram
     AGENT ||--o{ TASK : owns_over_time
     TASK ||--o{ TASK : delegates
+    TASK ||--|| TASK_PROGRESS : tracks
     TASK ||--o{ AGENT_RUN : executed_by
     AGENT ||--o{ AGENT_RUN : instantiates
     TASK ||--|| WORKSPACE : uses
@@ -260,10 +271,10 @@ Ownerが割り当てられた非終端Taskは最大一つ。
 ```sql
 CREATE UNIQUE INDEX one_active_task_per_owner
 ON tasks(owner_agent_id)
-WHERE status NOT IN ('completed', 'failed', 'cancelled');
+WHERE status NOT IN ('completed', 'cancelled');
 ```
 
-`waiting_*`、`reviewing_completion`、`waiting_evidence`も非終端である。
+`waiting`、`suspended`、`reviewing_completion`も非終端である。待機理由はTask statusではなく`WaitCondition.kind`で区別する。
 
 ### 親子制約
 

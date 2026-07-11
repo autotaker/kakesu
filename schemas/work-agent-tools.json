@@ -178,8 +178,8 @@
   },
   {
     "type": "function",
-    "name": "escalate_parent",
-    "description": "Objective・Acceptance・優先順位などTask Contract上の判断責任をChild TaskからParent Taskへ移すTask間プロトコル。External Effect承認には使わない。",
+    "name": "escalate",
+    "description": "Objective・Acceptance・優先順位などTask Contract上の判断責任を上位Authorityへ移す。Child TaskはParent Taskへ、Root Taskは人間のRoot Authorityへ配送する。External Effect承認には使わない。",
     "parameters": {
       "type": "object",
       "properties": {
@@ -433,53 +433,51 @@
   },
   {
     "type": "function",
-    "name": "fail_task",
-    "description": "Ownerが現行ContractではTaskを達成不能と判断し、failed終端を申告する。",
+    "name": "update_progress",
+    "description": "Harnessが定期Maintenance Responseで強制し、Task Progress Ledgerを更新する。通常Actionとしての自発呼出しには依存しない。",
     "parameters": {
       "type": "object",
       "properties": {
-        "reason": {
-          "type": "string"
+        "based_on_progress_version": {
+          "type": "integer",
+          "minimum": 0
         },
-        "retryable": {
-          "type": "boolean"
+        "through_task_event_sequence": {
+          "type": "integer",
+          "minimum": 0
         },
-        "artifact_refs": {
-          "anyOf": [
-            {
-              "type": "array",
-              "items": {
-                "type": "string"
+        "through_agent_run_event_sequence": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "current_focus_id": {
+          "type": ["string", "null"]
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "item_id": { "type": "string" },
+              "description": { "type": "string" },
+              "status": {
+                "type": "string",
+                "enum": ["pending", "in_progress", "completed", "blocked", "cancelled"]
+              },
+              "evidence_refs": {
+                "type": "array",
+                "items": { "type": "string" }
+              },
+              "blocker": {
+                "type": ["string", "null"]
               }
             },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "timeout_ms": {
-          "type": [
-            "integer",
-            "null"
-          ],
-          "minimum": 0,
-          "description": "同期的に待つ上限。超過後も処理は継続し、async_idを返す。"
-        },
-        "idempotency_key": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "description": "同一Task・同一Tool内の冪等キー。"
+            "required": ["item_id", "description", "status", "evidence_refs", "blocker"],
+            "additionalProperties": false
+          }
         }
       },
-      "required": [
-        "reason",
-        "retryable",
-        "artifact_refs",
-        "timeout_ms",
-        "idempotency_key"
-      ],
+      "required": ["based_on_progress_version", "through_task_event_sequence", "through_agent_run_event_sequence", "current_focus_id", "items"],
       "additionalProperties": false
     },
     "strict": true

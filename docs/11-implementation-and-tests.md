@@ -79,6 +79,8 @@ memory-plane/
 - memory evaluation questions
 - cost / latency routing
 
+Response chain compactionは、定期Progress Refresh、最小Resume Cursor、正本の再読込、旧Run停止、新Run開始を分離して実装する。後付けの完全な会話要約だけで再開しない。
+
 ## 3. Core acceptance tests
 
 ### Owner排他
@@ -93,6 +95,8 @@ memory-plane/
 
 - AgentがDBへ直接Taskを作れない
 - delegate ProposalからHarnessがID/Owner/Workspaceを確定
+- Ownerまたは論理Workspace準備失敗時に中間Taskレコードを残さない
+- 作成成功時の初期状態は`ready`
 - duplicate idempotency keyで同じ子Taskを再生成しない
 - Task graph循環を拒否
 
@@ -103,15 +107,16 @@ memory-plane/
 - required child active時に拒否
 - Reviewer acceptでcompleted
 - rejectでrunning
-- insufficient evidenceでwaiting_evidence
+- insufficient evidenceで`running`へ戻り、OwnerがEvidenceを追加できる
 - Reviewerが新要件を追加した場合をEvaluatorで検出
 
 ### Parent cancellation
 
 - direct childはcancel可
 - sibling / grandchildは直接cancel不可
-- cascadeで子孫が停止
-- grace period後にforced cancel
+- Authority決定で中間状態なくcancelledになる
+- cascadeで子孫Taskもcancelledになる
+- Agent Resource Cleanup失敗でTask状態が戻らない
 - succeeded External Effectをrollbackしない
 
 ## 4. Async tests
@@ -126,6 +131,23 @@ memory-plane/
 | cancel二重呼び出し | 冪等 |
 | Task終端後の結果 | orphan policyに従い監査 |
 | stale contract result | Context version差をAgentへ明示 |
+
+### Context Compaction
+
+- Compaction前後でTask status、Owner、Contract versionが変わらない
+- 旧`previous_response_id`を新Runへ引き継がない
+- Current Contract / State / Mailbox / Async Operationを正本から再読込する
+- Task Progressを設定Step周期でforced `update_progress`により更新する
+- Maintenance Responseを通常Step数へ含めない
+- Progress Refresh失敗時に直前versionを保持する
+- pending async、child、Artifact、Workspaceを各正本から再読込する
+- Progress未観測のAgent Run Eventsを再開Contextへ含める
+- token budget超過時も未解決EventとDecision／errorを優先する
+- Reasoning、opaque compaction item、Secretを再開Contextへ入れない
+- Compaction中に届いたMailbox Eventを新Runが受け取る
+- stale Resume CursorからRunを開始しない
+- 未処理Function Callの結果を永続化するまでCompactionしない
+- Resume Cursor生成失敗時に旧Runを失わない
 
 ## 5. Governance tests
 
@@ -164,7 +186,7 @@ memory-plane/
 
 - terminal commandごとにEpisodeを作らない
 - Task終端時に一Episode
-- completed / failed / cancelledすべて保存
+- completed / cancelledを保存し、suspendedではEpisodeを確定しない
 - EpisodeからEvidenceへ辿れる
 - observed / owner_asserted / compiler_inferredを区別
 
@@ -194,6 +216,19 @@ memory-plane/
 - Reviewer unavailable
 - Policy Judge unavailable
 - Effect成功後、結果記録前にGateway crash
+- Compaction中のMailbox Event到着
+- Resume Cursor作成後・新Run開始前のContract / Progress version変更
+- 未完了Function Callがある状態でのCompaction要求
+- Resume Cursor参照切れまたは生成失敗
+
+### Agent Run Record
+
+- Streaming中断時に未完成deltaを正本化しない
+- 同じresponse ID / output item ID / call IDの再配送を重複適用しない
+- Tool dispatch intent commit後のcrashから再開できる
+- SecretをFunction argumentsとerror detailからredactする
+- Progress Maintenance Stepを通常Step countへ加算しない
+- 短期Run log削除後もEpisodeの主要主張を長期Evidenceから検証できる
 - Wiki commit conflict
 
 各障害でTaskとEffectが二重実行されず、Continuationから再開できることを確認する。

@@ -134,14 +134,14 @@ Task専用の論理作業領域。子Taskは親Workspaceから`fork`、`shared_r
 
 ### Escalation
 
-Objective、Acceptance、優先順位、作業範囲など、子のTask Contractでは決めるべきでない判断責任を、子Taskから親Taskへ移すTask間のプロトコルである。Agentは各TaskのOwnerとして送受信するが、移転する責任はAgent個人ではなくTask Contractに属する。External Effectの許可とは分離する。
+Objective、Acceptance、優先順位、作業範囲など、現在のTask Contractでは決めるべきでない判断責任を上位Authorityへ移すプロトコルである。Child Taskでは親Task、Root Taskでは人間のRoot Authorityが移転先になる。AgentはTaskのOwnerとして送信するが、移転する責任はAgent個人ではなくTask Contractに属する。External Effectの許可とは分離する。
 
 両者は同じMailbox経路を利用しても、意味上の主体が異なる。
 
 | 操作 | 意味上の主体 | 移動するもの | 子Taskへの作用 |
 |---|---|---|---|
 | Ask | Owner Agent間 | 情報・助言 | Contractは変えず、子Ownerが判断する |
-| Escalation | 親子Task間 | Contract上の判断責任 | 親の決定によりContractを明確化・更新・終了しうる |
+| Escalation | Taskと上位Authority間 | Contract上の判断責任 | 上位決定によりContractを明確化・更新・Cancellationしうる |
 
 ### External Effect
 
@@ -200,7 +200,7 @@ type AgentAction =
 
 すべての長時間Actionは`timeout_ms`を受け取る。期限内に完了しなければ処理を止めず、`async_id`を返す。最終結果はTask Mailboxへ配送する。
 
-詳細は[04-tools-and-async.md](04-tools-and-async.md)を参照。
+詳細は[05-tools-and-async.md](05-tools-and-async.md)を参照。
 
 ## 8. 親子関係
 
@@ -214,7 +214,7 @@ type AgentAction =
 
 ### 子のキャンセル
 
-親Task Ownerは直接の子Taskに`cancel_child_task`を要求できる。デフォルトは子孫へのcascade cancellation。子Ownerの安全停止を待ち、grace period超過後はHarnessが強制停止できる。
+親Task Ownerは直接の子Taskに`cancel_child_task`を要求できる。Harnessは権限検証後、Taskを直ちに`cancelled`へ確定する。process停止やworktree削除はTask状態から分離したAgent Resource CleanupとしてHarnessが実行する。デフォルトは子孫へのcascade cancellationである。
 
 ### 完了責任
 
@@ -241,7 +241,7 @@ Work Agent
 
 親Agentは子のEffectを承認しない。Effectの`origin_task_id`と`delegation_chain`を保持し、Spawnによる権限ロンダリングを防ぐ。
 
-詳細は[05-governance.md](05-governance.md)を参照。
+詳細は[06-governance.md](06-governance.md)を参照。
 
 ## 10. 長期記憶
 
@@ -256,7 +256,7 @@ Task Events + Outcome + Evidence
   → Harness Injection
 ```
 
-詳細は[06-long-term-memory.md](06-long-term-memory.md)と[07-semantic-wiki-schema.md](07-semantic-wiki-schema.md)を参照。
+詳細は[07-long-term-memory.md](07-long-term-memory.md)と[08-semantic-wiki-schema.md](08-semantic-wiki-schema.md)を参照。
 
 ## 11. 非目的
 

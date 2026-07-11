@@ -350,7 +350,7 @@ cancel_child_task({
 })
 ```
 
-L1はlocal processを停止し、Workspace snapshotを作ってackする。期限を超えた場合は`async_id`が返り、最終`ChildTaskCancelled`がMailboxへ届く。
+HarnessはT-111を直ちに`cancelled`へ確定し、`ChildTaskCancelled`を親Mailboxへ送る。その後、A-30のassignment Resourceとして登録されたlocal process停止とworktree削除を非同期Cleanupする。Cleanup失敗はT-111の状態を戻さず、Resource側で再試行またはOperator対応にする。
 
 L3は孫T-111を直接cancelしない。必要なら直接子T-110へ方針を伝えるか、T-110自体をcancelする。
 
