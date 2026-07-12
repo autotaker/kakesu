@@ -1,5 +1,5 @@
 {
-  "$schema":"https://json-schema.org/draft/2020-12/schema","$id":"urn:agent-harness:governance-plane:incident-risk-assessment:draft-v0:r1","x-schema-version":"draft-v0","x-schema-revision":1,"x-stability":"draft",
+  "$schema":"https://json-schema.org/draft/2020-12/schema","$id":"urn:kakesu:governance-plane:incident-risk-assessment:draft-v0:r1","x-schema-version":"draft-v0","x-schema-revision":1,"x-stability":"draft",
   "type":"object","additionalProperties":false,
   "required":["assessment_id","incident_id","rule_based_floor","reviewer_recommendation","effective_risk","reason_codes","human_authority_required","assessed_at"],
   "properties":{"assessment_id":{"$ref":"../common/primitives.schema.json#/$defs/id"},"incident_id":{"$ref":"../common/primitives.schema.json#/$defs/id"},"rule_based_floor":{"enum":["low","medium","high","critical"]},"reviewer_recommendation":{"enum":["low","medium","high","critical"]},"effective_risk":{"enum":["low","medium","high","critical"]},"reason_codes":{"type":"array","minItems":1,"uniqueItems":true,"items":{"type":"string","maxLength":128}},"human_authority_required":{"type":"boolean"},"assessed_at":{"$ref":"../common/primitives.schema.json#/$defs/timestamp"}},

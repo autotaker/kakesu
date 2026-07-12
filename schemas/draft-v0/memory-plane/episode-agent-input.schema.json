@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:agent-harness:memory-plane:episode-agent-input:draft-v0:r1",
+  "$id": "urn:kakesu:memory-plane:episode-agent-input:draft-v0:r1",
   "x-schema-version": "draft-v0", "x-schema-revision": 1, "x-stability": "draft",
   "type": "object",
   "properties": {

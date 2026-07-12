@@ -26,7 +26,7 @@ canonical Schemaは次のmetadataを持つ。
 ```json
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:agent-harness:<plane>:<schema-name>:draft-v0:r1",
+  "$id": "urn:kakesu:<plane>:<schema-name>:draft-v0:r1",
   "x-schema-version": "draft-v0",
   "x-schema-revision": 1,
   "x-stability": "draft"
@@ -40,6 +40,10 @@ canonical Schemaは次のmetadataを持つ。
 - 実装契約を安定化した時点で`v1` familyを作り、それ以降のcompatibility policyを別途定める。
 
 `draft-v0`はJSON Schema仕様のDraft番号ではない。JSON Schema dialectは2020-12に固定し、製品Schemaの安定度を`draft-v0`で表す。
+
+## Product namespace
+
+Schema URNの製品namespaceは`urn:kakesu:`とする。Kakesuへの改名前の`urn:agent-harness:` namespaceは実装・永続化開始前のdraft artifactであり、active aliasとして残さない。外部永続instanceが生じた後に製品namespaceを変更する場合は、旧validator保持と明示的migrationを必須とする。
 
 ## Canonical SchemaとAPI adapter
 

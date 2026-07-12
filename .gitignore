@@ -1,1 +1,10 @@
 .DS_Store
+.build/
+.venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+*.pyc
+memory/dist/
+memory/.venv/
+governance/target/

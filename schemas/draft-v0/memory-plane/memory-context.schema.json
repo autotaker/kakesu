@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:agent-harness:memory-plane:memory-context:draft-v0:r1",
+  "$id": "urn:kakesu:memory-plane:memory-context:draft-v0:r1",
   "x-schema-version": "draft-v0", "x-schema-revision": 1, "x-stability": "draft",
   "$defs": {
     "excerpt": { "type": "object", "properties": { "title": { "type": "string", "maxLength": 1024 }, "content": { "type": "string", "maxLength": 65536 }, "source_refs": { "type": "array", "items": { "$ref": "../common/primitives.schema.json#/$defs/ref" }, "minItems": 1, "maxItems": 2048, "uniqueItems": true } }, "required": ["title", "content", "source_refs"], "additionalProperties": false }

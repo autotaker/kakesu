@@ -1,5 +1,5 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema", "$id": "urn:agent-harness:governance-plane:policy-activation-ack:draft-v0:r1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema", "$id": "urn:kakesu:governance-plane:policy-activation-ack:draft-v0:r1",
   "x-schema-version": "draft-v0", "x-schema-revision": 1, "x-stability": "draft",
   "type": "object", "properties": {
     "ack_id": { "$ref": "../common/primitives.schema.json#/$defs/id" }, "target_policy_key": { "type": "string", "pattern": "^(workspace|global):" }, "policy_version": { "type": "integer", "minimum": 1 }, "grant_id": { "anyOf": [{ "$ref": "../common/primitives.schema.json#/$defs/id" }, { "type": "null" }] }, "revision_id": { "anyOf": [{ "$ref": "../common/primitives.schema.json#/$defs/id" }, { "type": "null" }] }, "enforcement_point_ref": { "$ref": "../common/primitives.schema.json#/$defs/ref" }, "policy_digest": { "$ref": "../common/primitives.schema.json#/$defs/digest" }, "acked_at": { "$ref": "../common/primitives.schema.json#/$defs/timestamp" }

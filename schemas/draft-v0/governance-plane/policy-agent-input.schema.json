@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:agent-harness:governance-plane:policy-agent-input:draft-v0:r1",
+  "$id": "urn:kakesu:governance-plane:policy-agent-input:draft-v0:r1",
   "x-schema-version": "draft-v0", "x-schema-revision": 1, "x-stability": "draft",
   "oneOf": [
     { "type": "object", "properties": { "kind": { "const": "grant" }, "challenge": { "$ref": "egress-challenge.schema.json" }, "workspace_profile": { "$ref": "workspace-security-profile.schema.json" }, "justification": { "type": "string", "maxLength": 65536 }, "evidence_refs": { "type": "array", "items": { "$ref": "../common/primitives.schema.json#/$defs/ref" }, "maxItems": 2048, "uniqueItems": true }, "input_digest": { "$ref": "../common/primitives.schema.json#/$defs/digest" } }, "required": ["kind", "challenge", "workspace_profile", "justification", "evidence_refs", "input_digest"], "additionalProperties": false },

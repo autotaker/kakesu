@@ -17,6 +17,10 @@ Task Aggregate
   completion_candidates
   completion_review_jobs
   completion_reviews
+  authority_requests
+  authority_decisions
+  control_inbox
+  control_outbox
 
 Execution Aggregate
   agent_runs
@@ -30,11 +34,11 @@ Execution Aggregate
 
 Workspace Aggregate
   workspaces
-  workspace_security_policy_bindings
   workspace_snapshots
   artifacts
 
 Governance Aggregate
+  workspace_security_policy_bindings
   global_security_policy_bindings
   egress_attempts
   egress_capture_manifests
@@ -48,8 +52,6 @@ Governance Aggregate
   outbound_transactions
   dns_resolutions
   policy_documents
-  authority_requests
-  authority_decisions
   egress_review_jobs
   egress_findings
   policy_revision_jobs
@@ -58,6 +60,8 @@ Governance Aggregate
   policy_revision_authority_requests
   policy_revision_authority_decisions
   policy_revisions
+  governance_inbox
+  governance_outbox
 
 Memory Aggregate
   episode_compilation_jobs
@@ -67,9 +71,27 @@ Memory Aggregate
   evidence_links
   memory_context_requests
   wiki_commits
+  memory_inbox
+  memory_outbox
 ```
 
 Task状態とTask Eventは同一Transactionで更新する。他AggregateとはOutbox/Eventで連携する。
+
+### 1.1 database所有境界
+
+初期実装は三つのSQLiteへ分ける。
+
+| database | write owner | Aggregate |
+|---|---|---|
+| `control.db` | Go Core Runtime | Task、Execution、Workspace、Authority、Core Inbox/Outbox |
+| `evidence.db` | Python Memory Service | Evidence、Episode、Memory Context、Wiki Job、Memory Inbox/Outbox |
+| `governance.db` | Rust Governance Service | Workspace Policy Binding、Egress、Grant、Finding、Revision、Governance Inbox/Outbox |
+
+各Serviceは所有外DBを直接開かない。ER図のPlane横断relationは論理joinであり、SQLiteのcross-database FKではない。送信元は参照ID、version、digestをOutbox payloadへ固定し、受信側はInbox commit後にlocal recordまたは固定snapshotとして検証する。
+
+異なるDBをまたぐ原子Transactionは作らない。各Plane内ではdomain stateとOutboxを同一Transactionで確定し、Plane間はat-least-once配送、durable ACK、idempotent apply、reconciliationで収束させる。詳細は[13-technology-stack.md](13-technology-stack.md)を正本とする。
+
+本書の`uuid`、`timestamptz`、`boolean`は論理型である。SQLite実装ではUUIDとtimestampをcanonical text、booleanをCHECK付きintegerとして保存し、application typeとSchema validatorで形式を強制する。
 
 ## 2. 主要テーブル
 
@@ -215,13 +237,13 @@ blockした通信に対してimmutableなChallenge coreを作る。Workspace、r
 
 ### `policy_grants`
 
-Workspace、source Task/origin/delegation/Contract version、source Challenge、source Grant Request/Decision、Authority経由ならsource Authority Decision、binding digest、exact IP/port/protocol、Credential scope、`max_uses=1`、connection/byte limit、期限、Policy version、`pending_activation | active | revoked` status、use count、revocationを保存する。Policy作成Transactionでは認可経路を検証してpending Grantとpending Ready Outboxを保存し、Enforcement Point ACK後のactivation TransactionでRequest非終端・Grant pendingを再検査してGrant、Grant Request、Async Operationを完了しReady Eventを配送可能にする。
+Workspace、source Task/origin/delegation/Contract version、source Challenge、source Grant Request/Decision、Authority経由ならsource Authority Decision ref、binding digest、exact IP/port/protocol、Credential scope、`max_uses=1`、connection/byte limit、期限、Policy version、`pending_activation | active | revoked` status、use count、revocationを`governance.db`へ保存する。Policy作成Transactionでは認可経路を検証してpending Grantとpending Ready Outboxを保存し、Enforcement Point ACK後のactivation TransactionでGrantをactiveにしてControl向け結果Outboxを確定する。Controlは結果Inbox適用時にAsync Operationを完了してReady EventをTask Mailboxへ追加する。
 
 ### `authority_requests` / `authority_decisions`
 
 Control PlaneのAuthority Gatewayが、全Planeから受けた人間・外部Authority通信の正本を保存する。他Planeはこれらのtableや外部channelへ直接書き込まない。要求元Planeは判断対象と要否を所有し、Gatewayは認証・配送・期限・重複排除を所有する。
 
-`require_authority`時にGrant Request、Challenge、Grant Decision ID、immutable binding digest、Platform Policyが選んだAuthority、status、期限を固定する。Authorityはapprove/denyだけを返す。`authority_decisions`は認証済みresponder principal、decision、rationale、決定時刻をRequestごとに一件保存する。回答TransactionはRequestをlockして未解決・未期限切れを検証し、approveならTask/Challenge/Policy/DNS freshnessを再検査してpending Grantを作り、denyならGrant RequestとAsync Operationを終端する。期限切れworkerもexpired/deny/Async完了/Mailboxを原子的に確定し、late responseは既存終端結果を返す。
+`require_authority`時にControl PlaneはGrant Request、Challenge、Grant Decision ID、immutable binding digest、Platform Policyが選んだAuthority、status、期限を固定する。Authorityはapprove/denyだけを返す。`authority_decisions`は認証済みresponder principal、decision、rationale、決定時刻をRequestごとに一件保存する。回答TransactionはRequestをlockして未解決・未期限切れを検証し、DecisionとGovernance向けOutboxを確定する。GovernanceはInbox適用時にTask snapshot、Challenge、Policy/DNS freshnessを再検査してGrantまたはdenyを確定し、Controlは結果messageでAsync OperationとMailboxを終端する。late responseは既存終端結果へ収束する。
 
 ### `dns_resolutions`
 
@@ -262,7 +284,7 @@ Artifactなど別Aggregateまたは別DBから取り込む場合は、先にEvid
 
 Episode Compilation Job開始時に、対象`task_id`へ固定した`episode_*` read-only viewをconnection上へ公開する。Episode Agentはbase tableへアクセスせず、単一`query_evidence` ToolからこれらのviewだけをSQL queryする。
 
-Control/Execution DBが別DBの場合は、Job開始前に対象Taskのterminal snapshotをwatermark/digest付きでEvidence DBへmaterializeし、そのsnapshotからJob scoped viewを構築する。Agent用connectionには別DBを`ATTACH`せず、snapshot後の変化を混入させない。
+CoreまたはGovernanceの状態をEvidence DBへ取り込む場合は、Job開始前に対象Taskのterminal snapshotをwatermark/digest付きmessageとして受信し、Evidence DBへmaterializeしてからJob scoped viewを構築する。Agent用connectionには別DBを`ATTACH`せず、snapshot後の変化を混入させない。
 
 ## 3. 詳細ER図
 
@@ -689,7 +711,8 @@ Policy Revision Jobはfinal Decision受理前にcandidate ref/digest/base versio
 
 ```text
 BEGIN
-  SELECT task FOR UPDATE
+  UPDATE task SET version = version
+    WHERE task_id = ? AND version = ?
   validate transition and version
   UPDATE task
   INSERT task_event
@@ -701,7 +724,7 @@ COMMIT
 
 ```text
 BEGIN
-  SELECT unconsumed mailbox entries FOR UPDATE SKIP LOCKED
+  claim unconsumed mailbox entries by conditional UPDATE + lease token
   update task / continuation if condition resolves
   mark entries consumed
   insert task events
@@ -710,11 +733,13 @@ COMMIT
 
 ### CASB blockとGrant反映
 
+以下のGovernance Aggregate更新は`governance.db`内、Task Mailbox、Async Operation、Authority更新は`control.db`内で原子的に行う。両者の間はOutbox/Inbox messageとACKで接続し、説明中の「同時確定」は同一所有DB内に限る。
+
 通常allowでも外側connection前にEgress Attempt、Rule Decision、request Capture Manifest、`intent_committed` Outbound Transactionをcommitする。DNS upstream queryとL4 connectionも同じ順序を使う。response captureと完了状態はSandboxへ返す前にcommitする。外部到達の可能性がある途中crashはManifestを`incomplete`、Transactionを`outcome_unknown`としてreconcileし、必ずhigh-risk Reviewへ送る。`failed`は外部未到達または失敗が確定した場合だけに使う。監査永続化失敗時はforwardしない。
 
-Challengeと`EgressBlocked` Outboxを同一TransactionでcommitしてからCLIへblock responseを返す。Grant作成時はWorkspace Policy Binding、source Task、GrantRequest、Challenge、Decisionを同じlock順で取得し、Workspace/Binding active、source Task active、Request非終端、Challenge有効、Decisionの認可経路、Authority経由ならapprove Decisionを再検査して`pending_activation` PolicyGrant、Policy version、pending Ready Outboxを確定する。この時点ではAsyncを完了しない。authoritative Enforcement Pointのversion ACKを受けるactivation TransactionでBinding active、Request非終端かつGrant pendingをlock下で再検査し、Grantを`active`、Grant RequestとAsync Operationを`completed`にして`AsyncCompleted`と`PolicyGrantReady`を配送可能にする。DispatcherもWorkspace/Binding active、source Task active、Grant active、Policy versionを再検査する。
+ChallengeとGovernance `EgressBlocked` Outboxを`governance.db`の同一TransactionでcommitしてからCLIへblock responseを返す。Controlは受信InboxとTask Mailboxを`control.db`で確定する。Grant作成時はGovernanceがWorkspace Policy Binding、Grant Request、Challenge、Decisionと固定済みsource Task snapshotを再検査し、`pending_activation` PolicyGrant、Policy version、pending Ready Outboxを確定する。この時点ではControlのAsyncを完了しない。authoritative Enforcement Pointのversion ACKを受けるGovernance activation TransactionでGrantを`active`にし、結果Outboxを作る。Controlは結果Inboxを適用してAsync Operationを`completed`にし、`AsyncCompleted`と`PolicyGrantReady`をTask Mailboxへ追加する。各Dispatcherは最新のWorkspace/Task gate、Grant active、Policy versionを再検査する。
 
-Task cancellationとWorkspace freeze/archive/destroy側は同じlock順でWorkspace Binding、未解決Request/Authority Request/Evaluation Job/Asyncをcancelし、pendingまたはactive Grantをrevokeし、pending Ready Outboxを無効化して`AsyncCancelled`を原子的に確定する。Grant作成・activation・Authority回答側もWorkspace/Binding activeをlock下で再検査する。Authority期限切れworkerはRequestをlockし、expired、Grant deny、Async completed、Mailbox Outboxを一つのTransactionで確定する。
+Task cancellationとWorkspace freeze/archive/destroyでは、ControlがAction gateを閉じてrevoke commandを送る。Governanceは未解決Request/Evaluation Jobをcancelし、pendingまたはactive Grantをrevokeし、pending Ready Outboxを無効化してACKする。ControlはACK適用TransactionでAsyncとMailboxを終端する。Authority期限切れもControl Decision、Governance deny、Control Async完了の順にidempotent messageで収束させる。
 
 Enforcement Pointはforward前にactive/unexpired/unrevoked/binding一致/use countを条件付き更新し、use count incrementまたはL4 connection slot reserveとOutbound Transaction intentを同一原子操作で確定する。reserve失敗時は外部へ接続しない。
 

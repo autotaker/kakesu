@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:agent-harness:governance-plane:authority-request:draft-v0:r1",
+  "$id": "urn:kakesu:governance-plane:authority-request:draft-v0:r1",
   "x-schema-version": "draft-v0", "x-schema-revision": 1, "x-stability": "draft",
   "oneOf": [
     { "type": "object", "properties": { "kind": { "const": "grant" }, "authority_request_id": { "$ref": "../common/primitives.schema.json#/$defs/id" }, "grant_request_id": { "$ref": "../common/primitives.schema.json#/$defs/id" }, "challenge": { "$ref": "egress-challenge.schema.json" }, "binding_digest": { "$ref": "../common/primitives.schema.json#/$defs/digest" }, "authority_ref": { "$ref": "../common/primitives.schema.json#/$defs/ref" }, "expires_at": { "$ref": "../common/primitives.schema.json#/$defs/timestamp" } }, "required": ["kind", "authority_request_id", "grant_request_id", "challenge", "binding_digest", "authority_ref", "expires_at"], "additionalProperties": false },

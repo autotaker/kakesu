@@ -1,6 +1,6 @@
 {
   "$schema":"https://json-schema.org/draft/2020-12/schema",
-  "$id":"urn:agent-harness:governance-plane:policy-candidate:draft-v0:r1",
+  "$id":"urn:kakesu:governance-plane:policy-candidate:draft-v0:r1",
   "x-schema-version":"draft-v0", "x-schema-revision":1, "x-stability":"draft",
   "type":"object", "additionalProperties":false,
   "required":["candidate_id","proposal_id","job_id","workspace_id","target_policy_key","candidate_policy_ref","candidate_policy_digest","base_policy_version","fixed_at"],

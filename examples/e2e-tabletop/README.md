@@ -1,4 +1,4 @@
-# E2E Tabletop Debugging
+# Kakesu E2E Tabletop Debugging
 
 4つのplaneをまたぐ代表シナリオについて、コンポーネント間で交換される
 Payloadを時系列に並べ、`draft-v0` Schemaへの適合を検査する。

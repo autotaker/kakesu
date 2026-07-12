@@ -21,7 +21,7 @@ Work Agentのライフサイクルは[03-agent-lifecycle.md](03-agent-lifecycle.
 
 ## 2. 共通実行モデル
 
-組み込みAgentは用途ごとの内部コンポーネントがResponses APIのtool loopとして実行する。複数Response Stepを使う場合も、それはコンポーネント内部の一時的なAPI sessionであり、Harnessの`AgentRun`ではない。
+組み込みAgentは用途ごとの内部コンポーネントがResponses APIのtool loopとして実行する。複数Response Stepを使う場合も、それはコンポーネント内部の一時的なAPI sessionであり、Harnessの`AgentRun`ではない。Episode AgentとWiki AgentはPython Memory Service内でOpenAI Agents SDKのephemeral Runnerを利用する。Acceptance ReviewerはGo Core、Policy AgentとEgress Audit AgentはRust Governance Serviceがそれぞれ所有し、Framework固有型やSessionをPlane間契約へ出さない。
 
 ```typescript
 type BuiltInAgentKind =

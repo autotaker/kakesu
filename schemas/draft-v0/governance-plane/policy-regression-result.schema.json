@@ -1,5 +1,5 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema", "$id": "urn:agent-harness:governance-plane:policy-regression-result:draft-v0:r1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema", "$id": "urn:kakesu:governance-plane:policy-regression-result:draft-v0:r1",
   "x-schema-version": "draft-v0", "x-schema-revision": 1, "x-stability": "draft",
   "type": "object", "properties": {
     "regression_id": { "$ref": "../common/primitives.schema.json#/$defs/id" }, "proposal_id": { "$ref": "../common/primitives.schema.json#/$defs/id" }, "candidate_policy_digest": { "$ref": "../common/primitives.schema.json#/$defs/digest" }, "dataset_ref": { "$ref": "../common/primitives.schema.json#/$defs/ref" }, "total_cases": { "type": "integer", "minimum": 1 }, "bypass_cases": { "type": "integer", "minimum": 0 }, "overblock_cases": { "type": "integer", "minimum": 0 }, "passed": { "type": "boolean" }, "evidence_refs": { "type": "array", "items": { "$ref": "../common/primitives.schema.json#/$defs/ref" }, "maxItems": 2048, "uniqueItems": true }, "completed_at": { "$ref": "../common/primitives.schema.json#/$defs/timestamp" }

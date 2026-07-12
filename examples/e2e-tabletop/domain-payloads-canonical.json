@@ -11,7 +11,7 @@
         "objective": "認証refreshの不具合を修正してPRを作成する",
         "acceptance": "test成功とPR参照がある",
         "instructions": null,
-        "project_ref": "project:agent-harness",
+        "project_ref": "project:kakesu",
         "parent_task_id": null,
         "phase": "task_start",
         "workspace_summary": "clean worktree",
@@ -160,7 +160,7 @@
         "artifact_read_byte_budget": 1048576,
         "deadline_at": "2026-07-12T01:30:00Z",
         "output_schema": {
-          "schema_id": "urn:agent-harness:memory-plane:task-episode:draft-v0:r1",
+          "schema_id": "urn:kakesu:memory-plane:task-episode:draft-v0:r1",
           "schema_revision": 1,
           "schema_digest": "sha256:6666666666666666666666666666666666666666666666666666666666666666"
         }
@@ -236,7 +236,7 @@
         "objective": "依存libraryの互換性を調査する",
         "acceptance": "再現結果と推奨versionを提示する",
         "instructions": null,
-        "project_ref": "project:agent-harness",
+        "project_ref": "project:kakesu",
         "parent_task_id": "task-parent-002",
         "phase": "subtask_start",
         "workspace_summary": "forked from workspace-parent-002",
@@ -436,7 +436,7 @@
         },
         "arguments_digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
         "arguments_schema": {
-          "schema_id": "urn:agent-harness:api:work-agent-tools:draft-v0:r1",
+          "schema_id": "urn:kakesu:api:work-agent-tools:draft-v0:r1",
           "schema_revision": 1,
           "schema_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
         },
@@ -498,7 +498,7 @@
         "created_at": "2026-07-12T03:05:00Z",
         "type": "AsyncCompleted",
         "payload_schema": {
-          "schema_id": "urn:agent-harness:execution-plane:terminal-result:draft-v0:r1",
+          "schema_id": "urn:kakesu:execution-plane:terminal-result:draft-v0:r1",
           "schema_revision": 1,
           "schema_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
         },
@@ -518,7 +518,7 @@
         "objective": "E2E testを完了する",
         "acceptance": "test結果が成功する",
         "instructions": null,
-        "project_ref": "project:agent-harness",
+        "project_ref": "project:kakesu",
         "parent_task_id": null,
         "phase": "resume",
         "workspace_summary": "workspace unchanged",
@@ -702,7 +702,7 @@
         "candidate_fixed_at": "2026-07-12T04:03:00Z",
         "profile_version": "policy-agent-3",
         "output_schema": {
-          "schema_id": "urn:agent-harness:governance-plane:policy-revision-decision:draft-v0:r1",
+          "schema_id": "urn:kakesu:governance-plane:policy-revision-decision:draft-v0:r1",
           "schema_revision": 1,
           "schema_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
         },

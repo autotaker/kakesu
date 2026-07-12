@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:agent-harness:execution-plane:tool-result-values:draft-v0:r1",
+  "$id": "urn:kakesu:execution-plane:tool-result-values:draft-v0:r1",
   "x-schema-version": "draft-v0", "x-schema-revision": 1, "x-stability": "draft",
   "oneOf": [
     { "type": "object", "properties": { "kind": { "const": "child_task" }, "child_task_id": { "$ref": "../common/primitives.schema.json#/$defs/id" }, "status": { "enum": ["running", "completed", "cancelled"] }, "outcome_ref": { "anyOf": [{ "$ref": "../common/primitives.schema.json#/$defs/ref" }, { "type": "null" }] } }, "required": ["kind", "child_task_id", "status", "outcome_ref"], "additionalProperties": false },

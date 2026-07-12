@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:agent-harness:governance-plane:policy-revision:draft-v0:r1",
+  "$id": "urn:kakesu:governance-plane:policy-revision:draft-v0:r1",
   "x-schema-version": "draft-v0", "x-schema-revision": 1, "x-stability": "draft",
   "$defs": {
     "decision": { "type": "object", "properties": { "decision": { "enum": ["update", "no_change", "require_authority"] }, "rationale": { "type": "string", "maxLength": 65536 }, "evidence_refs": { "type": "array", "items": { "$ref": "../common/primitives.schema.json#/$defs/ref" }, "maxItems": 2048, "uniqueItems": true } }, "required": ["decision", "rationale", "evidence_refs"], "additionalProperties": false },

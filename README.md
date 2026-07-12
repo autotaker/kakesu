@@ -1,15 +1,22 @@
-# 階層型エージェントハーネス設計書一式 V4
+# Kakesu（カケス） V4
 
-このパッケージは、Responses APIを推論基盤として使う階層型エージェントハーネスの統合設計書である。作業エージェント、Task、Workspace、非同期ツール、CASB型Egress統治、完了レビュー、長期記憶Wikiを一つの整合したモデルにまとめている。
+Kakesuは、経験を蓄え、必要なときに活かす長期記憶型の自律AIである。Responses APIを推論基盤として使い、作業エージェント、Task、Workspace、非同期ツール、CASB型Egress統治、完了レビュー、長期記憶Wikiを一つの整合したモデルにまとめる。
+
+## 名前
+
+Kakesu（カケス）は、カラス科の賢い鳥であるカケスに由来する。カケスはドングリなどを将来のために蓄え、後で必要になったときに利用する。
+
+記憶を単なる保存で終わらせず、次の行動へ活かすという本ツールの思想をこの習性に重ねている。短く発音しやすく、ローカルで長く育つAIとして親しみを持てる名前でもある。
 
 ## 最初に読む文書
 
-1. [エージェントハーネス設計書本体](docs/00-agent-harness.md)
+1. [Kakesu設計書本体](docs/00-kakesu.md)
 2. [Agent・Task・Workspaceのドメインモデル](docs/01-domain-model.md)
 3. [Taskライフサイクル](docs/02-task-lifecycle.md)
 4. [Agentライフサイクル](docs/03-agent-lifecycle.md)
 5. [組み込みAgent](docs/04-built-in-agents.md)
 6. [Responses APIランタイム](docs/05-runtime-and-responses-api.md)
+7. [技術スタックと実装境界](docs/13-technology-stack.md)
 
 ## サブ設計書
 
@@ -23,6 +30,7 @@
 | [10-running-example.md](docs/10-running-example.md) | Root Taskを最後まで処理する具体例 |
 | [11-data-model.md](docs/11-data-model.md) | ER図、テーブル、制約、イベント |
 | [12-implementation-and-tests.md](docs/12-implementation-and-tests.md) | 実装分割、検証項目、障害試験 |
+| [13-technology-stack.md](docs/13-technology-stack.md) | Go Core、Python Memory、Rust Governance、SQLiteとPlane間通信 |
 
 ## 付属物
 
@@ -35,6 +43,10 @@
 - `examples/semantic/`: 最小frontmatterを使ったSemantic Wikiの実例
 - `examples/episodic/`: Task Episode Schemaの説明用実例。runtime保存形式ではない
 - `sources/OPENAI_API_NOTES.md`: Responses APIに関する公式仕様確認メモ
+- `core/`: GoによるCLI / Control / Work Agent / Execution scaffold
+- `memory/`: Python + OpenAI Agents SDKによるMemory Plane scaffold
+- `governance/`: RustによるGovernance Plane scaffold
+- `Makefile`: 全component共通のbuild / test / lint入口
 
 ## 中核不変条件
 

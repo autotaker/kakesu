@@ -1,5 +1,5 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema", "$id": "urn:agent-harness:execution-plane:resume-context:draft-v0:r1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema", "$id": "urn:kakesu:execution-plane:resume-context:draft-v0:r1",
   "x-schema-version": "draft-v0", "x-schema-revision": 1, "x-stability": "draft",
   "type": "object", "properties": {
     "resume_id": { "$ref": "../common/primitives.schema.json#/$defs/id" }, "task_id": { "$ref": "../common/primitives.schema.json#/$defs/id" }, "previous_run_id": { "$ref": "../common/primitives.schema.json#/$defs/id" }, "new_run_id": { "$ref": "../common/primitives.schema.json#/$defs/id" }, "continuation_id": { "$ref": "../common/primitives.schema.json#/$defs/id" }, "task_event_watermark": { "type": "integer", "minimum": 0 }, "agent_run_event_watermark": { "type": "integer", "minimum": 0 }, "mailbox_event_ids": { "type": "array", "items": { "$ref": "../common/primitives.schema.json#/$defs/id" }, "minItems": 1, "maxItems": 1024, "uniqueItems": true }, "memory_request_id": { "$ref": "../common/primitives.schema.json#/$defs/id" }, "created_at": { "$ref": "../common/primitives.schema.json#/$defs/timestamp" }

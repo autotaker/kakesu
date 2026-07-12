@@ -1,8 +1,8 @@
-# 階層型エージェントハーネス設計書 V4
+# Kakesu 設計書 V4
 
 ## 1. 目的
 
-本設計は、L3・L2・L1の作業エージェントを、Responses APIを使って停止・再開可能なTask実行主体として動かすハーネスを定義する。
+Kakesuは、経験を蓄え、必要なときに活かす長期記憶型の自律AIである。本設計は、L3・L2・L1の作業エージェントを、Responses APIを使って停止・再開可能なTask実行主体として動かすローカルCLI harnessを定義する。
 
 設計の中心はモデルの能力差ではない。次の五つを明示的に管理することである。
 
@@ -128,6 +128,25 @@ flowchart TB
     TM -->|terminal Task| EC --> WA --> WR
     WA -->|Task-specific memory| RC
 ```
+
+### 3.1 実装境界とPlane間配送
+
+初期実装はローカルCLI applicationとし、Go Core Runtime、Python Memory Service、Rust Governance Serviceの三process群で構成する。詳細な選定理由は[13-technology-stack.md](13-technology-stack.md)を正本とする。
+
+```text
+Go Core Runtime
+  CLI / Control Plane / Work Agent Plane / Execution Plane / control.db
+
+Python Memory Service
+  Memory Plane / OpenAI Agents SDK / evidence.db / Semantic Wiki
+
+Rust Governance Service
+  Governance Plane / Egress enforcement / governance.db
+```
+
+Plane間の意味的messageはcanonical JSON Schemaを使い、各PlaneのOutbox/Inboxへ永続化してUnix domain socketでat-least-once配送する。socketやprocess内channelは通知・転送手段であり正本ではない。受信側InboxへのcommitをACK境界とし、重複適用は`message_id`とidempotency keyで防ぐ。
+
+異なるPlane databaseをまたぐTransactionは作らない。各Plane内の状態とOutboxを原子的に確定し、Plane間workflowはACKとreconciliationで収束させる。安全性に関わる処理は必要なACKまでAction gate、Grant、Egressを安全側状態に保つ。Human Authorityとの通信はprocess分割後もControl Plane Authority Gatewayだけを通る。
 
 ## 4. 主要概念
 

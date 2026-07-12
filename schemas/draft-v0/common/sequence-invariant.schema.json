@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:agent-harness:common:sequence-invariant:draft-v0:r2",
+  "$id": "urn:kakesu:common:sequence-invariant:draft-v0:r2",
   "x-schema-version": "draft-v0", "x-schema-revision": 2, "x-stability": "draft",
   "type": "object", "additionalProperties": false,
   "required": ["scenario_id", "ordered_message_types", "correlations", "causations"],

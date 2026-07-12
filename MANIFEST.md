@@ -5,7 +5,7 @@
 | File | Role |
 |---|---|
 | `README.md` | Reading order and invariant summary |
-| `docs/00-agent-harness.md` | Main integrated design |
+| `docs/00-kakesu.md` | Main integrated design |
 | `docs/01-domain-model.md` | Agent / Task / Workspace model and ER diagram |
 | `docs/02-task-lifecycle.md` | Task creation, waiting, review, cancellation, terminal states |
 | `docs/03-agent-lifecycle.md` | Agent registration, ownership, runs, recovery, and release |
@@ -18,6 +18,16 @@
 | `docs/10-running-example.md` | End-to-end root Task simulation |
 | `docs/11-data-model.md` | Persistence model, constraints, transactions |
 | `docs/12-implementation-and-tests.md` | Implementation phases and test plan |
+| `docs/13-technology-stack.md` | Selected languages, frameworks, stores, IPC, and build conventions |
+
+## Implementation scaffolds
+
+| Path | Role |
+|---|---|
+| `core/` | Go CLI, Control, Work Agent, and Execution runtime scaffold |
+| `memory/` | Python and OpenAI Agents SDK Memory service scaffold |
+| `governance/` | Rust Governance enforcement service scaffold |
+| `Makefile` | Repository-wide build, test, lint, and validation entrypoint |
 
 ## Schemas and examples
 

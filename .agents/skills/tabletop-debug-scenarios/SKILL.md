@@ -1,6 +1,6 @@
 ---
 name: tabletop-debug-scenarios
-description: Create, extend, or review schema-backed tabletop E2E scenarios for agent-harness. Use when a specification or JSON Schema change affects Plane-to-Plane messages, Task or Agent Run state, Authority, Incident containment, canonical domain payloads, sequence requirements, validator mutations, or the HTML tabletop Viewer.
+description: Create, extend, or review schema-backed tabletop E2E scenarios for Kakesu. Use when a specification or JSON Schema change affects Plane-to-Plane messages, Task or Agent Run state, Authority, Incident containment, canonical domain payloads, sequence requirements, validator mutations, or the HTML tabletop Viewer.
 ---
 
 # Tabletop scenario debugging
