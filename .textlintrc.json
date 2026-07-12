@@ -1,0 +1,22 @@
+{
+  "rules": {
+    "preset-ja-technical-writing": {
+      "sentence-length": {
+        "max": 180
+      },
+      "max-comma": {
+        "max": 4
+      },
+      "max-ten": {
+        "max": 4
+      },
+      "no-mix-dearu-desumasu": {
+        "preferInHeader": "",
+        "preferInBody": "である",
+        "preferInList": "である",
+        "strict": false
+      }
+    },
+    "kakesu-glossary": true
+  }
+}

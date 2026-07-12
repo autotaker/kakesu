@@ -8,14 +8,14 @@ Plane間で共有するprimitiveとEnvelopeを所有する。業務上のDecisio
 
 | Schema | 固定する内容 |
 |---|---|
-| `primitives.schema.json` | UUID/ID、logical ref、SHA-256 digest、timestamp、duration、sequence、bounded text |
+| `primitives.schema.json` | UUID/ID、logical ref、SHA-256 ダイジェスト、timestamp、duration、sequence、bounded text |
 | `schema-reference.schema.json` | `schema_id`、`schema_revision`、`schema_digest` |
-| `error.schema.json` | error code、message、retryable、details ref、safe diagnostics |
-| `evidence-reference.schema.json` | Evidence / Artifact / Snapshot refとdigest |
-| `event-envelope.schema.json` | event ID、subject、sequence、timestamp、actor、payload schema ref |
-| `message-envelope.schema.json` | component、correlation、causationを持つcross-plane message envelope |
-| `sequence-invariant.schema.json` | predecessor/successorとjoin fieldによるstep間制約 |
-| `sequence-message.schema.json` | 机上実行用messageのcomponent間因果、冪等性、entity状態遷移 |
+| `error.schema.json` | エラー code、メッセージ、retryable、details ref、safe diagnostics |
+| `evidence-reference.schema.json` | Evidence / Artifact / Snapshot refとダイジェスト |
+| `event-envelope.schema.json` | イベント ID、subject、sequence、timestamp、actor、ペイロード schema ref |
+| `message-envelope.schema.json` | コンポーネント、correlation、causationを持つcross-plane メッセージ envelope |
+| `sequence-invariant.schema.json` | predecessor/successorとjoin フィールドによるstep間制約 |
+| `sequence-message.schema.json` | 机上実行用メッセージのコンポーネント間因果、冪等性、entity状態遷移 |
 
 ## P1
 

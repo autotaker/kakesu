@@ -4,6 +4,8 @@
 __pycache__/
 .pytest_cache/
 .ruff_cache/
+.textlintcache/
+node_modules/
 *.pyc
 memory/dist/
 memory/.venv/

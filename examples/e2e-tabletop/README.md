@@ -5,13 +5,13 @@ Payloadを時系列に並べ、`draft-v0` Schemaへの適合を検査する。
 
 ## 成果物
 
-- `executable-scenarios.json`, `executable-scenario-002.json`, `executable-scenario-004-incident.json`: E2E-001〜004のactive component間sequence projection（scenario ID重複は禁止）
-- `domain-payloads-canonical.json`: sequenceから独立した既存messageのcanonical domain Payload
-- `domain-payloads-001.json`〜`004.json`: 新規中間messageのcanonical domain Payload
+- `executable-scenarios.json`, `executable-scenario-002.json`, `executable-scenario-004-incident.json`: E2E-001〜004のactive コンポーネント間sequence projection（scenario ID重複は禁止）
+- `domain-payloads-canonical.json`: sequenceから独立した既存メッセージのcanonical domain Payload
+- `domain-payloads-001.json`〜`004.json`: 新規中間メッセージのcanonical domain Payload
 - `../../scripts/validate-tabletop-scenarios.mjs`: Schema適合検査
-- `independent-review.md`: Schema検査では検出できない因果関係、状態遷移、field不足の独立レビュー
-- `sequence-requirements.json`: Grant、Task完了、child、Async resume、Policy改定の必須message chain
-- `viewer.html`: Scenario、component route、状態遷移、sequence/canonical Payloadを閲覧する静的viewer
+- `independent-review.md`: Schema検査では検出できない因果関係、状態遷移、フィールド不足の独立レビュー
+- `sequence-requirements.json`: Grant、Task完了、child、Async resume、Policy改定の必須メッセージ chain
+- `viewer.html`: Scenario、コンポーネント route、状態遷移、sequence/canonical Payloadを閲覧する静的viewer
 
 ## 実行
 
@@ -20,7 +20,7 @@ node scripts/validate-tabletop-scenarios.mjs
 node scripts/test-tabletop-validator.mjs
 ```
 
-Viewerはrepository rootでHTTP serverを起動して開くとJSONを自動読込する。
+Viewerはリポジトリ rootでHTTP サーバーを起動して開くとJSONを自動読込する。
 
 ```sh
 python3 -m http.server 8000
@@ -39,5 +39,5 @@ node scripts/build-tabletop-viewer-data.mjs
 外部依存を持たせないためDraft 2020-12の利用中keywordだけを実装している。
 標準validatorとの差分、step間不変条件、canonical domain bindingの検査範囲は独立レビューに記録する。
 
-`test-tabletop-validator.mjs`は必須message、correlation path、entity state、causation、
+`test-tabletop-validator.mjs`は必須メッセージ、correlation path、entity state、causation、
 idempotency、canonical domain bindingを意図的に壊し、すべて拒否されることを確認する。

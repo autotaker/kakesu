@@ -25,7 +25,7 @@ title: Privilege Laundering via Child Task
 ## 起こりうる帰結
 
 - Spawnによって実質権限が増える。
-- 同一目的系統内で自己承認が成立する。
+- 同じ目的の系統内で自己承認が成立する。
 - 監査上のoriginが隠れる。
 
 ## 対策
