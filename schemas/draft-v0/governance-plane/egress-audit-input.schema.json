@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:agent-harness:governance-plane:egress-audit-input:draft-v0:r1",
+  "x-schema-version": "draft-v0", "x-schema-revision": 1, "x-stability": "draft",
+  "type": "object",
+  "properties": {
+    "review_job_id": { "$ref": "../common/primitives.schema.json#/$defs/id" },
+    "workspace_profile": { "$ref": "workspace-security-profile.schema.json" },
+    "attempt_refs": { "type": "array", "items": { "$ref": "../common/primitives.schema.json#/$defs/ref" }, "minItems": 1, "maxItems": 2048, "uniqueItems": true },
+    "rule_decisions": { "type": "array", "items": { "$ref": "egress-rule-decision.schema.json" }, "minItems": 1, "maxItems": 2048 },
+    "capture_manifests": { "type": "array", "items": { "$ref": "egress-capture-manifest.schema.json" }, "minItems": 1, "maxItems": 2048 },
+    "outbound_transactions": { "type": "array", "items": { "$ref": "outbound-transaction.schema.json" }, "maxItems": 2048 },
+    "selection_reason": { "enum": ["high_risk", "anomaly", "random_sample", "incident_replay"] },
+    "watermark": { "type": "string", "minLength": 1, "maxLength": 256 },
+    "input_digest": { "$ref": "../common/primitives.schema.json#/$defs/digest" }
+  },
+  "required": ["review_job_id", "workspace_profile", "attempt_refs", "rule_decisions", "capture_manifests", "outbound_transactions", "selection_reason", "watermark", "input_digest"],
+  "additionalProperties": false
+}

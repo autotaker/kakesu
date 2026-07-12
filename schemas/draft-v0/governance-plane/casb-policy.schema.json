@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:agent-harness:governance-plane:casb-policy:draft-v0:r1",
+  "x-schema-version": "draft-v0", "x-schema-revision": 1, "x-stability": "draft",
+  "type": "object",
+  "properties": {
+    "policy_id": { "$ref": "../common/primitives.schema.json#/$defs/id" },
+    "target_policy_key": { "type": "string", "pattern": "^(workspace|global):[A-Za-z0-9._:-]+$", "maxLength": 256 },
+    "policy_version": { "type": "integer", "minimum": 1 },
+    "status": { "enum": ["pending_activation", "active", "superseded", "cancelled"] },
+    "conflict_resolution": { "const": "deny_overrides" },
+    "default_effect": { "const": "deny" },
+    "rules": { "type": "array", "items": { "$ref": "casb-rule.schema.json" }, "maxItems": 10000 },
+    "content_digest": { "$ref": "../common/primitives.schema.json#/$defs/digest" },
+    "created_at": { "$ref": "../common/primitives.schema.json#/$defs/timestamp" }
+  },
+  "required": ["policy_id", "target_policy_key", "policy_version", "status", "conflict_resolution", "default_effect", "rules", "content_digest", "created_at"],
+  "additionalProperties": false
+}

@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:agent-harness:control-plane:task-contract:draft-v0:r1",
+  "x-schema-version": "draft-v0", "x-schema-revision": 1, "x-stability": "draft",
+  "type": "object",
+  "properties": {
+    "task_id": { "$ref": "../common/primitives.schema.json#/$defs/id" },
+    "contract_version": { "type": "integer", "minimum": 1 },
+    "objective": { "type": "string", "minLength": 1, "maxLength": 65536 },
+    "acceptance": { "type": "string", "minLength": 1, "maxLength": 65536 },
+    "instructions": { "type": ["string", "null"], "maxLength": 65536 }
+  },
+  "required": ["task_id", "contract_version", "objective", "acceptance", "instructions"],
+  "additionalProperties": false
+}

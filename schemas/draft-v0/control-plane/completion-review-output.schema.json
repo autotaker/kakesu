@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:agent-harness:control-plane:completion-review-output:draft-v0:r1",
+  "x-schema-version": "draft-v0", "x-schema-revision": 1, "x-stability": "draft",
+  "type": "object",
+  "properties": {
+    "review_job_id": { "$ref": "../common/primitives.schema.json#/$defs/id" },
+    "task_id": { "$ref": "../common/primitives.schema.json#/$defs/id" },
+    "candidate_version": { "type": "integer", "minimum": 1 },
+    "input_digest": { "$ref": "../common/primitives.schema.json#/$defs/digest" },
+    "decision": { "enum": ["accept", "reject", "insufficient_evidence"] },
+    "rationale": { "type": "string", "maxLength": 65536 },
+    "unmet_acceptance": { "type": "array", "items": { "type": "string", "maxLength": 8192 }, "maxItems": 256 },
+    "required_evidence": { "type": "array", "items": { "type": "string", "maxLength": 8192 }, "maxItems": 256 },
+    "evidence_refs": { "type": "array", "items": { "$ref": "../common/primitives.schema.json#/$defs/ref" }, "maxItems": 2048, "uniqueItems": true }
+  },
+  "required": ["review_job_id", "task_id", "candidate_version", "input_digest", "decision", "rationale", "unmet_acceptance", "required_evidence", "evidence_refs"],
+  "additionalProperties": false
+}

@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:agent-harness:governance-plane:authority-decision:draft-v0:r1",
+  "x-schema-version": "draft-v0", "x-schema-revision": 1, "x-stability": "draft",
+  "type": "object",
+  "properties": {
+    "authority_decision_id": { "$ref": "../common/primitives.schema.json#/$defs/id" },
+    "authority_request_id": { "$ref": "../common/primitives.schema.json#/$defs/id" },
+    "request_kind": { "enum": ["grant", "policy_revision"] },
+    "responder_principal": { "$ref": "../common/primitives.schema.json#/$defs/ref" },
+    "decision": { "enum": ["approve", "deny"] },
+    "rationale": { "type": "string", "maxLength": 65536 },
+    "decided_at": { "$ref": "../common/primitives.schema.json#/$defs/timestamp" }
+  },
+  "required": ["authority_decision_id", "authority_request_id", "request_kind", "responder_principal", "decision", "rationale", "decided_at"],
+  "additionalProperties": false
+}

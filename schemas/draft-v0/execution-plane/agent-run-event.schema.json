@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:agent-harness:execution-plane:agent-run-event:draft-v0:r1",
+  "x-schema-version": "draft-v0", "x-schema-revision": 1, "x-stability": "draft",
+  "type": "object",
+  "properties": {
+    "event_id": { "$ref": "../common/primitives.schema.json#/$defs/id" },
+    "run_id": { "$ref": "../common/primitives.schema.json#/$defs/id" },
+    "task_id": { "$ref": "../common/primitives.schema.json#/$defs/id" },
+    "assignment_event_sequence": { "type": "integer", "minimum": 0 },
+    "type": { "enum": ["output_item", "tool_call", "tool_output", "compaction", "progress_maintenance", "run_started", "run_stopped"] },
+    "item_ref": { "anyOf": [{ "$ref": "../common/primitives.schema.json#/$defs/ref" }, { "type": "null" }] },
+    "item_digest": { "anyOf": [{ "$ref": "../common/primitives.schema.json#/$defs/digest" }, { "type": "null" }] },
+    "created_at": { "$ref": "../common/primitives.schema.json#/$defs/timestamp" }
+  },
+  "required": ["event_id", "run_id", "task_id", "assignment_event_sequence", "type", "item_ref", "item_digest", "created_at"],
+  "additionalProperties": false
+}

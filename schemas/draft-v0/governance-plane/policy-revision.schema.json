@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:agent-harness:governance-plane:policy-revision:draft-v0:r1",
+  "x-schema-version": "draft-v0", "x-schema-revision": 1, "x-stability": "draft",
+  "$defs": {
+    "decision": { "type": "object", "properties": { "decision": { "enum": ["update", "no_change", "require_authority"] }, "rationale": { "type": "string", "maxLength": 65536 }, "evidence_refs": { "type": "array", "items": { "$ref": "../common/primitives.schema.json#/$defs/ref" }, "maxItems": 2048, "uniqueItems": true } }, "required": ["decision", "rationale", "evidence_refs"], "additionalProperties": false },
+    "proposal": { "type": "object", "properties": { "proposal_id": { "$ref": "../common/primitives.schema.json#/$defs/id" }, "job_id": { "$ref": "../common/primitives.schema.json#/$defs/id" }, "workspace_id": { "anyOf": [{ "$ref": "../common/primitives.schema.json#/$defs/id" }, { "type": "null" }] }, "target_policy_key": { "type": "string", "pattern": "^(workspace|global):" }, "candidate_policy_ref": { "anyOf": [{ "$ref": "../common/primitives.schema.json#/$defs/ref" }, { "type": "null" }] }, "candidate_policy_digest": { "anyOf": [{ "$ref": "../common/primitives.schema.json#/$defs/digest" }, { "type": "null" }] }, "base_policy_version": { "type": "integer", "minimum": 1 }, "regression_evidence_refs": { "type": "array", "items": { "$ref": "../common/primitives.schema.json#/$defs/ref" }, "maxItems": 2048, "uniqueItems": true }, "decision": { "$ref": "#/$defs/decision" }, "application_status": { "enum": ["pending", "waiting_authority", "ready", "stale", "applied", "denied", "expired"] } }, "required": ["proposal_id", "job_id", "workspace_id", "target_policy_key", "candidate_policy_ref", "candidate_policy_digest", "base_policy_version", "regression_evidence_refs", "decision", "application_status"], "additionalProperties": false }
+  },
+  "type": "object",
+  "properties": {
+    "revision_id": { "$ref": "../common/primitives.schema.json#/$defs/id" },
+    "workspace_id": { "anyOf": [{ "$ref": "../common/primitives.schema.json#/$defs/id" }, { "type": "null" }] },
+    "target_policy_key": { "type": "string", "pattern": "^(workspace|global):" },
+    "source_proposal": { "$ref": "#/$defs/proposal" },
+    "source_authority_decision_id": { "anyOf": [{ "$ref": "../common/primitives.schema.json#/$defs/id" }, { "type": "null" }] },
+    "base_policy_version": { "type": "integer", "minimum": 1 },
+    "previous_policy_version": { "type": "integer", "minimum": 1 },
+    "new_policy_version": { "type": "integer", "minimum": 1 },
+    "target_policy_ref": { "$ref": "../common/primitives.schema.json#/$defs/ref" },
+    "target_policy_digest": { "$ref": "../common/primitives.schema.json#/$defs/digest" },
+    "status": { "enum": ["pending_activation", "active", "superseded", "cancelled"] },
+    "activation_ack_ref": { "anyOf": [{ "$ref": "../common/primitives.schema.json#/$defs/ref" }, { "type": "null" }] },
+    "created_at": { "$ref": "../common/primitives.schema.json#/$defs/timestamp" },
+    "activated_at": { "anyOf": [{ "$ref": "../common/primitives.schema.json#/$defs/timestamp" }, { "type": "null" }] }
+  },
+  "required": ["revision_id", "workspace_id", "target_policy_key", "source_proposal", "source_authority_decision_id", "base_policy_version", "previous_policy_version", "new_policy_version", "target_policy_ref", "target_policy_digest", "status", "activation_ack_ref", "created_at", "activated_at"],
+  "additionalProperties": false
+}

@@ -1,0 +1,7 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema", "$id": "urn:agent-harness:governance-plane:grant-request:draft-v0:r1",
+  "x-schema-version": "draft-v0", "x-schema-revision": 1, "x-stability": "draft",
+  "type": "object", "properties": {
+    "request_id": { "$ref": "../common/primitives.schema.json#/$defs/id" }, "workspace_id": { "$ref": "../common/primitives.schema.json#/$defs/id" }, "task_id": { "$ref": "../common/primitives.schema.json#/$defs/id" }, "challenge_id": { "$ref": "../common/primitives.schema.json#/$defs/id" }, "async_id": { "$ref": "../common/primitives.schema.json#/$defs/id" }, "justification": { "type": "string", "maxLength": 65536 }, "evidence_refs": { "type": "array", "items": { "$ref": "../common/primitives.schema.json#/$defs/ref" }, "maxItems": 2048, "uniqueItems": true }, "operation_key": { "type": "string", "minLength": 1, "maxLength": 512 }, "status": { "enum": ["pending", "evaluating", "waiting_authority", "completed", "denied", "cancelled"] }, "created_at": { "$ref": "../common/primitives.schema.json#/$defs/timestamp" }
+  }, "required": ["request_id", "workspace_id", "task_id", "challenge_id", "async_id", "justification", "evidence_refs", "operation_key", "status", "created_at"], "additionalProperties": false
+}

@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:agent-harness:memory-plane:evidence-record:draft-v0:r1",
+  "x-schema-version": "draft-v0", "x-schema-revision": 1, "x-stability": "draft",
+  "type": "object",
+  "properties": {
+    "evidence_id": { "$ref": "../common/primitives.schema.json#/$defs/id" },
+    "kind": { "enum": ["agent_run_item", "tool_log", "artifact", "workspace_snapshot", "decision", "review", "egress", "episode"] },
+    "task_id": { "anyOf": [{ "$ref": "../common/primitives.schema.json#/$defs/id" }, { "type": "null" }] },
+    "workspace_id": { "anyOf": [{ "$ref": "../common/primitives.schema.json#/$defs/id" }, { "type": "null" }] },
+    "content_type": { "type": "string", "minLength": 1, "maxLength": 256 },
+    "content_digest": { "$ref": "../common/primitives.schema.json#/$defs/digest" },
+    "byte_length": { "type": "integer", "minimum": 0 },
+    "retention_class": { "enum": ["long", "policy", "short"] },
+    "redaction_status": { "enum": ["none", "redacted", "encrypted"] },
+    "created_at": { "$ref": "../common/primitives.schema.json#/$defs/timestamp" }
+  },
+  "required": ["evidence_id", "kind", "task_id", "workspace_id", "content_type", "content_digest", "byte_length", "retention_class", "redaction_status", "created_at"],
+  "additionalProperties": false
+}

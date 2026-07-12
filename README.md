@@ -26,10 +26,12 @@
 
 ## 付属物
 
-- `schemas/work-agent-tools.json`: Responses API向け作業エージェント用Function Tool定義
-- `schemas/built-in-agent-outputs.json`: Acceptance Reviewer / Policy・Egress Audit Agent用Structured Output定義
-- `schemas/authority-tools.json`: 外部Authority adapter用Egress Grant／Task Escalation回答Tool定義
-- `schemas/domain-types.ts`: 主要なTypeScript型
+- `schemas/README.md`: Plane別Schema所有境界と`draft-v0` version規約
+- `schemas/draft-v0/`: Control / Execution / Governance / Memory Plane別のSchema catalog
+- `schemas/draft-v0/api/work-agent-tools.json`: Responses API向け作業エージェント用Function Tool bundle
+- `schemas/draft-v0/api/built-in-agent-outputs.json`: Acceptance Reviewer / Policy・Egress Audit Agent用Structured Output bundle
+- `schemas/draft-v0/api/authority-tools.json`: 外部Authority adapter用Egress Grant／Task Escalation回答Tool bundle
+- `schemas/domain-types.ts`: 設計確認用の主要TypeScript論理型。runtime validatorの正本ではない
 - `examples/semantic/`: 最小frontmatterを使ったSemantic Wikiの実例
 - `examples/episodic/`: Task Episode Schemaの説明用実例。runtime保存形式ではない
 - `sources/OPENAI_API_NOTES.md`: Responses APIに関する公式仕様確認メモ

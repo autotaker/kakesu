@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:agent-harness:control-plane:task-command:draft-v0:r1",
+  "x-schema-version": "draft-v0", "x-schema-revision": 1, "x-stability": "draft",
+  "$defs": {
+    "base": {
+      "type": "object",
+      "properties": {
+        "command_id": { "$ref": "../common/primitives.schema.json#/$defs/id" },
+        "task_id": { "$ref": "../common/primitives.schema.json#/$defs/id" },
+        "expected_contract_version": { "type": "integer", "minimum": 1 },
+        "issued_at": { "$ref": "../common/primitives.schema.json#/$defs/timestamp" }
+      },
+      "required": ["command_id", "task_id", "expected_contract_version", "issued_at"]
+    }
+  },
+  "oneOf": [
+    { "allOf": [{ "$ref": "#/$defs/base" }, { "type": "object", "properties": { "type": { "const": "delegate" }, "objective": { "type": "string", "minLength": 1 }, "acceptance": { "type": "string", "minLength": 1 }, "owner_profile": { "enum": ["L1", "L2", "L3"] }, "workspace_mode": { "enum": ["fork", "shared_readonly", "empty"] }, "dependency": { "enum": ["required", "optional"] } }, "required": ["type", "objective", "acceptance", "owner_profile", "workspace_mode", "dependency"], "unevaluatedProperties": false }] },
+    { "allOf": [{ "$ref": "#/$defs/base" }, { "type": "object", "properties": { "type": { "enum": ["ask", "escalate"] }, "message": { "type": "string", "minLength": 1, "maxLength": 65536 }, "artifact_refs": { "type": "array", "items": { "$ref": "../common/primitives.schema.json#/$defs/ref" }, "maxItems": 256, "uniqueItems": true } }, "required": ["type", "message", "artifact_refs"], "unevaluatedProperties": false }] },
+    { "allOf": [{ "$ref": "#/$defs/base" }, { "type": "object", "properties": { "type": { "const": "cancel_child" }, "child_task_id": { "$ref": "../common/primitives.schema.json#/$defs/id" }, "reason": { "type": "string", "minLength": 1 }, "cancellation_policy": { "enum": ["cascade", "detach_children", "transfer_children"] } }, "required": ["type", "child_task_id", "reason", "cancellation_policy"], "unevaluatedProperties": false }] },
+    { "allOf": [{ "$ref": "#/$defs/base" }, { "type": "object", "properties": { "type": { "const": "reply" }, "request_id": { "$ref": "../common/primitives.schema.json#/$defs/id" }, "response_kind": { "enum": ["advice", "contract_decision"] }, "message": { "type": "string", "maxLength": 65536 }, "contract_patch": { "anyOf": [{ "$ref": "task-contract.schema.json" }, { "type": "null" }] }, "terminate": { "type": ["boolean", "null"] } }, "required": ["type", "request_id", "response_kind", "message", "contract_patch", "terminate"], "unevaluatedProperties": false }] },
+    { "allOf": [{ "$ref": "#/$defs/base" }, { "type": "object", "properties": { "type": { "const": "submit_completion" }, "owner_judgement": { "type": "string", "maxLength": 65536 }, "outcome_ref": { "$ref": "../common/primitives.schema.json#/$defs/ref" }, "artifact_refs": { "type": "array", "items": { "$ref": "../common/primitives.schema.json#/$defs/ref" }, "maxItems": 1024, "uniqueItems": true }, "evidence_refs": { "type": "array", "items": { "$ref": "../common/primitives.schema.json#/$defs/ref" }, "maxItems": 2048, "uniqueItems": true } }, "required": ["type", "owner_judgement", "outcome_ref", "artifact_refs", "evidence_refs"], "unevaluatedProperties": false }] }
+  ]
+}

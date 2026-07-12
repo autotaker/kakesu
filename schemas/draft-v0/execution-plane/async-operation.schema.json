@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:agent-harness:execution-plane:async-operation:draft-v0:r1",
+  "x-schema-version": "draft-v0", "x-schema-revision": 1, "x-stability": "draft",
+  "type": "object",
+  "properties": {
+    "async_id": { "$ref": "../common/primitives.schema.json#/$defs/id" },
+    "owner_task_id": { "$ref": "../common/primitives.schema.json#/$defs/id" },
+    "tool_call_id": { "anyOf": [{ "$ref": "../common/primitives.schema.json#/$defs/id" }, { "type": "null" }] },
+    "tool_name": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "status": { "enum": ["running", "completed", "failed", "cancelled"] },
+    "operation_key": { "type": "string", "minLength": 1, "maxLength": 512 },
+    "started_at": { "$ref": "../common/primitives.schema.json#/$defs/timestamp" },
+    "sync_deadline": { "anyOf": [{ "$ref": "../common/primitives.schema.json#/$defs/timestamp" }, { "type": "null" }] },
+    "completed_at": { "anyOf": [{ "$ref": "../common/primitives.schema.json#/$defs/timestamp" }, { "type": "null" }] },
+    "result_ref": { "anyOf": [{ "$ref": "../common/primitives.schema.json#/$defs/ref" }, { "type": "null" }] },
+    "error_ref": { "anyOf": [{ "$ref": "../common/primitives.schema.json#/$defs/ref" }, { "type": "null" }] }
+  },
+  "required": ["async_id", "owner_task_id", "tool_call_id", "tool_name", "status", "operation_key", "started_at", "sync_deadline", "completed_at", "result_ref", "error_ref"],
+  "additionalProperties": false
+}

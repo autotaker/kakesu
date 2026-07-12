@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:agent-harness:governance-plane:workspace-security-profile:draft-v0:r1",
+  "x-schema-version": "draft-v0", "x-schema-revision": 1, "x-stability": "draft",
+  "type": "object",
+  "properties": {
+    "workspace_id": { "$ref": "../common/primitives.schema.json#/$defs/id" },
+    "profile_ref": { "$ref": "../common/primitives.schema.json#/$defs/ref" },
+    "target_policy_key": { "type": "string", "pattern": "^workspace:[A-Za-z0-9._:-]+$", "maxLength": 256 },
+    "active_policy_version": { "type": "integer", "minimum": 1 },
+    "pending_revision_id": { "anyOf": [{ "$ref": "../common/primitives.schema.json#/$defs/id" }, { "type": "null" }] },
+    "pending_policy_version": { "type": ["integer", "null"], "minimum": 1 },
+    "credential_scopes": { "type": "array", "items": { "type": "string", "maxLength": 256 }, "maxItems": 256, "uniqueItems": true },
+    "network_capabilities": { "type": "array", "items": { "enum": ["https", "dns", "tcp", "tls", "udp"] }, "maxItems": 5, "uniqueItems": true },
+    "status": { "enum": ["active", "frozen", "retired"] },
+    "version": { "type": "integer", "minimum": 1 }
+  },
+  "required": ["workspace_id", "profile_ref", "target_policy_key", "active_policy_version", "pending_revision_id", "pending_policy_version", "credential_scopes", "network_capabilities", "status", "version"],
+  "additionalProperties": false
+}

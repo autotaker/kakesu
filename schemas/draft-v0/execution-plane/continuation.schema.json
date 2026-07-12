@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:agent-harness:execution-plane:continuation:draft-v0:r1",
+  "x-schema-version": "draft-v0", "x-schema-revision": 1, "x-stability": "draft",
+  "type": "object",
+  "properties": {
+    "continuation_id": { "$ref": "../common/primitives.schema.json#/$defs/id" },
+    "task_id": { "$ref": "../common/primitives.schema.json#/$defs/id" },
+    "resume_cursor_ref": { "$ref": "../common/primitives.schema.json#/$defs/ref" },
+    "task_event_watermark": { "type": "integer", "minimum": 0 },
+    "agent_run_event_watermark": { "type": "integer", "minimum": 0 },
+    "wait_condition": {
+      "oneOf": [
+        { "type": "object", "properties": { "type": { "const": "async" }, "async_ids": { "type": "array", "items": { "$ref": "../common/primitives.schema.json#/$defs/id" }, "minItems": 1, "maxItems": 1024, "uniqueItems": true }, "mode": { "enum": ["all", "any"] } }, "required": ["type", "async_ids", "mode"], "additionalProperties": false },
+        { "type": "object", "properties": { "type": { "const": "mailbox" }, "event_types": { "type": "array", "items": { "type": "string", "maxLength": 128 }, "minItems": 1, "maxItems": 64, "uniqueItems": true } }, "required": ["type", "event_types"], "additionalProperties": false }
+      ]
+    },
+    "created_at": { "$ref": "../common/primitives.schema.json#/$defs/timestamp" }
+  },
+  "required": ["continuation_id", "task_id", "resume_cursor_ref", "task_event_watermark", "agent_run_event_watermark", "wait_condition", "created_at"],
+  "additionalProperties": false
+}

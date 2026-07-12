@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:agent-harness:common:event-envelope:draft-v0:r1",
+  "x-schema-version": "draft-v0",
+  "x-schema-revision": 1,
+  "x-stability": "draft",
+  "type": "object",
+  "properties": {
+    "event_id": { "$ref": "primitives.schema.json#/$defs/id" },
+    "subject_id": { "$ref": "primitives.schema.json#/$defs/id" },
+    "sequence_no": { "$ref": "primitives.schema.json#/$defs/nonNegativeInteger" },
+    "event_type": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "actor_ref": { "$ref": "primitives.schema.json#/$defs/ref" },
+    "created_at": { "$ref": "primitives.schema.json#/$defs/timestamp" },
+    "payload_schema": { "$ref": "schema-reference.schema.json" },
+    "payload": { "type": "object" }
+  },
+  "required": ["event_id", "subject_id", "sequence_no", "event_type", "actor_ref", "created_at", "payload_schema", "payload"],
+  "additionalProperties": false
+}

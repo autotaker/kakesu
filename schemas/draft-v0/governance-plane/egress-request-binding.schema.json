@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:agent-harness:governance-plane:egress-request-binding:draft-v0:r1",
+  "x-schema-version": "draft-v0", "x-schema-revision": 1, "x-stability": "draft",
+  "type": "object",
+  "properties": {
+    "protocol": { "enum": ["dns", "https", "tls", "tcp", "udp"] },
+    "scheme": { "type": "string", "minLength": 1, "maxLength": 32 },
+    "fqdn": { "type": ["string", "null"], "maxLength": 253 },
+    "resolved_ip": { "oneOf": [{ "type": "string", "format": "ipv4" }, { "type": "string", "format": "ipv6" }, { "type": "null" }] },
+    "port": { "type": "integer", "minimum": 1, "maximum": 65535 },
+    "method": { "type": ["string", "null"], "maxLength": 32 },
+    "normalized_path_query": { "type": ["string", "null"], "maxLength": 16384 },
+    "policy_headers_digest": { "anyOf": [{ "$ref": "../common/primitives.schema.json#/$defs/digest" }, { "type": "null" }] },
+    "body_digest": { "anyOf": [{ "$ref": "../common/primitives.schema.json#/$defs/digest" }, { "type": "null" }] },
+    "body_size": { "type": ["integer", "null"], "minimum": 0 },
+    "requested_credential_scope": { "type": ["string", "null"], "maxLength": 256 },
+    "dns_snapshot_ref": { "anyOf": [{ "$ref": "../common/primitives.schema.json#/$defs/ref" }, { "type": "null" }] },
+    "baseline_policy_version": { "type": "integer", "minimum": 1 },
+    "canonical_request_digest": { "$ref": "../common/primitives.schema.json#/$defs/digest" }
+  },
+  "required": ["protocol", "scheme", "fqdn", "resolved_ip", "port", "method", "normalized_path_query", "policy_headers_digest", "body_digest", "body_size", "requested_credential_scope", "dns_snapshot_ref", "baseline_policy_version", "canonical_request_digest"],
+  "additionalProperties": false
+}

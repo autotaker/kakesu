@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:agent-harness:governance-plane:egress-capture-manifest:draft-v0:r1",
+  "x-schema-version": "draft-v0", "x-schema-revision": 1, "x-stability": "draft",
+  "$defs": {
+    "range": { "type": "object", "properties": { "start": { "type": "integer", "minimum": 0 }, "end_exclusive": { "type": "integer", "minimum": 0 }, "digest": { "$ref": "../common/primitives.schema.json#/$defs/digest" } }, "required": ["start", "end_exclusive", "digest"], "additionalProperties": false },
+    "coverage": {
+      "type": "object",
+      "properties": {
+        "status": { "enum": ["complete", "partial", "unavailable", "incomplete"] },
+        "total_bytes": { "type": ["integer", "null"], "minimum": 0 },
+        "captured_ranges": { "type": "array", "items": { "$ref": "#/$defs/range" }, "maxItems": 4096 },
+        "redacted_ranges": { "type": "array", "items": { "$ref": "#/$defs/range" }, "maxItems": 4096 },
+        "truncated": { "type": "boolean" },
+        "limitation_reason": { "type": ["string", "null"], "maxLength": 4096 },
+        "classification": { "type": "array", "items": { "type": "string", "maxLength": 128 }, "maxItems": 128, "uniqueItems": true },
+        "encrypted_blob_ref": { "anyOf": [{ "$ref": "../common/primitives.schema.json#/$defs/ref" }, { "type": "null" }] },
+        "key_ref": { "anyOf": [{ "$ref": "../common/primitives.schema.json#/$defs/ref" }, { "type": "null" }] }
+      },
+      "required": ["status", "total_bytes", "captured_ranges", "redacted_ranges", "truncated", "limitation_reason", "classification", "encrypted_blob_ref", "key_ref"],
+      "additionalProperties": false
+    }
+  },
+  "type": "object",
+  "properties": {
+    "capture_manifest_id": { "$ref": "../common/primitives.schema.json#/$defs/id" },
+    "attempt_id": { "$ref": "../common/primitives.schema.json#/$defs/id" },
+    "request": { "$ref": "#/$defs/coverage" },
+    "response": { "anyOf": [{ "$ref": "#/$defs/coverage" }, { "type": "null" }] },
+    "completion_status": { "enum": ["request_committed", "response_committed", "connection_failed", "incomplete"] },
+    "retention_expires_at": { "$ref": "../common/primitives.schema.json#/$defs/timestamp" },
+    "pinned_until_ref": { "anyOf": [{ "$ref": "../common/primitives.schema.json#/$defs/ref" }, { "type": "null" }] },
+    "created_at": { "$ref": "../common/primitives.schema.json#/$defs/timestamp" },
+    "updated_at": { "$ref": "../common/primitives.schema.json#/$defs/timestamp" }
+  },
+  "required": ["capture_manifest_id", "attempt_id", "request", "response", "completion_status", "retention_expires_at", "pinned_until_ref", "created_at", "updated_at"],
+  "additionalProperties": false
+}

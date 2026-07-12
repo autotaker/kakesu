@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:agent-harness:governance-plane:egress-rule-decision:draft-v0:r1",
+  "x-schema-version": "draft-v0", "x-schema-revision": 1, "x-stability": "draft",
+  "type": "object",
+  "properties": {
+    "rule_decision_id": { "$ref": "../common/primitives.schema.json#/$defs/id" },
+    "attempt_id": { "$ref": "../common/primitives.schema.json#/$defs/id" },
+    "decision": { "enum": ["allow", "block"] },
+    "policy_version": { "type": "integer", "minimum": 1 },
+    "matched_rule_refs": { "type": "array", "items": { "$ref": "../common/primitives.schema.json#/$defs/ref" }, "maxItems": 1024, "uniqueItems": true },
+    "reason_codes": { "type": "array", "items": { "type": "string", "maxLength": 128 }, "maxItems": 128, "uniqueItems": true },
+    "evaluated_at": { "$ref": "../common/primitives.schema.json#/$defs/timestamp" }
+  },
+  "required": ["rule_decision_id", "attempt_id", "decision", "policy_version", "matched_rule_refs", "reason_codes", "evaluated_at"],
+  "additionalProperties": false
+}

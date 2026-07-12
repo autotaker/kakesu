@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:agent-harness:memory-plane:episode-agent-input:draft-v0:r1",
+  "x-schema-version": "draft-v0", "x-schema-revision": 1, "x-stability": "draft",
+  "type": "object",
+  "properties": {
+    "job_id": { "$ref": "../common/primitives.schema.json#/$defs/id" },
+    "task_id": { "$ref": "../common/primitives.schema.json#/$defs/id" },
+    "terminal_snapshot_ref": { "$ref": "../common/primitives.schema.json#/$defs/ref" },
+    "terminal_snapshot_digest": { "$ref": "../common/primitives.schema.json#/$defs/digest" },
+    "available_views": { "type": "array", "items": { "type": "string", "pattern": "^episode_[A-Za-z0-9_]+$" }, "minItems": 1, "maxItems": 256, "uniqueItems": true },
+    "max_steps": { "type": "integer", "minimum": 1 },
+    "input_token_budget": { "type": "integer", "minimum": 1 },
+    "output_token_budget": { "type": "integer", "minimum": 1 },
+    "artifact_read_byte_budget": { "type": "integer", "minimum": 0 },
+    "deadline_at": { "$ref": "../common/primitives.schema.json#/$defs/timestamp" },
+    "output_schema": { "$ref": "../common/schema-reference.schema.json" }
+  },
+  "required": ["job_id", "task_id", "terminal_snapshot_ref", "terminal_snapshot_digest", "available_views", "max_steps", "input_token_budget", "output_token_budget", "artifact_read_byte_budget", "deadline_at", "output_schema"],
+  "additionalProperties": false
+}

@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Agent Harness — E2E Tabletop Viewer</title>
+  <style>
+    :root { color-scheme: dark; --bg:#0b1020; --panel:#121a2d; --panel2:#172238; --line:#2a3854; --text:#edf3ff; --muted:#9aabc7; --accent:#7dd3fc; --ok:#86efac; --warn:#fcd34d; --control:#a78bfa; --execution:#60a5fa; --governance:#fb923c; --memory:#34d399; }
+    * { box-sizing:border-box } body { margin:0; font:14px/1.55 ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif; background:linear-gradient(145deg,#080c18,#0b1223 55%,#10182a); color:var(--text) }
+    button,input,select { font:inherit } button { cursor:pointer }
+    .shell { min-height:100vh; display:grid; grid-template-rows:auto 1fr }
+    header { position:sticky; top:0; z-index:5; display:flex; gap:18px; align-items:center; padding:14px 22px; border-bottom:1px solid var(--line); background:rgba(9,14,27,.94); backdrop-filter:blur(14px) }
+    .brand { min-width:270px } .brand h1 { margin:0; font-size:17px; letter-spacing:.03em } .brand p { margin:2px 0 0; color:var(--muted); font-size:12px }
+    .controls { display:flex; flex:1; gap:10px; align-items:center; flex-wrap:wrap }
+    select,input[type=search],.file-button { min-height:36px; color:var(--text); background:#101a2d; border:1px solid var(--line); border-radius:9px; padding:7px 11px }
+    input[type=search] { min-width:240px; flex:1 } .file-button { display:inline-flex; align-items:center; color:var(--accent) } .file-button input { display:none }
+    .layout { display:grid; grid-template-columns:240px minmax(500px,1fr) 440px; min-height:0 }
+    aside,.detail { padding:18px; overflow:auto; height:calc(100vh - 66px) } aside { border-right:1px solid var(--line) } .detail { border-left:1px solid var(--line); background:rgba(8,13,25,.45) }
+    .summary { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:18px } .metric { padding:10px; background:var(--panel); border:1px solid var(--line); border-radius:10px } .metric b { display:block; font-size:20px } .metric span { color:var(--muted); font-size:11px }
+    .legend { display:grid; gap:8px } .legend span { display:flex; align-items:center; gap:8px; color:var(--muted) } .dot { width:9px; height:9px; border-radius:50%; background:var(--c) }
+    main { padding:22px; overflow:auto; height:calc(100vh - 66px) } .scenario-head { margin-bottom:18px } .scenario-head h2 { margin:0; font-size:22px } .scenario-head p { margin:4px 0; color:var(--muted) }
+    .timeline { position:relative; display:grid; gap:9px } .timeline:before { content:""; position:absolute; left:27px; top:20px; bottom:20px; width:1px; background:var(--line) }
+    .step { position:relative; display:grid; grid-template-columns:48px minmax(0,1fr); gap:12px; padding:10px 12px 10px 6px; border:1px solid transparent; border-radius:12px; background:rgba(18,26,45,.72); transition:.15s }
+    .step:hover,.step.active { border-color:#476188; background:var(--panel2); transform:translateX(2px) } .step.hidden { display:none }
+    .index { z-index:1; width:42px; height:42px; display:grid; place-items:center; border:2px solid var(--c); border-radius:50%; background:var(--bg); color:var(--c); font-size:11px; font-weight:700 }
+    .step-top { display:flex; gap:10px; align-items:center; min-width:0 } .type { font-weight:750; overflow:hidden; text-overflow:ellipsis; white-space:nowrap } .time { margin-left:auto; color:var(--muted); font-size:11px }
+    .route { display:flex; align-items:center; gap:7px; color:var(--muted); font-size:12px; margin-top:4px; flex-wrap:wrap } .plane { color:var(--c); font-weight:650 } .arrow { color:#64748b }
+    .chips { display:flex; gap:6px; margin-top:8px; flex-wrap:wrap } .chip { padding:2px 7px; border:1px solid var(--line); border-radius:999px; color:#b9c7dd; font-size:10px } .state { color:var(--ok); border-color:#275c43 }
+    .empty { margin:70px auto; max-width:560px; padding:36px; text-align:center; border:1px dashed #405274; border-radius:18px; background:rgba(18,26,45,.55) } .empty h2 { margin-top:0 } .empty p { color:var(--muted) }
+    .diagram-wrap { overflow:auto; border:1px solid var(--line); border-radius:14px; background:rgba(8,13,25,.62) }
+    .diagram { position:relative; min-width:var(--diagram-width); width:var(--diagram-width); padding-bottom:18px }
+    .participants { position:sticky; top:0; z-index:4; display:grid; grid-template-columns:repeat(var(--count),var(--lane)); min-height:76px; background:rgba(11,16,32,.96); border-bottom:1px solid var(--line); backdrop-filter:blur(10px) }
+    .participant { display:flex; flex-direction:column; justify-content:center; align-items:center; gap:2px; padding:10px 7px; text-align:center; border-right:1px solid rgba(42,56,84,.38) }
+    .participant b { max-width:132px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:11px; color:var(--c) } .participant small { color:var(--muted); font-size:9px }
+    .lifelines { position:absolute; z-index:0; inset:76px 0 0; display:grid; grid-template-columns:repeat(var(--count),var(--lane)); pointer-events:none }
+    .lifeline { position:relative; border-right:1px solid rgba(42,56,84,.28) } .lifeline:after { content:""; position:absolute; left:50%; top:0; bottom:0; border-left:1px dashed #34445f }
+    .messages { position:relative; z-index:1; padding-top:8px } .message { position:relative; height:58px; cursor:pointer } .message.hidden { display:none }
+    .message:hover,.message.active { background:rgba(71,97,136,.13) }
+    .message-line { position:absolute; left:var(--left); top:31px; width:var(--width); height:1px; background:var(--c) }
+    .message-line:after { content:""; position:absolute; right:-1px; top:-4px; width:8px; height:8px; border-top:2px solid var(--c); border-right:2px solid var(--c); transform:rotate(45deg) }
+    .message.reverse .message-line:after { left:-1px; right:auto; transform:rotate(225deg) }
+    .message.self .message-line { width:38px; height:24px; background:transparent; border:1px solid var(--c); border-left:0; border-radius:0 7px 7px 0 }
+    .message.self .message-line:after { left:-1px; right:auto; top:18px; transform:rotate(225deg) }
+    .message-label { position:absolute; left:var(--label-left); top:3px; width:var(--label-width); min-width:130px; text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:10px; color:#dbeafe }
+    .message-label b { color:var(--c); margin-right:5px } .message-label span { color:var(--muted) }
+    .message-state { position:absolute; left:var(--target); top:38px; transform:translateX(-50%); padding:1px 5px; border-radius:999px; background:#10271d; color:var(--ok); font-size:8px; white-space:nowrap }
+    .intra-node { position:absolute; left:var(--node-left); top:7px; width:130px; min-height:44px; padding:5px 7px; border:1px solid var(--c); border-radius:8px; background:#111b2e; text-align:center; box-shadow:0 5px 16px rgba(0,0,0,.2) }
+    .intra-node b { display:block; color:var(--c); font-size:9px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis } .intra-node span { display:block; color:#dbeafe; font-size:9px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis } .intra-node small { color:var(--muted); font-size:8px }
+    .drop { outline:2px dashed var(--accent); outline-offset:-10px }
+    .detail h3 { margin:0 0 5px; font-size:18px } .detail .sub { color:var(--muted); margin-bottom:16px } .detail h4 { margin:20px 0 8px; color:#c9d7ec; font-size:12px; text-transform:uppercase; letter-spacing:.08em }
+    dl { display:grid; grid-template-columns:105px 1fr; gap:7px 10px; margin:0 } dt { color:var(--muted) } dd { margin:0; overflow-wrap:anywhere }
+    pre { margin:0; padding:12px; max-height:420px; overflow:auto; background:#080d18; border:1px solid var(--line); border-radius:10px; color:#cfe2ff; font:11.5px/1.55 ui-monospace,SFMono-Regular,Consolas,monospace; white-space:pre-wrap }
+    details { margin-top:18px; border:1px solid var(--line); border-radius:10px; background:rgba(18,26,45,.45) } summary { cursor:pointer; padding:9px 11px; color:var(--muted); font-size:11px; text-transform:uppercase; letter-spacing:.07em } details pre { border:0; border-top:1px solid var(--line); border-radius:0 0 10px 10px }
+    .canonical-head { display:flex; align-items:center; gap:8px; margin:20px 0 8px } .canonical-head h4 { margin:0 } .primary-badge { padding:2px 7px; border-radius:999px; background:#123524; color:var(--ok); font-size:9px; text-transform:uppercase; letter-spacing:.06em }
+    .status { padding:7px 10px; border-radius:8px; color:var(--muted); font-size:12px } .status.ok { color:var(--ok); background:#0f2a1e } .status.error { color:#fca5a5; background:#35171b }
+    @media (max-width:1100px){ .layout{grid-template-columns:190px 1fr}.detail{grid-column:1/-1;height:auto;border-left:0;border-top:1px solid var(--line)} aside,main{height:calc(100vh - 66px)} }
+    @media (max-width:720px){ header{align-items:flex-start;flex-direction:column}.brand{min-width:0}.layout{display:block}aside{height:auto;border-right:0;border-bottom:1px solid var(--line)}main{height:auto;padding:14px}.detail{height:auto}.summary{grid-template-columns:repeat(4,1fr)} }
+  </style>
+</head>
+<body>
+<div class="shell" id="app">
+  <header>
+    <div class="brand"><h1>Agent Harness / Tabletop Viewer</h1><p>PlaneをまたぐPayload sequenceを読む</p></div>
+    <div class="controls">
+      <select id="scenarioSelect" aria-label="Scenario"></select>
+      <select id="viewMode" aria-label="View mode"><option value="plane">Plane sequence</option><option value="sequence">Component sequence</option><option value="timeline">Timeline</option></select>
+      <input id="search" type="search" placeholder="Message type / component / ID を検索">
+      <label class="file-button">JSONを選択<input id="files" type="file" accept="application/json,.json" multiple></label>
+      <span id="status" class="status">Loading…</span>
+    </div>
+  </header>
+  <div class="layout">
+    <aside>
+      <div class="summary" id="summary"></div>
+      <h4>Planes</h4><div class="legend" id="legend"></div>
+      <h4>表示</h4><label><input id="canonicalOnly" type="checkbox"> Canonical Payloadあり</label>
+    </aside>
+    <main id="main"><div class="empty"><h2>Tabletop JSONを読み込みます</h2><p>HTTPで開くと自動読込します。直接開いた場合はJSON群を選択するか、この画面へドロップしてください。</p></div></main>
+    <section class="detail" id="detail"><div class="empty"><h2>Stepを選択</h2><p>sequenceの行をクリックするとEnvelope、Payload、canonical bindingを表示します。</p></div></section>
+  </div>
+</div>
+<script src="viewer-data.js"></script>
+<script>
+const PLANES={"control-plane":"var(--control)","execution-plane":"var(--execution)","governance-plane":"var(--governance)","memory-plane":"var(--memory)"};
+const AUTO=["executable-scenarios.json","executable-scenario-002.json","domain-payload-bindings.json","domain-payloads-001.json","domain-payloads-002.json","domain-payloads-003.json","domain-payloads-004.json","domain-payloads-fixes.json","domain-payloads-task-events.json","sequence-requirements.json","scenarios.json"];
+let store={scenarios:[],canonical:new Map(),bindings:new Map(),requirements:new Map(),sourceSteps:new Map()},selectedScenario=null,selectedStep=null;
+const $=s=>document.querySelector(s), esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+function ingest(name,data){
+  if(Array.isArray(data.scenarios)) for(const scenario of data.scenarios){for(const step of scenario.steps||[])store.sourceSteps.set(`${name}#${scenario.scenario_id}/${step.step_id}`,step);if(!store.scenarios.some(s=>s.scenario_id===scenario.scenario_id)) store.scenarios.push(scenario)}
+  for(const record of data.records||[]) store.canonical.set(record.message_id,{schema_ref:record.schema_ref,payload:record.payload,source:name});
+  for(const binding of data.bindings||[]) store.bindings.set(binding.message_id,binding.source);
+  for(const req of data.requirements||[]) store.requirements.set(req.scenario_id,req);
+}
+async function autoLoad(){let loaded=0;if(Array.isArray(window.TABLETOP_EMBEDDED)){for(const [name,data] of window.TABLETOP_EMBEDDED){ingest(name,data);loaded++}}else for(const name of AUTO){try{const r=await fetch(name);if(!r.ok)continue;ingest(name,await r.json());loaded++}catch{}}if(loaded)ready(`${loaded} files loaded`);else fail("JSONを選択してください")}
+async function loadFiles(files){for(const f of files){try{ingest(f.name,JSON.parse(await f.text()))}catch(e){fail(`${f.name}: ${e.message}`);return}}ready(`${files.length} files loaded`)}
+function ready(text){store.scenarios.sort((a,b)=>a.scenario_id.localeCompare(b.scenario_id));selectedScenario ||= store.scenarios[0]?.scenario_id;render();$("#status").textContent=text;$("#status").className="status ok"}
+function fail(text){$("#status").textContent=text;$("#status").className="status error"}
+function canonicalFor(step){const direct=store.canonical.get(step.payload.message_id);if(direct)return direct;const binding=store.bindings.get(step.payload.message_id),source=binding&&store.sourceSteps.get(binding);return source?{schema_ref:source.schema_ref,payload:source.payload,source:binding}:null}
+function planeColor(plane){return PLANES[plane]||"var(--muted)"}
+function render(){
+  const select=$("#scenarioSelect");select.innerHTML=store.scenarios.map(s=>`<option value="${esc(s.scenario_id)}" ${s.scenario_id===selectedScenario?"selected":""}>${esc(s.scenario_id)} — ${esc(s.title)}</option>`).join("");
+  const scenario=store.scenarios.find(s=>s.scenario_id===selectedScenario);if(!scenario)return;
+  const canon=scenario.steps.filter(canonicalFor).length;$("#summary").innerHTML=`<div class="metric"><b>${scenario.steps.length}</b><span>Steps</span></div><div class="metric"><b>${canon}</b><span>Canonical</span></div><div class="metric"><b>${new Set(scenario.steps.map(s=>s.from_component).concat(scenario.steps.map(s=>s.to_component))).size}</b><span>Components</span></div><div class="metric"><b>${store.requirements.get(scenario.scenario_id)?.correlations?.length||0}</b><span>Joins</span></div>`;
+  $("#legend").innerHTML=Object.entries(PLANES).map(([p,c])=>`<span><i class="dot" style="--c:${c}"></i>${p}</span>`).join("");
+  const mode=$("#viewMode").value,body=mode==="plane"?planeDiagram(scenario):mode==="sequence"?sequenceDiagram(scenario):`<div class="timeline">${scenario.steps.map(stepCard).join("")}</div>`;
+  $("#main").innerHTML=`<div class="scenario-head"><h2>${esc(scenario.scenario_id)} · ${esc(scenario.title)}</h2><p>${scenario.steps.length} messages / ${canon} canonical payloads</p></div>${body}`;
+  bindSteps();filter();if(selectedStep){const found=scenario.steps.find(s=>s.step_id===selectedStep);if(found)showDetail(found)}
+}
+function stepCard(step,i){const p=step.payload,c=canonicalFor(step),state=p.entity?.to_state;return `<article class="step" data-id="${esc(step.step_id)}" data-search="${esc(JSON.stringify(step).toLowerCase())}" data-canonical="${c?1:0}" style="--c:${planeColor(step.from_plane)}"><div class="index">${esc(step.step_id)}</div><div><div class="step-top"><span class="type">${esc(step.message_type)}</span><span class="time">${esc(p.occurred_at?.slice(11,23)||"")}</span></div><div class="route"><span class="plane" style="--c:${planeColor(step.from_plane)}">${esc(step.from_component)}</span><span class="arrow">${esc(step.from_plane)} → ${esc(step.to_plane)}</span><span class="plane" style="--c:${planeColor(step.to_plane)}">${esc(step.to_component)}</span></div><div class="chips"><span class="chip">${esc(p.task_id)}</span>${p.workspace_id?`<span class="chip">${esc(p.workspace_id)}</span>`:""}${state?`<span class="chip state">${esc(p.entity.from_state)} → ${esc(state)}</span>`:""}${c?`<span class="chip">canonical</span>`:""}</div></div></article>`}
+function sequenceDiagram(scenario){
+  const lane=150,components=[];for(const s of scenario.steps)for(const c of [s.from_component,s.to_component])if(!components.includes(c))components.push(c);
+  const planeOf=c=>{for(const s of scenario.steps){if(s.from_component===c)return s.from_plane;if(s.to_component===c)return s.to_plane}return ""};
+  const participants=components.map(c=>`<div class="participant" style="--c:${planeColor(planeOf(c))}"><b title="${esc(c)}">${esc(c)}</b><small>${esc(planeOf(c))}</small></div>`).join("");
+  const lifelines=components.map(()=>`<div class="lifeline"></div>`).join("");
+  const messages=scenario.steps.map(s=>messageRow(s,components,lane)).join("");
+  return `<div class="diagram-wrap"><div class="diagram" style="--count:${components.length};--lane:${lane}px;--diagram-width:${components.length*lane}px"><div class="participants">${participants}</div><div class="lifelines">${lifelines}</div><div class="messages">${messages}</div></div></div>`;
+}
+function planeDiagram(scenario){
+  const lane=220,planes=Object.keys(PLANES),participants=planes.map(p=>`<div class="participant" style="--c:${planeColor(p)}"><b>${esc(p)}</b><small>${new Set(scenario.steps.flatMap(s=>[s.from_plane===p?s.from_component:null,s.to_plane===p?s.to_component:null]).filter(Boolean)).size} components</small></div>`).join("");
+  const lifelines=planes.map(()=>`<div class="lifeline"></div>`).join(""),messages=scenario.steps.map(s=>planeMessageRow(s,planes,lane)).join("");
+  return `<div class="diagram-wrap"><div class="diagram" style="--count:${planes.length};--lane:${lane}px;--diagram-width:${planes.length*lane}px"><div class="participants">${participants}</div><div class="lifelines">${lifelines}</div><div class="messages">${messages}</div></div></div>`;
+}
+function planeMessageRow(step,planes,lane){
+  const from=planes.indexOf(step.from_plane),to=planes.indexOf(step.to_plane),p=step.payload,c=canonicalFor(step),base=`data-id="${esc(step.step_id)}" data-search="${esc(JSON.stringify(step).toLowerCase())}" data-canonical="${c?1:0}"`,color=planeColor(step.from_plane);
+  if(from===to){const nodeLeft=(from+.5)*lane-65;return `<div class="message node" ${base} style="--c:${color};--node-left:${nodeLeft}px"><div class="intra-node"><b>${esc(step.from_component)} → ${esc(step.to_component)}</b><span>${esc(step.step_id)} ${esc(step.message_type)}</span><small>${esc(p.entity?.from_state)} → ${esc(p.entity?.to_state)}</small></div></div>`}
+  const left=(Math.min(from,to)+.5)*lane,width=Math.abs(to-from)*lane,target=(to+.5)*lane,reverse=to<from;
+  return `<div class="message ${reverse?"reverse":""}" ${base} style="--c:${color};--left:${left}px;--width:${width}px;--label-left:${left}px;--label-width:${width}px;--target:${target}px"><div class="message-label"><b>${esc(step.step_id)}</b>${esc(step.message_type)} <span>${esc(step.from_component)} → ${esc(step.to_component)}</span></div><div class="message-line"></div>${p.entity?.to_state?`<div class="message-state">${esc(p.entity.from_state)} → ${esc(p.entity.to_state)}</div>`:""}</div>`;
+}
+function messageRow(step,components,lane){
+  const from=components.indexOf(step.from_component),to=components.indexOf(step.to_component),self=from===to,left=(Math.min(from,to)+.5)*lane,width=Math.max(Math.abs(to-from)*lane,38),target=(to+.5)*lane,p=step.payload,c=canonicalFor(step),reverse=to<from;
+  return `<div class="message ${reverse?"reverse":""} ${self?"self":""}" data-id="${esc(step.step_id)}" data-search="${esc(JSON.stringify(step).toLowerCase())}" data-canonical="${c?1:0}" style="--c:${planeColor(step.from_plane)};--left:${left}px;--width:${width}px;--label-left:${left}px;--label-width:${width}px;--target:${target}px"><div class="message-label"><b>${esc(step.step_id)}</b>${esc(step.message_type)} <span>${esc(p.occurred_at?.slice(11,19)||"")}</span></div><div class="message-line"></div>${p.entity?.to_state?`<div class="message-state">${esc(p.entity.from_state)} → ${esc(p.entity.to_state)}</div>`:""}</div>`;
+}
+function bindSteps(){document.querySelectorAll(".step,.message").forEach(el=>el.onclick=()=>{selectedStep=el.dataset.id;document.querySelectorAll(".step,.message").forEach(x=>x.classList.toggle("active",x===el));const s=store.scenarios.find(x=>x.scenario_id===selectedScenario).steps.find(x=>x.step_id===selectedStep);showDetail(s)})}
+function showDetail(step){const p=step.payload,c=canonicalFor(step);$("#detail").innerHTML=`<h3>${esc(step.message_type)}</h3><div class="sub">${esc(step.step_id)} · ${esc(p.message_id)}</div><dl><dt>Route</dt><dd>${esc(step.from_component)} → ${esc(step.to_component)}</dd><dt>Task</dt><dd>${esc(p.task_id)}</dd><dt>Workspace</dt><dd>${esc(p.workspace_id)}</dd><dt>State</dt><dd>${esc(p.entity?.from_state)} → ${esc(p.entity?.to_state)}</dd></dl>${c?`<div class="canonical-head"><h4>Canonical Domain Payload</h4><span class="primary-badge">Primary</span></div><div class="sub">${esc(c.schema_ref)} · ${esc(c.source)}</div><pre>${esc(JSON.stringify(c.payload,null,2))}</pre><details><summary>Sequence metadata（図示・検査用）</summary><pre>${esc(JSON.stringify(p,null,2))}</pre></details>`:`<div class="canonical-head"><h4>Sequence Projection</h4></div><div class="status">独立したdomain stateを持たない内部処理です。</div><pre>${esc(JSON.stringify(p,null,2))}</pre>`}`}
+function filter(){const q=$("#search").value.trim().toLowerCase(),only=$("#canonicalOnly").checked;document.querySelectorAll(".step,.message").forEach(el=>el.classList.toggle("hidden",(q&&!el.dataset.search.includes(q))||(only&&el.dataset.canonical!=="1")))}
+$("#scenarioSelect").onchange=e=>{selectedScenario=e.target.value;selectedStep=null;render()};$("#viewMode").onchange=render;$("#search").oninput=filter;$("#canonicalOnly").onchange=filter;$("#files").onchange=e=>loadFiles(e.target.files);
+for(const event of ["dragenter","dragover"]){document.addEventListener(event,e=>{e.preventDefault();$("#app").classList.add("drop")})}for(const event of ["dragleave","drop"]){document.addEventListener(event,e=>{e.preventDefault();$("#app").classList.remove("drop");if(event==="drop")loadFiles(e.dataTransfer.files)})}
+autoLoad();
+</script>
+</body>
+</html>

@@ -1,0 +1,7 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema", "$id": "urn:agent-harness:control-plane:child-completed:draft-v0:r1",
+  "x-schema-version": "draft-v0", "x-schema-revision": 1, "x-stability": "draft",
+  "type": "object", "properties": {
+    "child_task_id": { "$ref": "../common/primitives.schema.json#/$defs/id" }, "parent_task_id": { "$ref": "../common/primitives.schema.json#/$defs/id" }, "contract_version": { "type": "integer", "minimum": 1 }, "candidate_version": { "type": "integer", "minimum": 1 }, "completion_review_ref": { "$ref": "../common/primitives.schema.json#/$defs/ref" }, "outcome_ref": { "$ref": "../common/primitives.schema.json#/$defs/ref" }, "completed_at": { "$ref": "../common/primitives.schema.json#/$defs/timestamp" }
+  }, "required": ["child_task_id", "parent_task_id", "contract_version", "candidate_version", "completion_review_ref", "outcome_ref", "completed_at"], "additionalProperties": false
+}

@@ -1,0 +1,18 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "$id":"urn:agent-harness:governance-plane:policy-candidate:draft-v0:r1",
+  "x-schema-version":"draft-v0", "x-schema-revision":1, "x-stability":"draft",
+  "type":"object", "additionalProperties":false,
+  "required":["candidate_id","proposal_id","job_id","workspace_id","target_policy_key","candidate_policy_ref","candidate_policy_digest","base_policy_version","fixed_at"],
+  "properties":{
+    "candidate_id":{"$ref":"../common/primitives.schema.json#/$defs/id"},
+    "proposal_id":{"$ref":"../common/primitives.schema.json#/$defs/id"},
+    "job_id":{"$ref":"../common/primitives.schema.json#/$defs/id"},
+    "workspace_id":{"$ref":"../common/primitives.schema.json#/$defs/id"},
+    "target_policy_key":{"type":"string","pattern":"^(workspace|global):"},
+    "candidate_policy_ref":{"$ref":"../common/primitives.schema.json#/$defs/ref"},
+    "candidate_policy_digest":{"$ref":"../common/primitives.schema.json#/$defs/digest"},
+    "base_policy_version":{"type":"integer","minimum":1},
+    "fixed_at":{"$ref":"../common/primitives.schema.json#/$defs/timestamp"}
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:agent-harness:common:primitives:draft-v0:r1",
+  "x-schema-version": "draft-v0",
+  "x-schema-revision": 1,
+  "x-stability": "draft",
+  "$defs": {
+    "id": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
+    "ref": { "type": "string", "minLength": 1, "maxLength": 2048 },
+    "digest": { "type": "string", "pattern": "^(sha256:)?[a-f0-9]{64}$" },
+    "timestamp": { "type": "string", "format": "date-time" },
+    "boundedText": { "type": "string", "maxLength": 65536 },
+    "shortText": { "type": "string", "maxLength": 4096 },
+    "nonNegativeInteger": { "type": "integer", "minimum": 0 },
+    "positiveInteger": { "type": "integer", "minimum": 1 },
+    "nullableRef": { "anyOf": [{ "$ref": "#/$defs/ref" }, { "type": "null" }] }
+  }
+}

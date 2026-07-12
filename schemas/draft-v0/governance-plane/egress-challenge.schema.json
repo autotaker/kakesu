@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:agent-harness:governance-plane:egress-challenge:draft-v0:r1",
+  "x-schema-version": "draft-v0", "x-schema-revision": 1, "x-stability": "draft",
+  "type": "object",
+  "properties": {
+    "challenge_id": { "$ref": "../common/primitives.schema.json#/$defs/id" },
+    "workspace_id": { "$ref": "../common/primitives.schema.json#/$defs/id" },
+    "task_id": { "$ref": "../common/primitives.schema.json#/$defs/id" },
+    "origin_task_id": { "$ref": "../common/primitives.schema.json#/$defs/id" },
+    "delegation_chain_digest": { "$ref": "../common/primitives.schema.json#/$defs/digest" },
+    "contract_version": { "type": "integer", "minimum": 1 },
+    "binding": { "$ref": "egress-request-binding.schema.json" },
+    "destination_ref": { "$ref": "../common/primitives.schema.json#/$defs/ref" },
+    "request_summary_ref": { "anyOf": [{ "$ref": "../common/primitives.schema.json#/$defs/ref" }, { "type": "null" }] },
+    "reason_codes": { "type": "array", "items": { "type": "string", "maxLength": 128 }, "minItems": 1, "maxItems": 128, "uniqueItems": true },
+    "grant_eligible": { "type": "boolean" },
+    "auto_grant_eligible": { "type": "boolean" },
+    "required_authority_ref": { "anyOf": [{ "$ref": "../common/primitives.schema.json#/$defs/ref" }, { "type": "null" }] },
+    "created_at": { "$ref": "../common/primitives.schema.json#/$defs/timestamp" },
+    "expires_at": { "$ref": "../common/primitives.schema.json#/$defs/timestamp" }
+  },
+  "required": ["challenge_id", "workspace_id", "task_id", "origin_task_id", "delegation_chain_digest", "contract_version", "binding", "destination_ref", "request_summary_ref", "reason_codes", "grant_eligible", "auto_grant_eligible", "required_authority_ref", "created_at", "expires_at"],
+  "additionalProperties": false
+}

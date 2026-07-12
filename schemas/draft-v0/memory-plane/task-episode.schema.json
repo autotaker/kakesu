@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:agent-harness:memory-plane:task-episode:draft-v0:r1",
+  "x-schema-version": "draft-v0", "x-schema-revision": 1, "x-stability": "draft",
+  "$defs": {
+    "statement": { "type": "object", "properties": { "text": { "type": "string", "maxLength": 65536 }, "source_refs": { "type": "array", "items": { "$ref": "../common/primitives.schema.json#/$defs/ref" }, "minItems": 1, "maxItems": 2048, "uniqueItems": true }, "epistemic_status": { "enum": ["observed", "owner_asserted", "compiler_inferred"] } }, "required": ["text", "source_refs", "epistemic_status"], "additionalProperties": false },
+    "transition": { "type": "object", "properties": { "at": { "$ref": "../common/primitives.schema.json#/$defs/timestamp" }, "event_type": { "type": "string", "maxLength": 128 }, "summary": { "type": "string", "maxLength": 65536 }, "source_refs": { "type": "array", "items": { "$ref": "../common/primitives.schema.json#/$defs/ref" }, "minItems": 1, "maxItems": 2048, "uniqueItems": true } }, "required": ["at", "event_type", "summary", "source_refs"], "additionalProperties": false }
+  },
+  "type": "object",
+  "properties": {
+    "episode_id": { "$ref": "../common/primitives.schema.json#/$defs/id" },
+    "task_id": { "$ref": "../common/primitives.schema.json#/$defs/id" },
+    "parent_task_id": { "anyOf": [{ "$ref": "../common/primitives.schema.json#/$defs/id" }, { "type": "null" }] },
+    "owner_agent_id": { "$ref": "../common/primitives.schema.json#/$defs/id" },
+    "situation": { "type": "object", "properties": { "objective": { "type": "string", "maxLength": 65536 }, "acceptance": { "type": "string", "maxLength": 65536 }, "instructions": { "type": ["string", "null"], "maxLength": 65536 }, "initial_context_summary": { "type": "string", "maxLength": 65536 } }, "required": ["objective", "acceptance", "instructions", "initial_context_summary"], "additionalProperties": false },
+    "temporal_context": { "type": "object", "properties": { "started_at": { "$ref": "../common/primitives.schema.json#/$defs/timestamp" }, "ended_at": { "$ref": "../common/primitives.schema.json#/$defs/timestamp" } }, "required": ["started_at", "ended_at"], "additionalProperties": false },
+    "course": { "type": "object", "properties": { "summary": { "type": "string", "maxLength": 65536 }, "important_transitions": { "type": "array", "items": { "$ref": "#/$defs/transition" }, "maxItems": 2048 }, "child_episode_refs": { "type": "array", "items": { "$ref": "../common/primitives.schema.json#/$defs/ref" }, "maxItems": 2048, "uniqueItems": true } }, "required": ["summary", "important_transitions", "child_episode_refs"], "additionalProperties": false },
+    "outcome": { "type": "object", "properties": { "status": { "enum": ["completed", "cancelled"] }, "owner_judgement": { "type": "string", "maxLength": 65536 }, "acceptance_review_ref": { "anyOf": [{ "$ref": "../common/primitives.schema.json#/$defs/ref" }, { "type": "null" }] }, "artifact_refs": { "type": "array", "items": { "$ref": "../common/primitives.schema.json#/$defs/ref" }, "maxItems": 2048, "uniqueItems": true }, "outbound_transaction_refs": { "type": "array", "items": { "$ref": "../common/primitives.schema.json#/$defs/ref" }, "maxItems": 2048, "uniqueItems": true } }, "required": ["status", "owner_judgement", "acceptance_review_ref", "artifact_refs", "outbound_transaction_refs"], "additionalProperties": false },
+    "surprises": { "type": "array", "items": { "$ref": "#/$defs/statement" }, "maxItems": 2048 },
+    "decisions": { "type": "array", "items": { "$ref": "#/$defs/statement" }, "maxItems": 2048 },
+    "unresolved": { "type": "array", "items": { "$ref": "#/$defs/statement" }, "maxItems": 2048 },
+    "evidence_refs": { "type": "array", "items": { "$ref": "../common/primitives.schema.json#/$defs/ref" }, "maxItems": 4096, "uniqueItems": true }
+  },
+  "required": ["episode_id", "task_id", "parent_task_id", "owner_agent_id", "situation", "temporal_context", "course", "outcome", "surprises", "decisions", "unresolved", "evidence_refs"],
+  "additionalProperties": false
+}

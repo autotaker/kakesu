@@ -1,0 +1,9 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:agent-harness:governance-plane:policy-agent-input:draft-v0:r1",
+  "x-schema-version": "draft-v0", "x-schema-revision": 1, "x-stability": "draft",
+  "oneOf": [
+    { "type": "object", "properties": { "kind": { "const": "grant" }, "challenge": { "$ref": "egress-challenge.schema.json" }, "workspace_profile": { "$ref": "workspace-security-profile.schema.json" }, "justification": { "type": "string", "maxLength": 65536 }, "evidence_refs": { "type": "array", "items": { "$ref": "../common/primitives.schema.json#/$defs/ref" }, "maxItems": 2048, "uniqueItems": true }, "input_digest": { "$ref": "../common/primitives.schema.json#/$defs/digest" } }, "required": ["kind", "challenge", "workspace_profile", "justification", "evidence_refs", "input_digest"], "additionalProperties": false },
+    { "type": "object", "properties": { "kind": { "const": "revision" }, "target_policy_key": { "type": "string", "pattern": "^(workspace|global):" }, "base_policy": { "$ref": "casb-policy.schema.json" }, "finding_refs": { "type": "array", "items": { "$ref": "../common/primitives.schema.json#/$defs/ref" }, "minItems": 1, "maxItems": 2048, "uniqueItems": true }, "capture_manifest_refs": { "type": "array", "items": { "$ref": "../common/primitives.schema.json#/$defs/ref" }, "maxItems": 2048, "uniqueItems": true }, "input_digest": { "$ref": "../common/primitives.schema.json#/$defs/digest" } }, "required": ["kind", "target_policy_key", "base_policy", "finding_refs", "capture_manifest_refs", "input_digest"], "additionalProperties": false }
+  ]
+}

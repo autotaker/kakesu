@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:agent-harness:memory-plane:evidence-query-tool:draft-v0:r1",
+  "x-schema-version": "draft-v0", "x-schema-revision": 1, "x-stability": "draft",
+  "type": "object",
+  "properties": {
+    "sql": { "type": "string", "minLength": 1, "maxLength": 65536 },
+    "params": { "type": "array", "items": { "type": ["string", "number", "integer", "boolean", "null"] }, "maxItems": 1024 },
+    "max_rows": { "type": "integer", "minimum": 1, "maximum": 10000 },
+    "cursor": { "type": ["string", "null"], "maxLength": 2048 }
+  },
+  "required": ["sql", "params", "max_rows", "cursor"],
+  "additionalProperties": false
+}

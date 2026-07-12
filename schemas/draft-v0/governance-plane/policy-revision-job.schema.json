@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:agent-harness:governance-plane:policy-revision-job:draft-v0:r1",
+  "x-schema-version": "draft-v0", "x-schema-revision": 1, "x-stability": "draft",
+  "type": "object",
+  "properties": {
+    "job_id": { "$ref": "../common/primitives.schema.json#/$defs/id" },
+    "workspace_id": { "anyOf": [{ "$ref": "../common/primitives.schema.json#/$defs/id" }, { "type": "null" }] },
+    "target_policy_key": { "type": "string", "pattern": "^(workspace|global):" },
+    "finding_refs": { "type": "array", "items": { "$ref": "../common/primitives.schema.json#/$defs/ref" }, "minItems": 1, "maxItems": 2048, "uniqueItems": true },
+    "input_snapshot_ref": { "$ref": "../common/primitives.schema.json#/$defs/ref" },
+    "input_digest": { "$ref": "../common/primitives.schema.json#/$defs/digest" },
+    "candidate_policy_ref": { "anyOf": [{ "$ref": "../common/primitives.schema.json#/$defs/ref" }, { "type": "null" }] },
+    "candidate_policy_digest": { "anyOf": [{ "$ref": "../common/primitives.schema.json#/$defs/digest" }, { "type": "null" }] },
+    "base_policy_version": { "type": ["integer", "null"], "minimum": 1 },
+    "candidate_fixed_at": { "anyOf": [{ "$ref": "../common/primitives.schema.json#/$defs/timestamp" }, { "type": "null" }] },
+    "profile_version": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "output_schema": { "$ref": "../common/schema-reference.schema.json" },
+    "status": { "enum": ["pending", "reviewing", "completed", "cancelled", "needs_operator"] },
+    "attempt": { "type": "integer", "minimum": 0 },
+    "lease_owner": { "type": ["string", "null"], "maxLength": 256 },
+    "lease_expires_at": { "anyOf": [{ "$ref": "../common/primitives.schema.json#/$defs/timestamp" }, { "type": "null" }] },
+    "invocation_deadline_at": { "$ref": "../common/primitives.schema.json#/$defs/timestamp" },
+    "last_error_ref": { "anyOf": [{ "$ref": "../common/primitives.schema.json#/$defs/ref" }, { "type": "null" }] }
+  },
+  "required": ["job_id", "workspace_id", "target_policy_key", "finding_refs", "input_snapshot_ref", "input_digest", "candidate_policy_ref", "candidate_policy_digest", "base_policy_version", "candidate_fixed_at", "profile_version", "output_schema", "status", "attempt", "lease_owner", "lease_expires_at", "invocation_deadline_at", "last_error_ref"],
+  "additionalProperties": false
+}

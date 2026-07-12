@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:agent-harness:execution-plane:tool-call:draft-v0:r1",
+  "x-schema-version": "draft-v0", "x-schema-revision": 1, "x-stability": "draft",
+  "type": "object",
+  "properties": {
+    "call_id": { "$ref": "../common/primitives.schema.json#/$defs/id" },
+    "task_id": { "$ref": "../common/primitives.schema.json#/$defs/id" },
+    "run_id": { "$ref": "../common/primitives.schema.json#/$defs/id" },
+    "tool_name": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "arguments": { "type": "object" },
+    "arguments_digest": { "$ref": "../common/primitives.schema.json#/$defs/digest" },
+    "arguments_schema": { "$ref": "../common/schema-reference.schema.json" },
+    "created_at": { "$ref": "../common/primitives.schema.json#/$defs/timestamp" }
+  },
+  "required": ["call_id", "task_id", "run_id", "tool_name", "arguments", "arguments_digest", "arguments_schema", "created_at"],
+  "additionalProperties": false
+}

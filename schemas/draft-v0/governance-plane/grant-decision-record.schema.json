@@ -1,0 +1,7 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema", "$id": "urn:agent-harness:governance-plane:grant-decision-record:draft-v0:r1",
+  "x-schema-version": "draft-v0", "x-schema-revision": 1, "x-stability": "draft",
+  "type": "object", "properties": {
+    "decision_id": { "$ref": "../common/primitives.schema.json#/$defs/id" }, "grant_request_id": { "$ref": "../common/primitives.schema.json#/$defs/id" }, "challenge_id": { "$ref": "../common/primitives.schema.json#/$defs/id" }, "input_digest": { "$ref": "../common/primitives.schema.json#/$defs/digest" }, "decision": { "enum": ["grant", "deny", "require_authority"] }, "rationale": { "type": "string", "maxLength": 65536 }, "question": { "type": ["string", "null"], "maxLength": 65536 }, "evidence_refs": { "type": "array", "items": { "$ref": "../common/primitives.schema.json#/$defs/ref" }, "maxItems": 2048, "uniqueItems": true }, "decided_at": { "$ref": "../common/primitives.schema.json#/$defs/timestamp" }
+  }, "required": ["decision_id", "grant_request_id", "challenge_id", "input_digest", "decision", "rationale", "question", "evidence_refs", "decided_at"], "additionalProperties": false
+}

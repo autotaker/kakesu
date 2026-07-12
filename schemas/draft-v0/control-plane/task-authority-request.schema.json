@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:agent-harness:control-plane:task-authority-request:draft-v0:r1",
+  "x-schema-version": "draft-v0", "x-schema-revision": 1, "x-stability": "draft",
+  "type": "object",
+  "properties": {
+    "escalation_request_id": { "$ref": "../common/primitives.schema.json#/$defs/id" },
+    "task_contract": { "$ref": "task-contract.schema.json" },
+    "question": { "type": "string", "minLength": 1, "maxLength": 65536 },
+    "options": { "type": "array", "items": { "type": "string", "maxLength": 8192 }, "maxItems": 64, "uniqueItems": true },
+    "authority_ref": { "$ref": "../common/primitives.schema.json#/$defs/ref" },
+    "expires_at": { "$ref": "../common/primitives.schema.json#/$defs/timestamp" }
+  },
+  "required": ["escalation_request_id", "task_contract", "question", "options", "authority_ref", "expires_at"],
+  "additionalProperties": false
+}

@@ -1,0 +1,10 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:agent-harness:execution-plane:tool-result:draft-v0:r1",
+  "x-schema-version": "draft-v0", "x-schema-revision": 1, "x-stability": "draft",
+  "oneOf": [
+    { "type": "object", "properties": { "status": { "const": "completed" }, "value_schema": { "$ref": "../common/schema-reference.schema.json" }, "value": {} }, "required": ["status", "value_schema", "value"], "additionalProperties": false },
+    { "type": "object", "properties": { "status": { "const": "accepted" }, "async_id": { "$ref": "../common/primitives.schema.json#/$defs/id" }, "operation": { "type": "string", "minLength": 1, "maxLength": 128 } }, "required": ["status", "async_id", "operation"], "additionalProperties": false },
+    { "type": "object", "properties": { "status": { "const": "failed" }, "error": { "$ref": "../common/error.schema.json" } }, "required": ["status", "error"], "additionalProperties": false }
+  ]
+}

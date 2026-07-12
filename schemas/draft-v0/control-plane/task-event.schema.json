@@ -1,0 +1,9 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:agent-harness:control-plane:task-event:draft-v0:r1",
+  "x-schema-version": "draft-v0", "x-schema-revision": 1, "x-stability": "draft",
+  "allOf": [
+    { "$ref": "../common/event-envelope.schema.json" },
+    { "properties": { "event_type": { "enum": ["TaskCreated", "TaskStarted", "TaskWaiting", "TaskResumed", "TaskSuspended", "TaskReviewingCompletion", "TaskCompleted", "TaskCancelled", "ContractChanged", "CompletionReviewed"] } } }
+  ]
+}

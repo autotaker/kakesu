@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:agent-harness:common:message-envelope:draft-v0:r1",
+  "x-schema-version": "draft-v0", "x-schema-revision": 1, "x-stability": "draft",
+  "title": "Cross-plane Message Envelope",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["message_id", "message_type", "from_component", "to_component", "correlation_id", "causation_message_id", "occurred_at", "payload_schema", "payload"],
+  "properties": {
+    "message_id": { "$ref": "primitives.schema.json#/$defs/id" },
+    "message_type": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "from_component": { "$ref": "primitives.schema.json#/$defs/id" },
+    "to_component": { "$ref": "primitives.schema.json#/$defs/id" },
+    "correlation_id": { "$ref": "primitives.schema.json#/$defs/id" },
+    "causation_message_id": { "anyOf": [{ "$ref": "primitives.schema.json#/$defs/id" }, { "type": "null" }] },
+    "occurred_at": { "$ref": "primitives.schema.json#/$defs/timestamp" },
+    "payload_schema": { "$ref": "schema-reference.schema.json" },
+    "payload": { "type": "object" }
+  }
+}

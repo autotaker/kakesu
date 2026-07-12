@@ -1,0 +1,9 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:agent-harness:governance-plane:authority-request:draft-v0:r1",
+  "x-schema-version": "draft-v0", "x-schema-revision": 1, "x-stability": "draft",
+  "oneOf": [
+    { "type": "object", "properties": { "kind": { "const": "grant" }, "authority_request_id": { "$ref": "../common/primitives.schema.json#/$defs/id" }, "grant_request_id": { "$ref": "../common/primitives.schema.json#/$defs/id" }, "challenge": { "$ref": "egress-challenge.schema.json" }, "binding_digest": { "$ref": "../common/primitives.schema.json#/$defs/digest" }, "authority_ref": { "$ref": "../common/primitives.schema.json#/$defs/ref" }, "expires_at": { "$ref": "../common/primitives.schema.json#/$defs/timestamp" } }, "required": ["kind", "authority_request_id", "grant_request_id", "challenge", "binding_digest", "authority_ref", "expires_at"], "additionalProperties": false },
+    { "type": "object", "properties": { "kind": { "const": "policy_revision" }, "authority_request_id": { "$ref": "../common/primitives.schema.json#/$defs/id" }, "proposal_id": { "$ref": "../common/primitives.schema.json#/$defs/id" }, "candidate_policy_digest": { "$ref": "../common/primitives.schema.json#/$defs/digest" }, "target_policy_key": { "type": "string", "pattern": "^(workspace|global):" }, "base_policy_version": { "type": "integer", "minimum": 1 }, "authority_ref": { "$ref": "../common/primitives.schema.json#/$defs/ref" }, "expires_at": { "$ref": "../common/primitives.schema.json#/$defs/timestamp" } }, "required": ["kind", "authority_request_id", "proposal_id", "candidate_policy_digest", "target_policy_key", "base_policy_version", "authority_ref", "expires_at"], "additionalProperties": false }
+  ]
+}

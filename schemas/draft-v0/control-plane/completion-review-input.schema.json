@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:agent-harness:control-plane:completion-review-input:draft-v0:r1",
+  "x-schema-version": "draft-v0", "x-schema-revision": 1, "x-stability": "draft",
+  "type": "object",
+  "properties": {
+    "task_contract": { "$ref": "task-contract.schema.json" },
+    "candidate_version": { "type": "integer", "minimum": 1 },
+    "owner_judgement": { "type": "string", "maxLength": 65536 },
+    "outcome_ref": { "$ref": "../common/primitives.schema.json#/$defs/ref" },
+    "artifact_refs": { "type": "array", "items": { "$ref": "../common/primitives.schema.json#/$defs/ref" }, "maxItems": 1024, "uniqueItems": true },
+    "evidence_refs": { "type": "array", "items": { "$ref": "../common/primitives.schema.json#/$defs/ref" }, "maxItems": 2048, "uniqueItems": true },
+    "required_child_outcome_refs": { "type": "array", "items": { "$ref": "../common/primitives.schema.json#/$defs/ref" }, "maxItems": 1024, "uniqueItems": true },
+    "input_digest": { "$ref": "../common/primitives.schema.json#/$defs/digest" }
+  },
+  "required": ["task_contract", "candidate_version", "owner_judgement", "outcome_ref", "artifact_refs", "evidence_refs", "required_child_outcome_refs", "input_digest"],
+  "additionalProperties": false
+}

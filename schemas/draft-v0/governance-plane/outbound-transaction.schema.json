@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:agent-harness:governance-plane:outbound-transaction:draft-v0:r1",
+  "x-schema-version": "draft-v0", "x-schema-revision": 1, "x-stability": "draft",
+  "type": "object",
+  "properties": {
+    "transaction_id": { "$ref": "../common/primitives.schema.json#/$defs/id" },
+    "attempt_id": { "$ref": "../common/primitives.schema.json#/$defs/id" },
+    "workspace_id": { "$ref": "../common/primitives.schema.json#/$defs/id" },
+    "task_id": { "$ref": "../common/primitives.schema.json#/$defs/id" },
+    "grant_id": { "anyOf": [{ "$ref": "../common/primitives.schema.json#/$defs/id" }, { "type": "null" }] },
+    "request_binding_digest": { "$ref": "../common/primitives.schema.json#/$defs/digest" },
+    "outer_request_digest": { "$ref": "../common/primitives.schema.json#/$defs/digest" },
+    "response_digest": { "anyOf": [{ "$ref": "../common/primitives.schema.json#/$defs/digest" }, { "type": "null" }] },
+    "status": { "enum": ["intent_committed", "forwarded", "completed", "failed", "outcome_unknown"] },
+    "started_at": { "$ref": "../common/primitives.schema.json#/$defs/timestamp" },
+    "completed_at": { "anyOf": [{ "$ref": "../common/primitives.schema.json#/$defs/timestamp" }, { "type": "null" }] }
+  },
+  "required": ["transaction_id", "attempt_id", "workspace_id", "task_id", "grant_id", "request_binding_digest", "outer_request_digest", "response_digest", "status", "started_at", "completed_at"],
+  "additionalProperties": false
+}

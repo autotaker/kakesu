@@ -1,0 +1,16 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "$id":"urn:agent-harness:execution-plane:workspace-created:draft-v0:r1",
+  "x-schema-version":"draft-v0", "x-schema-revision":1, "x-stability":"draft",
+  "type":"object", "additionalProperties":false,
+  "required":["workspace_id","owner_task_id","parent_workspace_id","workspace_mode","policy_binding_ref","inherited_grant_ids","created_at"],
+  "properties":{
+    "workspace_id":{"$ref":"../common/primitives.schema.json#/$defs/id"},
+    "owner_task_id":{"$ref":"../common/primitives.schema.json#/$defs/id"},
+    "parent_workspace_id":{"anyOf":[{"$ref":"../common/primitives.schema.json#/$defs/id"},{"type":"null"}]},
+    "workspace_mode":{"enum":["empty","fork"]},
+    "policy_binding_ref":{"$ref":"../common/primitives.schema.json#/$defs/ref"},
+    "inherited_grant_ids":{"type":"array","maxItems":0},
+    "created_at":{"$ref":"../common/primitives.schema.json#/$defs/timestamp"}
+  }
+}

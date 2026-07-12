@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:agent-harness:memory-plane:memory-context:draft-v0:r1",
+  "x-schema-version": "draft-v0", "x-schema-revision": 1, "x-stability": "draft",
+  "$defs": {
+    "excerpt": { "type": "object", "properties": { "title": { "type": "string", "maxLength": 1024 }, "content": { "type": "string", "maxLength": 65536 }, "source_refs": { "type": "array", "items": { "$ref": "../common/primitives.schema.json#/$defs/ref" }, "minItems": 1, "maxItems": 2048, "uniqueItems": true } }, "required": ["title", "content", "source_refs"], "additionalProperties": false }
+  },
+  "type": "object",
+  "properties": {
+    "request_id": { "$ref": "../common/primitives.schema.json#/$defs/id" },
+    "task_id": { "$ref": "../common/primitives.schema.json#/$defs/id" },
+    "semantic_context": { "type": "object", "properties": { "concepts": { "type": "array", "items": { "$ref": "#/$defs/excerpt" }, "maxItems": 512 }, "schemas": { "type": "array", "items": { "$ref": "#/$defs/excerpt" }, "maxItems": 512 }, "scripts": { "type": "array", "items": { "$ref": "#/$defs/excerpt" }, "maxItems": 512 }, "case_patterns": { "type": "array", "items": { "$ref": "#/$defs/excerpt" }, "maxItems": 512 } }, "required": ["concepts", "schemas", "scripts", "case_patterns"], "additionalProperties": false },
+    "relevant_episodes": { "type": "array", "items": { "$ref": "#/$defs/excerpt" }, "maxItems": 512 },
+    "unresolved_or_contested": { "type": "array", "items": { "$ref": "#/$defs/excerpt" }, "maxItems": 512 },
+    "source_refs": { "type": "array", "items": { "$ref": "../common/primitives.schema.json#/$defs/ref" }, "maxItems": 4096, "uniqueItems": true },
+    "generated_at": { "$ref": "../common/primitives.schema.json#/$defs/timestamp" },
+    "memory_version": { "type": "string", "minLength": 1, "maxLength": 128 }
+  },
+  "required": ["request_id", "task_id", "semantic_context", "relevant_episodes", "unresolved_or_contested", "source_refs", "generated_at", "memory_version"],
+  "additionalProperties": false
+}

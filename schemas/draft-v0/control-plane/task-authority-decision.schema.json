@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:agent-harness:control-plane:task-authority-decision:draft-v0:r1",
+  "x-schema-version": "draft-v0", "x-schema-revision": 1, "x-stability": "draft",
+  "type": "object",
+  "properties": {
+    "escalation_request_id": { "$ref": "../common/primitives.schema.json#/$defs/id" },
+    "responder_principal": { "$ref": "../common/primitives.schema.json#/$defs/ref" },
+    "message": { "type": "string", "maxLength": 65536 },
+    "contract_patch": { "anyOf": [{ "$ref": "task-contract.schema.json" }, { "type": "null" }] },
+    "terminate": { "type": "boolean" },
+    "decided_at": { "$ref": "../common/primitives.schema.json#/$defs/timestamp" }
+  },
+  "required": ["escalation_request_id", "responder_principal", "message", "contract_patch", "terminate", "decided_at"],
+  "additionalProperties": false
+}

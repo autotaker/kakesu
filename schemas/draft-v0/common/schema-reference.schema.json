@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:agent-harness:common:schema-reference:draft-v0:r1",
+  "x-schema-version": "draft-v0",
+  "x-schema-revision": 1,
+  "x-stability": "draft",
+  "type": "object",
+  "properties": {
+    "schema_id": { "type": "string", "minLength": 1, "maxLength": 512 },
+    "schema_revision": { "type": "integer", "minimum": 1 },
+    "schema_digest": { "$ref": "primitives.schema.json#/$defs/digest" }
+  },
+  "required": ["schema_id", "schema_revision", "schema_digest"],
+  "additionalProperties": false
+}

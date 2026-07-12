@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:agent-harness:governance-plane:egress-attempt:draft-v0:r1",
+  "x-schema-version": "draft-v0", "x-schema-revision": 1, "x-stability": "draft",
+  "type": "object",
+  "properties": {
+    "attempt_id": { "$ref": "../common/primitives.schema.json#/$defs/id" },
+    "workspace_id": { "$ref": "../common/primitives.schema.json#/$defs/id" },
+    "task_id": { "$ref": "../common/primitives.schema.json#/$defs/id" },
+    "agent_id": { "$ref": "../common/primitives.schema.json#/$defs/id" },
+    "origin_task_id": { "$ref": "../common/primitives.schema.json#/$defs/id" },
+    "delegation_chain_digest": { "$ref": "../common/primitives.schema.json#/$defs/digest" },
+    "process_ref": { "$ref": "../common/primitives.schema.json#/$defs/ref" },
+    "tool_call_id": {
+      "description": "Sandbox processを起動したToolCall。Agent外で生成された通信ではnull。",
+      "anyOf": [
+        { "$ref": "../common/primitives.schema.json#/$defs/id" },
+        { "type": "null" }
+      ]
+    },
+    "binding": { "$ref": "egress-request-binding.schema.json" },
+    "data_classification": { "type": "array", "items": { "type": "string", "maxLength": 128 }, "maxItems": 128, "uniqueItems": true },
+    "decision": { "enum": ["allow", "block"] },
+    "policy_refs": { "type": "array", "items": { "$ref": "../common/primitives.schema.json#/$defs/ref" }, "minItems": 1, "maxItems": 1024, "uniqueItems": true },
+    "created_at": { "$ref": "../common/primitives.schema.json#/$defs/timestamp" }
+  },
+  "required": ["attempt_id", "workspace_id", "task_id", "agent_id", "origin_task_id", "delegation_chain_digest", "process_ref", "tool_call_id", "binding", "data_classification", "decision", "policy_refs", "created_at"],
+  "additionalProperties": false
+}

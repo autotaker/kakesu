@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:agent-harness:memory-plane:memory-context-request:draft-v0:r1",
+  "x-schema-version": "draft-v0", "x-schema-revision": 1, "x-stability": "draft",
+  "type": "object",
+  "properties": {
+    "request_id": { "$ref": "../common/primitives.schema.json#/$defs/id" },
+    "task_id": { "$ref": "../common/primitives.schema.json#/$defs/id" },
+    "owner_profile": { "enum": ["L1", "L2", "L3"] },
+    "objective": { "type": "string", "maxLength": 65536 },
+    "acceptance": { "type": "string", "maxLength": 65536 },
+    "instructions": { "type": ["string", "null"], "maxLength": 65536 },
+    "project_ref": { "anyOf": [{ "$ref": "../common/primitives.schema.json#/$defs/ref" }, { "type": "null" }] },
+    "parent_task_id": { "anyOf": [{ "$ref": "../common/primitives.schema.json#/$defs/id" }, { "type": "null" }] },
+    "phase": { "enum": ["task_start", "subtask_start", "resume", "contract_change", "escalation", "egress_grant", "context_gap"] },
+    "workspace_summary": { "type": ["string", "null"], "maxLength": 65536 },
+    "event_summary": { "type": ["string", "null"], "maxLength": 65536 },
+    "token_budget": { "type": "integer", "minimum": 1 }
+  },
+  "required": ["request_id", "task_id", "owner_profile", "objective", "acceptance", "instructions", "project_ref", "parent_task_id", "phase", "workspace_summary", "event_summary", "token_budget"],
+  "additionalProperties": false
+}

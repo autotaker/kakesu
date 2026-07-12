@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:agent-harness:execution-plane:tool-result-values:draft-v0:r1",
+  "x-schema-version": "draft-v0", "x-schema-revision": 1, "x-stability": "draft",
+  "oneOf": [
+    { "type": "object", "properties": { "kind": { "const": "child_task" }, "child_task_id": { "$ref": "../common/primitives.schema.json#/$defs/id" }, "status": { "enum": ["running", "completed", "cancelled"] }, "outcome_ref": { "anyOf": [{ "$ref": "../common/primitives.schema.json#/$defs/ref" }, { "type": "null" }] } }, "required": ["kind", "child_task_id", "status", "outcome_ref"], "additionalProperties": false },
+    { "type": "object", "properties": { "kind": { "const": "grant" }, "decision": { "enum": ["grant", "deny", "cancelled"] }, "grant_id": { "anyOf": [{ "$ref": "../common/primitives.schema.json#/$defs/id" }, { "type": "null" }] }, "policy_version": { "type": ["integer", "null"], "minimum": 1 }, "reason": { "type": ["string", "null"], "maxLength": 8192 } }, "required": ["kind", "decision", "grant_id", "policy_version", "reason"], "additionalProperties": false },
+    { "type": "object", "properties": { "kind": { "const": "wait" }, "async_ids": { "type": "array", "items": { "$ref": "../common/primitives.schema.json#/$defs/id" }, "minItems": 1, "maxItems": 1024, "uniqueItems": true }, "resolved_ids": { "type": "array", "items": { "$ref": "../common/primitives.schema.json#/$defs/id" }, "maxItems": 1024, "uniqueItems": true } }, "required": ["kind", "async_ids", "resolved_ids"], "additionalProperties": false },
+    { "type": "object", "properties": { "kind": { "enum": ["ask", "escalation", "cancellation", "progress"] }, "result_ref": { "$ref": "../common/primitives.schema.json#/$defs/ref" } }, "required": ["kind", "result_ref"], "additionalProperties": false }
+  ]
+}

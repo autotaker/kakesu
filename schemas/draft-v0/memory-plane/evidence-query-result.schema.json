@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:agent-harness:memory-plane:evidence-query-result:draft-v0:r1",
+  "x-schema-version": "draft-v0", "x-schema-revision": 1, "x-stability": "draft",
+  "type": "object",
+  "properties": {
+    "columns": { "type": "array", "items": { "type": "string", "maxLength": 256 }, "maxItems": 256 },
+    "rows": { "type": "array", "items": { "type": "array", "items": {}, "maxItems": 256 }, "maxItems": 10000 },
+    "truncated": { "type": "boolean" },
+    "next_cursor": { "type": ["string", "null"], "maxLength": 2048 },
+    "returned_bytes": { "type": "integer", "minimum": 0 }
+  },
+  "required": ["columns", "rows", "truncated", "next_cursor", "returned_bytes"],
+  "additionalProperties": false
+}

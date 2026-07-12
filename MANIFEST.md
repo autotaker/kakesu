@@ -23,9 +23,15 @@
 
 | Path | Role |
 |---|---|
-| `schemas/work-agent-tools.json` | Responses API function definitions for Work Agents |
-| `schemas/built-in-agent-outputs.json` | Structured Output schemas for built-in Reviewer, Policy, and Egress Audit components |
-| `schemas/authority-tools.json` | Egress Grant and Task Escalation ingress functions for external Authority adapters |
+| `schemas/README.md` | Plane ownership and draft-v0 schema versioning rules |
+| `schemas/draft-v0/control-plane/README.md` | Control Plane canonical schema catalog |
+| `schemas/draft-v0/execution-plane/README.md` | Execution Plane canonical schema catalog |
+| `schemas/draft-v0/governance-plane/README.md` | Governance Plane canonical schema catalog |
+| `schemas/draft-v0/memory-plane/README.md` | Memory Plane canonical schema catalog |
+| `schemas/draft-v0/common/README.md` | Cross-plane primitive and envelope schema catalog |
+| `schemas/draft-v0/api/work-agent-tools.json` | Responses API function bundle for Work Agents |
+| `schemas/draft-v0/api/built-in-agent-outputs.json` | Structured Output bundle for built-in components |
+| `schemas/draft-v0/api/authority-tools.json` | Authority adapter ingress function bundle |
 | `schemas/domain-types.ts` | Canonical logical TypeScript types |
 | `examples/semantic/` | Concept / Schema / Script / Case Pattern examples |
 | `examples/episodic/T-110.md` | Documentation example for the Task Episode schema, not runtime storage |

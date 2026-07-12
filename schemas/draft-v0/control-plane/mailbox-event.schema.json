@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:agent-harness:control-plane:mailbox-event:draft-v0:r1",
+  "x-schema-version": "draft-v0", "x-schema-revision": 1, "x-stability": "draft",
+  "type": "object",
+  "properties": {
+    "event_id": { "$ref": "../common/primitives.schema.json#/$defs/id" },
+    "task_id": { "$ref": "../common/primitives.schema.json#/$defs/id" },
+    "sequence_no": { "type": "integer", "minimum": 0 },
+    "created_at": { "$ref": "../common/primitives.schema.json#/$defs/timestamp" },
+    "type": { "enum": ["AsyncCompleted", "AsyncFailed", "AsyncCancelled", "AsyncProgress", "ChildCompleted", "AskAnswered", "EscalationDecided", "EgressBlocked", "PolicyGrantReady", "MemoryContextReady"] },
+    "payload_schema": { "$ref": "../common/schema-reference.schema.json" },
+    "payload": { "type": "object" }
+  },
+  "required": ["event_id", "task_id", "sequence_no", "created_at", "type", "payload_schema", "payload"],
+  "additionalProperties": false
+}
