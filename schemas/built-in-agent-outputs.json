@@ -16,30 +16,51 @@
       "additionalProperties": false
     }
   },
-  "policy_decision": {
+  "grant_decision": {
     "type": "json_schema",
-    "name": "policy_decision",
+    "name": "policy_grant_decision",
     "strict": true,
     "schema": {
       "type": "object",
       "properties": {
-        "decision": { "type": "string", "enum": ["allow", "deny", "require_authority", "insufficient_information"] },
+        "decision": { "type": "string", "enum": ["grant", "deny", "require_authority"] },
         "rationale": { "type": "string" },
-        "applied_policy_ids": { "type": "array", "items": { "type": "string" } },
-        "authority_ref": { "type": ["string", "null"] },
         "question": { "type": ["string", "null"] },
-        "required_evidence": { "type": "array", "items": { "type": "string" } },
-        "conditions": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "properties": { "type": { "type": "string" }, "value": { "type": "string" } },
-            "required": ["type", "value"],
-            "additionalProperties": false
-          }
-        }
+        "evidence_refs": { "type": "array", "items": { "type": "string" } }
       },
-      "required": ["decision", "rationale", "applied_policy_ids", "authority_ref", "question", "required_evidence", "conditions"],
+      "required": ["decision", "rationale", "question", "evidence_refs"],
+      "additionalProperties": false
+    }
+  },
+  "egress_review": {
+    "type": "json_schema",
+    "name": "egress_review_finding",
+    "strict": true,
+    "schema": {
+      "type": "object",
+      "properties": {
+        "verdict": { "type": "string", "enum": ["benign", "policy_bypass", "suspicious", "insufficient_evidence"] },
+        "severity": { "type": "string", "enum": ["low", "medium", "high", "critical"] },
+        "rationale": { "type": "string" },
+        "attempt_ids": { "type": "array", "items": { "type": "string" } },
+        "evidence_refs": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["verdict", "severity", "rationale", "attempt_ids", "evidence_refs"],
+      "additionalProperties": false
+    }
+  },
+  "policy_revision_decision": {
+    "type": "json_schema",
+    "name": "policy_revision_decision",
+    "strict": true,
+    "schema": {
+      "type": "object",
+      "properties": {
+        "decision": { "type": "string", "enum": ["update", "no_change", "require_authority"] },
+        "rationale": { "type": "string" },
+        "evidence_refs": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["decision", "rationale", "evidence_refs"],
       "additionalProperties": false
     }
   }

@@ -12,7 +12,7 @@
 | `docs/04-built-in-agents.md` | Built-in LLM components outside Harness agent/run management |
 | `docs/05-runtime-and-responses-api.md` | Coroutine runtime and Responses API mapping |
 | `docs/06-tools-and-async.md` | LLM tools, timeout promotion, async IDs, mailbox |
-| `docs/07-governance.md` | Sandbox boundary, Policy Judge, Effect Gateway |
+| `docs/07-governance.md` | Sandbox boundary, CASB egress enforcement, and policy grants |
 | `docs/08-long-term-memory.md` | Task Episode and Wiki Agent memory architecture |
 | `docs/09-semantic-wiki-schema.md` | Markdown semantic memory schema |
 | `docs/10-running-example.md` | End-to-end root Task simulation |
@@ -24,10 +24,9 @@
 | Path | Role |
 |---|---|
 | `schemas/work-agent-tools.json` | Responses API function definitions for Work Agents |
-| `schemas/built-in-agent-outputs.json` | Structured Output schemas for built-in Reviewer and Policy Judge components |
-| `schemas/authority-tools.json` | Effect and Task Escalation ingress functions for external Authority adapters |
+| `schemas/built-in-agent-outputs.json` | Structured Output schemas for built-in Reviewer, Policy, and Egress Audit components |
+| `schemas/authority-tools.json` | Egress Grant and Task Escalation ingress functions for external Authority adapters |
 | `schemas/domain-types.ts` | Canonical logical TypeScript types |
 | `examples/semantic/` | Concept / Schema / Script / Case Pattern examples |
 | `examples/episodic/T-110.md` | Documentation example for the Task Episode schema, not runtime storage |
 | `sources/OPENAI_API_NOTES.md` | Official API assumptions checked on 2026-07-11 |
-| `SHA256SUMS` | File integrity list |

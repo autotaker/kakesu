@@ -178,7 +178,7 @@ export interface Continuation {
 export type WaitCondition =
   | { kind: "child"; asyncIds: string[]; mode: "all" | "any" }
   | { kind: "parent"; requestId: string }
-  | { kind: "effect"; effectId: string }
+  | { kind: "grant"; asyncId: string }
   | { kind: "timer"; wakeAt: string };
 
 export type ParentRequestStatus = "pending" | "resolved" | "cancelled";
@@ -261,8 +261,36 @@ export interface AsyncOperation {
   completedAt?: string;
   resultRef?: string;
   errorRef?: string;
-  idempotencyKey?: string;
+  operationKey: string;
 }
+
+export type EgressMailboxEvent =
+  | {
+      eventId: string;
+      type: "EgressBlocked";
+      workspaceId: string;
+      taskId: string;
+      challengeId: string;
+      protocol: "dns" | "https" | "tls" | "tcp" | "udp";
+      destinationRef: string;
+      requestSummaryRef?: string;
+      reasonCodes: string[];
+      grantEligible: boolean;
+      challengeExpiresAt: string;
+    }
+  | {
+      eventId: string;
+      type: "PolicyGrantReady";
+      workspaceId: string;
+      taskId: string;
+      requestId: string;
+      asyncId: string;
+      challengeId: string;
+      grantId: string;
+      policyVersion: number;
+      expiresAt: string;
+      retryOriginalCommand: true;
+    };
 
 export interface CompletionCandidate {
   taskId: string;
@@ -312,41 +340,357 @@ export interface CompletionReview {
   decidedAt: string;
 }
 
-export interface NormalizedEffect {
-  effectId: string;
-  effectType: string;
-  target: {
-    provider: string;
-    resourceType: string;
-    resourceId: string;
-  };
-  operation: string;
-  payloadRef: string;
-  payloadDigest: string;
-  payloadSummary: string;
-  dataClassification: string[];
-  estimatedCost?: number;
-  requesterTaskId: string;
+export interface EgressAttempt {
+  attemptId: string;
+  workspaceId: string;
+  taskId: string;
+  agentId: string;
   originTaskId: string;
-  delegationChain: string[];
-  causalEventIds: string[];
-  requesterExplanation?: string;
+  delegationChainDigest: string;
+  processRef: string;
+  binding: EgressRequestBinding;
+  dataClassification: string[];
+  decision: "allow" | "block";
+  policyRefs: string[];
+  createdAt: string;
+}
+
+export interface EgressCaptureRange {
+  start: number;
+  endExclusive: number;
+  digest: string;
+}
+
+export interface EgressCaptureCoverage {
+  status: "complete" | "partial" | "unavailable" | "incomplete";
+  totalBytes: number | null;
+  capturedRanges: EgressCaptureRange[];
+  redactedRanges: EgressCaptureRange[];
+  truncated: boolean;
+  limitationReason: string | null;
+  classification: string[];
+  encryptedBlobRef: string | null;
+  keyRef: string | null;
+}
+
+export interface EgressCaptureManifest {
+  captureManifestId: string;
+  attemptId: string;
+  request: EgressCaptureCoverage;
+  response: EgressCaptureCoverage | null;
+  completionStatus: "request_committed" | "response_committed" | "connection_failed" | "incomplete";
+  retentionExpiresAt: string;
+  pinnedUntilRef: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface EgressRuleDecision {
+  ruleDecisionId: string;
+  attemptId: string;
+  decision: "allow" | "block";
+  policyVersion: number;
+  matchedRuleRefs: string[];
+  reasonCodes: string[];
+  evaluatedAt: string;
+}
+
+export interface PolicyRevisionDecision {
+  decision: "update" | "no_change" | "require_authority";
+  rationale: string;
   evidenceRefs: string[];
 }
 
-export interface PolicyDecision {
-  decision: "allow" | "deny" | "require_authority" | "insufficient_information";
-  rationale: string;
-  appliedPolicyIds: string[];
-  authorityRef: string | null;
-  question: string | null;
-  requiredEvidence: string[];
-  conditions: ExecutionCondition[];
+export interface EgressRequestBinding {
+  protocol: "dns" | "https" | "tls" | "tcp" | "udp";
+  scheme: string;
+  fqdn: string | null;
+  resolvedIp: string | null;
+  port: number;
+  method: string | null;
+  normalizedPathQuery: string | null;
+  policyHeadersDigest: string | null;
+  bodyDigest: string | null;
+  bodySize: number | null;
+  requestedCredentialScope: string | null;
+  dnsSnapshotRef: string | null;
+  baselinePolicyVersion: number;
+  canonicalRequestDigest: string;
 }
 
-export interface ExecutionCondition {
-  type: string;
-  value: string;
+export interface EgressChallenge {
+  challengeId: string;
+  workspaceId: string;
+  taskId: string;
+  originTaskId: string;
+  delegationChainDigest: string;
+  contractVersion: number;
+  binding: EgressRequestBinding;
+  destinationRef: string;
+  requestSummaryRef?: string;
+  reasonCodes: string[];
+  grantEligible: boolean;
+  autoGrantEligible: boolean;
+  requiredAuthorityRef: string | null;
+  createdAt: string;
+  expiresAt: string;
+}
+
+export interface ChallengeObservation {
+  challengeId: string;
+  attemptId: string;
+  observedAt: string;
+}
+
+export interface GrantRequest {
+  requestId: string;
+  workspaceId: string;
+  taskId: string;
+  originTaskId: string;
+  delegationChainDigest: string;
+  challengeId: string;
+  asyncId: string;
+  justification: string;
+  evidenceRefs: string[];
+  operationKey: string;
+  status: "pending" | "evaluating" | "waiting_authority" | "completed" | "denied" | "cancelled";
+  createdAt: string;
+}
+
+export interface GrantEvaluationJob {
+  jobId: string;
+  grantRequestId: string;
+  inputSnapshotRef: string;
+  inputDigest: string;
+  profileVersion: string;
+  outputSchemaVersion: string;
+  status: "pending" | "evaluating" | "completed" | "cancelled" | "needs_operator";
+  attempt: number;
+  leaseOwner?: string;
+  leaseExpiresAt?: string;
+  invocationDeadlineAt: string;
+  lastErrorRef?: string;
+}
+
+export interface GrantDecision {
+  decision: "grant" | "deny" | "require_authority";
+  rationale: string;
+  question: string | null;
+  evidenceRefs: string[];
+}
+
+export interface GrantDecisionRecord {
+  decisionId: string;
+  grantRequestId: string;
+  evaluationJobId: string;
+  inputDigest: string;
+  profileVersion: string;
+  outputSchemaVersion: string;
+  decision: GrantDecision;
+  decidedAt: string;
+}
+
+export interface GrantAuthorityRequest {
+  authorityRequestId: string;
+  grantRequestId: string;
+  grantDecisionId: string;
+  challengeId: string;
+  bindingDigest: string;
+  authorityRef: string;
+  status: "pending" | "approved" | "denied" | "expired" | "cancelled";
+  createdAt: string;
+  expiresAt: string;
+}
+
+export interface GrantAuthorityDecision {
+  authorityDecisionId: string;
+  authorityRequestId: string;
+  responderPrincipal: string;
+  decision: "approve" | "deny";
+  rationale: string;
+  decidedAt: string;
+}
+
+export interface PolicyGrant {
+  grantId: string;
+  workspaceId: string;
+  sourceTaskId: string;
+  originTaskId: string;
+  delegationChainDigest: string;
+  contractVersion: number;
+  sourceChallengeId: string;
+  sourceGrantRequestId: string;
+  sourceGrantDecisionId: string;
+  sourceAuthorityDecisionId: string | null;
+  bindingDigest: string;
+  protocol: "dns" | "https" | "tls" | "tcp" | "udp";
+  resolvedIp: string | null;
+  port: number;
+  credentialScope: string | null;
+  maxUses: 1;
+  connectionLimit: number;
+  byteLimit: number | null;
+  policyVersion: number;
+  status: "pending_activation" | "active" | "revoked";
+  useCount: number;
+  createdAt: string;
+  expiresAt: string;
+  revokedAt?: string;
+}
+
+export interface EgressReviewJob {
+  reviewJobId: string;
+  watermark: string;
+  selectionReason: "high_risk" | "anomaly" | "random_sample" | "incident_replay";
+  inputSnapshotRef: string;
+  inputDigest: string;
+  profileVersion: string;
+  outputSchemaVersion: string;
+  status: "pending" | "reviewing" | "completed" | "needs_operator";
+  attempt: number;
+  leaseOwner: string | null;
+  leaseExpiresAt: string | null;
+  reviewDeadlineAt: string;
+  capturePinRef: string;
+  lastErrorRef: string | null;
+  createdAt: string;
+}
+
+export interface EgressFinding {
+  findingId: string;
+  reviewJobId: string;
+  attemptIds: string[];
+  verdict: "benign" | "policy_bypass" | "suspicious" | "insufficient_evidence";
+  severity: "low" | "medium" | "high" | "critical";
+  rationale: string;
+  evidenceRefs: string[];
+  createdAt: string;
+}
+
+export interface PolicyRevision {
+  revisionId: string;
+  workspaceId: string | null;
+  targetPolicyKey: string;
+  sourceProposalId: string;
+  sourceAuthorityDecisionId: string | null;
+  basePolicyVersion: number;
+  previousPolicyVersion: number;
+  newPolicyVersion: number;
+  targetPolicyRef: string;
+  targetPolicyDigest: string;
+  promptProfileVersion: string;
+  regressionEvidenceRefs: string[];
+  approvedBy: string;
+  status: "pending_activation" | "active" | "superseded" | "cancelled";
+  activationAckRef: string | null;
+  createdAt: string;
+  activatedAt: string | null;
+}
+
+export interface PolicyRevisionJob {
+  jobId: string;
+  workspaceId: string | null;
+  targetPolicyKey: string;
+  inputSnapshotRef: string;
+  inputDigest: string;
+  candidatePolicyRef: string | null;
+  candidatePolicyDigest: string | null;
+  basePolicyVersion: number | null;
+  candidateFixedAt: string | null;
+  profileVersion: string;
+  outputSchemaVersion: string;
+  status: "pending" | "reviewing" | "completed" | "cancelled" | "needs_operator";
+  attempt: number;
+  leaseOwner: string | null;
+  leaseExpiresAt: string | null;
+  invocationDeadlineAt: string;
+  lastErrorRef: string | null;
+}
+
+export interface PolicyRevisionProposal {
+  proposalId: string;
+  jobId: string;
+  workspaceId: string | null;
+  targetPolicyKey: string;
+  candidatePolicyRef: string | null;
+  candidatePolicyDigest: string | null;
+  basePolicyVersion: number;
+  regressionEvidenceRefs: string[];
+  decision: PolicyRevisionDecision;
+  applicationStatus: "pending" | "waiting_authority" | "ready" | "stale" | "applied" | "denied" | "expired";
+  createdAt: string;
+}
+
+export interface PolicyRevisionJobFinding {
+  jobId: string;
+  findingId: string;
+}
+
+export interface PolicyRevisionAuthorityRequest {
+  authorityRequestId: string;
+  proposalId: string;
+  candidatePolicyDigest: string;
+  workspaceId: string | null;
+  targetPolicyKey: string;
+  basePolicyVersion: number;
+  authorityRef: string;
+  status: "pending" | "approved" | "denied" | "expired" | "cancelled";
+  createdAt: string;
+  expiresAt: string;
+}
+
+export interface PolicyRevisionAuthorityDecision {
+  authorityDecisionId: string;
+  authorityRequestId: string;
+  responderPrincipal: string;
+  decision: "approve" | "deny";
+  rationale: string;
+  decidedAt: string;
+}
+
+export interface DnsResolution {
+  resolutionId: string;
+  workspaceId: string;
+  taskId: string;
+  fqdn: string;
+  resolvedIps: string[];
+  ttlSeconds: number;
+  observedAt: string;
+}
+
+export interface OutboundTransaction {
+  transactionId: string;
+  attemptId: string;
+  workspaceId: string;
+  taskId: string;
+  grantId?: string;
+  requestBindingDigest: string;
+  outerRequestDigest: string;
+  responseDigest?: string;
+  status: "intent_committed" | "forwarded" | "completed" | "failed" | "outcome_unknown";
+  startedAt: string;
+  completedAt?: string;
+}
+
+export interface WorkspaceSecurityPolicyBinding {
+  workspaceId: string;
+  profileRef: string;
+  baselinePolicyVersion: number;
+  pendingRevisionId: string | null;
+  pendingPolicyVersion: number | null;
+  status: "active" | "frozen" | "retired";
+  version: number;
+  updatedAt: string;
+}
+
+export interface GlobalSecurityPolicyBinding {
+  targetPolicyKey: string;
+  profileRef: string;
+  activePolicyVersion: number;
+  pendingRevisionId: string | null;
+  pendingPolicyVersion: number | null;
+  version: number;
+  updatedAt: string;
 }
 
 export interface EpisodeStatement {
@@ -364,7 +708,7 @@ export interface EvidenceRecord {
     | "workspace_snapshot"
     | "decision"
     | "review"
-    | "effect"
+    | "egress"
     | "episode";
   taskId?: string;
   contentType: string;
@@ -416,7 +760,7 @@ export interface TaskEpisode {
     ownerJudgement: string;
     acceptanceReviewRef?: string;
     artifactRefs: string[];
-    effectRefs: string[];
+    outboundTransactionRefs: string[];
   };
   surprises: EpisodeStatement[];
   decisions: EpisodeStatement[];

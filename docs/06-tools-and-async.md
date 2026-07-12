@@ -7,7 +7,6 @@
 ```typescript
 type ToolCallOptions = {
   timeout_ms?: number;
-  idempotency_key?: string;
 };
 
 type ToolResult<T> =
@@ -23,6 +22,35 @@ cancel  = 実処理を停止する
 
 期限超過後も処理は継続する。結果はMailboxへ送る。
 
+冪等キーはLLMに生成させない。Harnessが永続化した`task_id + call_id + tool_name`から内部Operation Keyを決定論的に生成する。同じFunction Callの再配送は同じOperationへ収束し、新しい`call_id`は新しい要求として扱う。
+
+### Tool実行境界
+
+Work Agentへ公開するFunction Toolと、Sandbox境界で強制される通信Policyを区別する。
+
+| 種別 | Work Agentから見えるか | 実行場所 | 例 |
+|---|---|---|---|
+| Sandbox Tool | 見える | Task Sandbox内 | `terminal` |
+| Harness Control Tool | 見える | Harness Control Plane | `delegate`、`ask_parent`、`complete_candidate` |
+| Grant Request Tool | `request_grant`だけ見える | Harness Control Plane | CASB ChallengeへのGrant申請 |
+| Egress Enforcement | 見えない | HTTPS Proxy / DNS Proxy / Firewall | CLI通信のallow / block |
+
+Work AgentはSandbox内で`gh`、`git`、`curl`等を自由に使う。外向き通信はEgress Control Planeが強制捕捉するため、外部操作ごとの申請Toolは作らない。Baseline Policyでblockされた場合だけ、MailboxのChallengeに対して`request_grant`を呼べる。
+
+Tool Registryは各Toolの実行境界を固定する。
+
+```typescript
+type ToolExecutionZone = "sandbox" | "harness_control";
+
+type ToolRegistration = {
+  tool_name: string;
+  execution_zone: ToolExecutionZone;
+  exposed_to_work_agent: boolean;
+};
+```
+
+HTTPS Proxy、DNS Proxy、Firewall、Credential BrokerはWork Agent ToolではなくSandbox基盤である。
+
 ## 2. Work Agent Tool一覧
 
 | Tool | 目的 | 通常の非同期理由 |
@@ -32,7 +60,7 @@ cancel  = 実処理を停止する
 | `ask_parent` | Child OwnerからParent OwnerへのAgent間助言要求 | 親Response待ち |
 | `escalate` | Taskから上位Authorityへ作業契約判断を移す | 上位決定待ち |
 | `reply_to_child` | 子のAsk/Escalationへ応答 | 子Mailbox配送待ち |
-| `request_effect` | External Effect要求 | Judge / Authority / 外部実行待ち |
+| `request_grant` | Mailboxで通知されたEgress Challengeへの一時Grant申請 | Policy Agent / Authority / Policy反映待ち |
 | `complete_candidate` | 完了候補提出 | Acceptance Review待ち |
 | `update_progress` | Harnessが強制する定期Progress更新 | Maintenance Response内で同期完了 |
 | `cancel_child_task` | 直接子Taskの責任撤回 | HarnessによるCancellation確定 |
@@ -50,7 +78,6 @@ terminal({
   command: string,
   cwd?: string,
   timeout_ms?: number,
-  idempotency_key?: string
 })
 ```
 
@@ -82,7 +109,6 @@ delegate({
   dependency: "required" | "optional",
   artifact_refs?: string[],
   timeout_ms?: number,
-  idempotency_key?: string
 })
 ```
 
@@ -107,7 +133,6 @@ ask_parent({
   message: string,
   artifact_refs?: string[],
   timeout_ms?: number,
-  idempotency_key?: string
 })
 ```
 
@@ -129,7 +154,6 @@ escalate({
   message: string,
   artifact_refs?: string[],
   timeout_ms?: number,
-  idempotency_key?: string
 })
 ```
 
@@ -147,9 +171,9 @@ type ParentDecision = {
 };
 ```
 
-External EffectのPolicy承認には使わない。
+Egress Grantの承認には使わない。
 
-Root Taskでは親Ownerの`reply_to_child`を使わない。Root Authorityが`submit_task_escalation_decision` ingressへ回答し、Harnessがrequest ID、Authority identity、idempotency keyを検証する。決定保存とContract version更新またはCancellation、`AsyncCompleted`配送を同一Transactionで確定する。
+Root Taskでは親Ownerの`reply_to_child`を使わない。Root Authorityが`submit_task_escalation_decision` ingressへ回答し、Harnessがrequest ID、Authority identity、未解決状態を検証する。同じrequest IDへの再配送は同じ決定へ収束させ、決定保存とContract version更新またはCancellation、`AsyncCompleted`配送を同一Transactionで確定する。
 
 
 ## 7. `reply_to_child`
@@ -168,38 +192,36 @@ reply_to_child({
   },
   terminate?: boolean,
   timeout_ms?: number,
-  idempotency_key?: string
 })
 ```
 
 `advice`は子を拘束しない。`contract_decision`はHarnessがContract versionを更新してから子へ配送する。`terminate: true`ではContract更新を行わず、Authority決定として対象子Taskを理由付きで`cancelled`へ確定し、通常のcascadeを適用する。
 
-## 8. `request_effect`
+## 8. `request_grant`
 
 ```typescript
-request_effect({
-  effect_type: string,
-  target: string,
-  payload_ref: string,
-  explanation?: string,
-  timeout_ms?: number,
-  idempotency_key?: string
+request_grant({
+  challenge_id: string,
+  justification: string,
+  evidence_refs: string[],
+  timeout_ms: number | null
 })
 ```
 
-Agentの`explanation`は要求者の主張として扱う。target、digest、classification、cost、origin chainはGatewayが計算する。
+`challenge_id`はCASBがblock時に作成し、`EgressBlocked` Mailbox Eventで通知する。Harnessは現在TaskがChallengeのWorkspaceを使用していること、Workspace Policy Binding、Challenge期限、grant eligibilityを検証し、Operation Keyを生成してWorkspace-scoped Grant Requestを保存する。
+
+Agentはdestination、Policy patch、TTL、Credential、idempotency keyを指定しない。Policy Agentの判断とCASB Policy ManagerによるWorkspace-scoped temporary Ruleの検証・反映後、結果を直接またはMailboxで返す。
 
 結果:
 
 ```typescript
-type EffectResult =
-  | { outcome: "succeeded"; result_ref: string }
-  | { outcome: "denied"; reason: string; decision_ref: string }
-  | { outcome: "failed"; reason: string }
-  | { outcome: "cancelled"; reason: string };
+type GrantResult =
+  | { decision: "grant"; grant_id: string; policy_version: number; expires_at: string; retry_original_command: true }
+  | { decision: "deny"; reason: string }
+  | { decision: "cancelled"; reason: string };
 ```
 
-`waiting_authority`はOperation途中の状態であり、同期期限を超えれば`async_id`で返す。
+`request_grant`は常にGrant Requestに紐づくAsync Operationを作る。期限内に終端すれば`ToolResult.completed`でGrantResultを返し、Authority待ちまたはPolicy反映が同期期限を超えれば`ToolResult.accepted(async_id)`を返す。最終的なgrant/deny/cancelは`AsyncCompleted`または`AsyncCancelled`の`result_ref`を正本とする。最初にblockされた通信は自動再生せず、grant結果と`PolicyGrantReady`受信後にAgentが元のCLI commandを再実行する。
 
 ## 9. `complete_candidate`
 
@@ -211,7 +233,6 @@ complete_candidate({
   evidence_refs?: string[],
   contract_version: number,
   timeout_ms?: number,
-  idempotency_key?: string
 })
 ```
 
@@ -248,7 +269,6 @@ cancel_child_task({
   reason: string,
   cancellation_policy?: "cascade" | "detach_children" | "transfer_children",
   timeout_ms?: number,
-  idempotency_key?: string
 })
 ```
 
@@ -262,7 +282,6 @@ report_context_gap({
   memory_refs?: string[],
   artifact_refs?: string[],
   timeout_ms?: number,
-  idempotency_key?: string
 })
 ```
 
@@ -277,13 +296,14 @@ report_memory_error({
   message: string,
   evidence_refs?: string[],
   timeout_ms?: number,
-  idempotency_key?: string
 })
 ```
 
 Work AgentはWikiを直接修正しない。報告はMemory PlaneのError Queueへ入り、Wiki AgentがEpisodeやEvidenceと照合して別のWiki maintenance Job内の一時API sessionで修正する。
 
 ## 13. Mailboxイベント
+
+永続`MailboxEntry`の共通Envelopeは`event_id`、`task_id`、`sequence_no`、`created_at`と以下のpayloadを持つ。例中の`event_id`以外の共通fieldは省略している。
 
 ```typescript
 type MailboxEvent =
@@ -315,6 +335,32 @@ type MailboxEvent =
       source_tool: string;
       message: string;
       progress?: number;
+    }
+  | {
+      event_id: string;
+      type: "EgressBlocked";
+      workspace_id: string;
+      task_id: string;
+      challenge_id: string;
+      protocol: "dns" | "https" | "tls" | "tcp" | "udp";
+      destination_ref: string;
+      request_summary_ref?: string;
+      reason_codes: string[];
+      grant_eligible: boolean;
+      challenge_expires_at: string;
+    }
+  | {
+      event_id: string;
+      type: "PolicyGrantReady";
+      workspace_id: string;
+      task_id: string;
+      request_id: string;
+      async_id: string;
+      challenge_id: string;
+      grant_id: string;
+      policy_version: number;
+      expires_at: string;
+      retry_original_command: true;
     };
 ```
 
@@ -322,7 +368,7 @@ type MailboxEvent =
 
 - at-least-once delivery
 - `event_id`で重複排除
-- `async_id`でOperationへ関連付け
+- Async Eventは`async_id`、CASB Eventは`challenge_id`で関連付け
 - `sequence_no`でTask内順序を付与
 - consumeはTask state更新と同一Transaction
 
@@ -332,12 +378,11 @@ type MailboxEvent =
 await_async({
   async_ids: string[],
   mode: "all" | "any",
-  timeout_ms?: number,
-  idempotency_key: string
+  timeout_ms?: number
 })
 ```
 
-期限内に条件が成立しなければ、待機条件そのものを表す新しい`async_id`を返す。元Operationを複製するのではなく、複数Operationを束ねるWait Group Operationである。同じTask、正規化済み`async_ids`、mode、`idempotency_key`の再試行では同じWait Groupを返す。条件成立時に`AsyncCompleted`がMailboxへ届く。OwnerがTaskを停止して待つ場合、HarnessはこのWait GroupをContinuationの`WaitCondition`へ結び、Taskを`waiting`へ遷移する。
+期限内に条件が成立しなければ、待機条件そのものを表す新しい`async_id`を返す。元Operationを複製するのではなく、複数Operationを束ねるWait Group Operationである。同じFunction Callの再配送ではHarness生成のOperation Keyにより同じWait Groupを返す。条件成立時に`AsyncCompleted`がMailboxへ届く。OwnerがTaskを停止して待つ場合、HarnessはこのWait GroupをContinuationの`WaitCondition`へ結び、Taskを`waiting`へ遷移する。
 
 `reply_to_child`ではHarnessが`request_id`から元Aggregateを解決し、Askには`response_kind: advice`だけを許可して`contract_patch = null`かつ`terminate = null | false`を強制する。Escalationには`response_kind: contract_decision`だけを許可する。Schemaだけでなく、この意味検証を適用前に必須とする。
 
@@ -348,11 +393,10 @@ cancel_async({
   async_id: string,
   reason: string,
   timeout_ms?: number,
-  idempotency_key?: string
 })
 ```
 
-Toolごとの取消可能性を検査する。すでに実行済みのExternal Effectは取消不能であり、補償Effectが必要になる。
+Toolごとの取消可能性を検査する。Grant workflowではPolicy Grantのactivation前だけ取消可能であり、Grant Request、Authority Request、Evaluation Job、Async Operationのcancel、`pending_activation` Grantのrevoke、pending Ready Outboxの無効化、`AsyncCancelled`を一つのTransactionで確定する。activation TransactionもRequest非終端とGrant pendingをlock下で再検査する。activation後は`not_cancellable`を返し、このToolからGrantを暗黙revokeしない。すでに外部へ到達したOutbound Transactionは取り消せず、必要なら通常のCLIで補償操作を行う。
 
 ## 16. Orphan結果
 
@@ -361,7 +405,7 @@ Owner Taskが終端後にOperation結果が届いた場合の既定値:
 | Operation | 処理 |
 |---|---|
 | child Task | 親TaskまたはSchedulerへ通知し、Episodeへ記録 |
-| external effect | 必ず監査記録し、元Task EpisodeへLate Eventとして参照 |
+| late Egress/Grant Event | 必ず監査記録し、元Task EpisodeへLate Eventとして参照 |
 | terminal | processを停止し、logをarchive |
 | parent advice | staleとして保存し、適用しない |
 

@@ -77,6 +77,14 @@ type Workspace = {
   mode: "fork" | "shared_readonly" | "empty";
   storage_ref: string;
   status: "active" | "frozen" | "archived" | "destroyed";
+  security_policy_binding: {
+    profile_ref: string;
+    baseline_policy_version: number;
+    pending_revision_id: string | null;
+    pending_policy_version: number | null;
+    status: "active" | "frozen" | "retired";
+    version: number;
+  };
 };
 ```
 
@@ -89,6 +97,10 @@ type Workspace = {
 | `empty` | 独立した空Workspaceから開始する |
 
 実体ストレージを共有しても、Taskごとの論理Workspace IDは分ける。Git worktree、container、local processなどの物理実行ResourceはWorkspace Aggregateに含めず、Agent ResourceとしてHarnessがLifecycleとCleanupを管理する。
+
+Security Policyの適用主体はAgentやAgent Runではなく論理Workspaceである。Sandbox network identity、CASB Rule、Credential scope、一時Grantは`workspace_id`へ束縛する。Task/Agent IDは要求者と目的を示す監査provenanceであり、Owner交代やRun再開でPolicy Bindingを変更しない。
+
+`fork`は親WorkspaceのPolicyを暗黙共有せず、Platform Policyが許すprofile/versionだけを新しいWorkspace Bindingへcopyする。親の一時Grant、使用回数、Authority approvalは子へ継承しない。`shared_readonly`でも子は別Workspace identityを持ち、外向き通信Policyは子のBindingで評価する。
 
 ## 4. Agent Run
 
@@ -146,6 +158,7 @@ erDiagram
     TASK ||--o{ AGENT_RUN : executed_by
     AGENT ||--o{ AGENT_RUN : instantiates
     TASK ||--|| WORKSPACE : uses
+    WORKSPACE ||--|| WORKSPACE_SECURITY_POLICY_BINDING : governed_by
     WORKSPACE ||--o{ WORKSPACE_SNAPSHOT : snapshots
     TASK ||--o{ TASK_EVENT : records
     TASK ||--o{ MAILBOX_ENTRY : receives
@@ -197,6 +210,16 @@ erDiagram
       string mode
       string storage_ref
       string status
+    }
+
+    WORKSPACE_SECURITY_POLICY_BINDING {
+      uuid workspace_id PK
+      string profile_ref
+      int baseline_policy_version
+      uuid pending_revision_id
+      int pending_policy_version
+      string status
+      int version
     }
 
     WORKSPACE_SNAPSHOT {
@@ -311,6 +334,9 @@ WHERE status NOT IN ('completed', 'cancelled');
 ### Workspace制約
 
 - Taskはちょうど一つのWorkspaceを持つ
+- Workspaceはちょうど一つのSecurity Policy Bindingを持つ
+- Policy BindingはOwner AgentやAgent RunではなくWorkspace IDへ束縛する
+- fork時にtemporary GrantとAuthority approvalを継承しない
 - Workspaceのsource chainは循環しない
 - `shared_readonly`では書き込み層を持たない
 
@@ -322,11 +348,12 @@ WHERE status NOT IN ('completed', 'cancelled');
 
 ## 8. OwnerとRole
 
-Agentは一つのTaskを持つ間、Owner Roleを担う。Policy Judge、Acceptance Reviewer、Wiki AgentはHarness管理Agentではなく、作業TaskのOwnerにならない専用LLMコンポーネントとして動かす。
+Agentは一つのTaskを持つ間、Owner Roleを担う。Policy Agent、Egress Audit Agent、Acceptance Reviewer、Wiki AgentはHarness管理Agentではなく、作業TaskのOwnerにならない専用LLMコンポーネントとして動かす。
 
 ```text
 Work Agent   : Taskを所有する
 Reviewer     : Taskを所有せず、Completion Candidateを評価する
-Policy Judge : Taskを所有せず、External Effectを評価する
+Policy Agent : Taskを所有せず、ChallengeやFindingからCASB Rule更新を評価する
+Audit Agent  : Taskを所有せず、通過済みEgressを事後評価する
 Wiki Agent   : 作業Taskを所有せず、記憶を保守・照会する
 ```

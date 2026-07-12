@@ -22,20 +22,12 @@
           ],
           "minimum": 0,
           "description": "同期的に待つ上限。超過後も処理は継続し、async_idを返す。"
-        },
-        "idempotency_key": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "description": "同一Task・同一Tool内の冪等キー。"
         }
       },
       "required": [
         "command",
         "cwd",
-        "timeout_ms",
-        "idempotency_key"
+        "timeout_ms"
       ],
       "additionalProperties": false
     },
@@ -103,13 +95,6 @@
           ],
           "minimum": 0,
           "description": "同期的に待つ上限。超過後も処理は継続し、async_idを返す。"
-        },
-        "idempotency_key": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "description": "同一Task・同一Tool内の冪等キー。"
         }
       },
       "required": [
@@ -120,8 +105,7 @@
         "workspace_mode",
         "dependency",
         "artifact_refs",
-        "timeout_ms",
-        "idempotency_key"
+        "timeout_ms"
       ],
       "additionalProperties": false
     },
@@ -157,20 +141,12 @@
           ],
           "minimum": 0,
           "description": "同期的に待つ上限。超過後も処理は継続し、async_idを返す。"
-        },
-        "idempotency_key": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "description": "同一Task・同一Tool内の冪等キー。"
         }
       },
       "required": [
         "message",
         "artifact_refs",
-        "timeout_ms",
-        "idempotency_key"
+        "timeout_ms"
       ],
       "additionalProperties": false
     },
@@ -179,7 +155,7 @@
   {
     "type": "function",
     "name": "escalate",
-    "description": "Objective・Acceptance・優先順位などTask Contract上の判断責任を上位Authorityへ移す。Child TaskはParent Taskへ、Root Taskは人間のRoot Authorityへ配送する。External Effect承認には使わない。",
+    "description": "Objective・Acceptance・優先順位などTask Contract上の判断責任を上位Authorityへ移す。Child TaskはParent Taskへ、Root Taskは人間のRoot Authorityへ配送する。Egress Grant承認には使わない。",
     "parameters": {
       "type": "object",
       "properties": {
@@ -206,20 +182,12 @@
           ],
           "minimum": 0,
           "description": "同期的に待つ上限。超過後も処理は継続し、async_idを返す。"
-        },
-        "idempotency_key": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "description": "同一Task・同一Tool内の冪等キー。"
         }
       },
       "required": [
         "message",
         "artifact_refs",
-        "timeout_ms",
-        "idempotency_key"
+        "timeout_ms"
       ],
       "additionalProperties": false
     },
@@ -294,13 +262,6 @@
           ],
           "minimum": 0,
           "description": "同期的に待つ上限。超過後も処理は継続し、async_idを返す。"
-        },
-        "idempotency_key": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "description": "同一Task・同一Tool内の冪等キー。"
         }
       },
       "required": [
@@ -309,8 +270,7 @@
         "message",
         "contract_patch",
         "terminate",
-        "timeout_ms",
-        "idempotency_key"
+        "timeout_ms"
       ],
       "additionalProperties": false
     },
@@ -318,25 +278,22 @@
   },
   {
     "type": "function",
-    "name": "request_effect",
-    "description": "Sandbox外へ作用するExternal EffectをEffect Gatewayへ要求する。",
+    "name": "request_grant",
+    "description": "CASBがblockしてMailboxへ通知したEgress Challengeに対するWorkspace限定temporary Ruleを申請する。",
     "parameters": {
       "type": "object",
       "properties": {
-        "effect_type": {
+        "challenge_id": {
           "type": "string"
         },
-        "target": {
+        "justification": {
           "type": "string"
         },
-        "payload_ref": {
-          "type": "string"
-        },
-        "explanation": {
-          "type": [
-            "string",
-            "null"
-          ]
+        "evidence_refs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         },
         "timeout_ms": {
           "type": [
@@ -345,22 +302,13 @@
           ],
           "minimum": 0,
           "description": "同期的に待つ上限。超過後も処理は継続し、async_idを返す。"
-        },
-        "idempotency_key": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "description": "同一Task・同一Tool内の冪等キー。"
         }
       },
       "required": [
-        "effect_type",
-        "target",
-        "payload_ref",
-        "explanation",
-        "timeout_ms",
-        "idempotency_key"
+        "challenge_id",
+        "justification",
+        "evidence_refs",
+        "timeout_ms"
       ],
       "additionalProperties": false
     },
@@ -409,13 +357,6 @@
           ],
           "minimum": 0,
           "description": "同期的に待つ上限。超過後も処理は継続し、async_idを返す。"
-        },
-        "idempotency_key": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "description": "同一Task・同一Tool内の冪等キー。"
         }
       },
       "required": [
@@ -424,8 +365,7 @@
         "artifact_refs",
         "evidence_refs",
         "contract_version",
-        "timeout_ms",
-        "idempotency_key"
+        "timeout_ms"
       ],
       "additionalProperties": false
     },
@@ -517,21 +457,13 @@
           ],
           "minimum": 0,
           "description": "同期的に待つ上限。超過後も処理は継続し、async_idを返す。"
-        },
-        "idempotency_key": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "description": "同一Task・同一Tool内の冪等キー。"
         }
       },
       "required": [
         "child_task_id",
         "reason",
         "cancellation_policy",
-        "timeout_ms",
-        "idempotency_key"
+        "timeout_ms"
       ],
       "additionalProperties": false
     },
@@ -580,21 +512,13 @@
           ],
           "minimum": 0,
           "description": "同期的に待つ上限。超過後も処理は継続し、async_idを返す。"
-        },
-        "idempotency_key": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "description": "同一Task・同一Tool内の冪等キー。"
         }
       },
       "required": [
         "message",
         "memory_refs",
         "artifact_refs",
-        "timeout_ms",
-        "idempotency_key"
+        "timeout_ms"
       ],
       "additionalProperties": false
     },
@@ -633,21 +557,13 @@
           ],
           "minimum": 0,
           "description": "同期的に待つ上限。超過後も処理は継続し、async_idを返す。"
-        },
-        "idempotency_key": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "description": "同一Task・同一Tool内の冪等キー。"
         }
       },
       "required": [
         "memory_ref",
         "message",
         "evidence_refs",
-        "timeout_ms",
-        "idempotency_key"
+        "timeout_ms"
       ],
       "additionalProperties": false
     },
@@ -681,17 +597,12 @@
           ],
           "minimum": 0,
           "description": "同期的に待つ上限。超過後も処理は継続し、async_idを返す。"
-        },
-        "idempotency_key": {
-          "type": "string",
-          "description": "同一Task・正規化済みasync_ids・modeでWait Group生成を冪等化する。"
         }
       },
       "required": [
         "async_ids",
         "mode",
-        "timeout_ms",
-        "idempotency_key"
+        "timeout_ms"
       ],
       "additionalProperties": false
     },
@@ -717,20 +628,12 @@
           ],
           "minimum": 0,
           "description": "同期的に待つ上限。超過後も処理は継続し、async_idを返す。"
-        },
-        "idempotency_key": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "description": "同一Task・同一Tool内の冪等キー。"
         }
       },
       "required": [
         "async_id",
         "reason",
-        "timeout_ms",
-        "idempotency_key"
+        "timeout_ms"
       ],
       "additionalProperties": false
     },

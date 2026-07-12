@@ -19,7 +19,7 @@ Work Agent Plane
   目的理解・計画・実装・調査・移譲・完了候補提出
 
 Governance Plane
-  External Effectの正規化・Policy評価・Authority解決
+  Egress捕捉・rule-based CASB・Policy更新・事後Review・Authority解決
 
 Memory Plane
   Task Episode化・Wiki保守・Task向けContext生成
@@ -34,15 +34,17 @@ Harness
 
 ### 2.2 外部世界との接点だけを統治
 
-ネットワーク、Credential、本番環境、外部Repository、メール、Slack、課金資源などへの作用はすべてEffect Gatewayを通す。
+Sandboxの外向き通信はHTTPS/DNS ProxyとWorkspace-scoped FirewallからなるEgress Control Planeへ強制routingする。Agentは通常のCLIを使い、WorkspaceのCASB Ruleでblockされた通信だけを`request_grant`で申請する。
+
+inlineのallow/blockはversioned CASB Ruleだけで決め、通信ごとにLLMを呼ばない。自然言語や未知の攻撃をRuleで完全に防げるとは仮定せず、Rule作成・更新をPolicy Agentの確率的判断で支援する。通過通信も事後Reviewし、bypassを発見したらPolicy AgentがRule、Eval、回帰テストの改定を作る。
 
 ### 2.3 作業階層と統治階層を分離
 
-L3/L2/L1の親子関係は、目的・作業・文脈の移譲経路である。External Effectの承認経路ではない。Policy JudgeとAuthorityは別系統に置く。
+L3/L2/L1の親子関係は、目的・作業・文脈の移譲経路である。Egress Policy更新の承認経路ではない。Policy AgentとAuthorityは別系統に置く。
 
 ### 2.4 自然言語判断を偽装しない
 
-Objective、Acceptance、指示、意味的Policyは自然言語でよい。型にするのは、状態、ID、参照、予算、Effect digest、Decision種別など、Harnessが強制する部分に限る。
+Objective、Acceptance、指示、意味的Policyは自然言語でよい。型にするのは、状態、ID、参照、予算、Egress Challenge、Grant scope、Decision種別など、Harnessが強制する部分に限る。
 
 ### 2.5 API状態を正本にしない
 
@@ -74,10 +76,12 @@ flowchart TB
     end
 
     subgraph G[Governance Plane]
-      EG[Effect Gateway]
-      PN[Effect Normalizer]
-      PC[Policy Cascade Resolver]
-      PJ[Independent Policy Judge]
+      EP[HTTPS / DNS Proxy]
+      FW[Workspace-scoped Firewall]
+      PS[CASB Rule Engine / Store]
+      PA[Policy Agent]
+      EA[Egress Audit Agent]
+      PM[CASB Policy Manager]
       AU[Authority Resolver]
     end
 
@@ -97,11 +101,23 @@ flowchart TB
     RC <--> MB
     RC <--> CS
     RC <--> SM
-    W -->|request_effect| EG
-    EG --> PN --> PC --> PJ
-    PJ -->|allow / deny / require authority| EG
-    PJ --> AU
-    EG --> EW
+    SM --> EP
+    SM --> FW
+    EP --> PS
+    FW --> PS
+    MB -->|EgressBlocked| W
+    W -->|request_grant| RC
+    RC --> PA
+    PA -->|rule update / deny| PM
+    PA -->|require authority| AU
+    AU -->|approve / deny| PM
+    PM --> PS
+    PM -->|Grant result| MB
+    EP -->|audit stream| EA
+    FW -->|audit stream| EA
+    EA -->|finding| PA
+    EP --> EW
+    FW --> EW
     TM -->|terminal Task| EC --> WA --> WR
     WA -->|Task-specific memory| RC
 ```
@@ -118,7 +134,7 @@ flowchart TB
 
 ### Workspace
 
-Task専用の論理作業領域。子Taskは親Workspaceから`fork`、`shared_readonly`、または`empty`で作られる。
+Task専用の論理作業領域であり、Security Policyの適用主体でもある。子Taskは親Workspaceから`fork`、`shared_readonly`、または`empty`で作られる。Owner AgentやAgent Runが変わってもPolicy Bindingは変わらず、fork先へ一時Grantを継承しない。
 
 ### Agent Run
 
@@ -134,7 +150,7 @@ Task専用の論理作業領域。子Taskは親Workspaceから`fork`、`shared_r
 
 ### Escalation
 
-Objective、Acceptance、優先順位、作業範囲など、現在のTask Contractでは決めるべきでない判断責任を上位Authorityへ移すプロトコルである。Child Taskでは親Task、Root Taskでは人間のRoot Authorityが移転先になる。AgentはTaskのOwnerとして送信するが、移転する責任はAgent個人ではなくTask Contractに属する。External Effectの許可とは分離する。
+Objective、Acceptance、優先順位、作業範囲など、現在のTask Contractでは決めるべきでない判断責任を上位Authorityへ移すプロトコルである。Child Taskでは親Task、Root Taskでは人間のRoot Authorityが移転先になる。AgentはTaskのOwnerとして送信するが、移転する責任はAgent個人ではなくTask Contractに属する。Egress Grantの許可とは分離する。
 
 両者は同じMailbox経路を利用しても、意味上の主体が異なる。
 
@@ -143,9 +159,9 @@ Objective、Acceptance、優先順位、作業範囲など、現在のTask Contr
 | Ask | Owner Agent間 | 情報・助言 | Contractは変えず、子Ownerが判断する |
 | Escalation | Taskと上位Authority間 | Contract上の判断責任 | 上位決定によりContractを明確化・更新・Cancellationしうる |
 
-### External Effect
+### Egress Challenge / Policy Grant
 
-Sandbox外へ観測可能な作用を与える要求。Policy Judgeが適合性を評価し、Effect Gatewayだけが実行する。
+Egress ChallengeはWorkspaceのCASB Ruleが外向き通信をblockした不変記録である。Policy Grantは特定Workspace、source Task、Challenge、宛先、request constraint、期限へ束縛した一時Ruleである。Agentは外部作用を事前申告せず、Mailboxで通知されたChallengeに対してだけGrantを申請する。
 
 ### Task Episode
 
@@ -188,7 +204,7 @@ type AgentAction =
   | AskParent
   | EscalateParent
   | ReplyToChild
-  | RequestExternalEffect
+  | RequestGrant
   | CompleteCandidate
   | CancelChildTask
   | ReportContextGap
@@ -222,23 +238,26 @@ type AgentAction =
 - Harness: 状態遷移を確定する
 - Parent Owner: 子成果を親Taskへ統合する
 
-## 9. External Effect統治
+## 9. Egress統治
 
 ```text
 Work Agent
-  → request_effect
-  → Effect Gatewayがpayloadを固定・正規化
-  → Hard Check
-  → Policy Cascade収集
-  → Independent Policy Judge
-      ├─ allow
+  → Sandbox内でgh / git / curl等を実行
+  → Egress Control Planeが実通信を捕捉
+  → CASB Baseline Policy
+      ├─ allowしてforward
+      └─ blockしてEgress Challenge作成
+  → Task MailboxへEgressBlocked
+  → 必要ならrequest_grant
+  → Policy Agent
+      ├─ grant
       ├─ deny
-      ├─ require_authority
-      └─ insufficient_information
-  → Gatewayが固定済みpayloadだけを実行
+      └─ require_authority
+  → CASB Policy Managerが一時Grantを反映
+  → Agentが元のCLI commandを再実行
 ```
 
-親Agentは子のEffectを承認しない。Effectの`origin_task_id`と`delegation_chain`を保持し、Spawnによる権限ロンダリングを防ぐ。
+親Agentは子のGrantを承認しない。ChallengeとGrantにTask identityとdelegation chainを保持し、Spawnによる権限ロンダリングを防ぐ。
 
 詳細は[07-governance.md](07-governance.md)を参照。
 
@@ -276,8 +295,8 @@ TaskごとのWorkspaceは1つ
 Owner以外はCompletion Candidateを提出できない
 ReviewerはOwner Agent Runから分離した一時API sessionで動作し、Harness Agent Runには登録しない
 親Ownerは直接の子だけをcancelできる
-External EffectはGateway以外から実行できない
-Policy JudgeはCredentialと作業Toolを持たない
+外向き通信はEgress Control Planeを迂回できない
+Policy AgentはCredential、外部network、本番Policy Store write Toolを持たない
 Task Episodeは終端後にのみ確定する
 Work AgentはSemantic Wikiファイルを直接読まない
 ```
