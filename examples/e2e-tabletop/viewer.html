@@ -82,11 +82,11 @@
 <script src="viewer-data.js"></script>
 <script>
 const PLANES={"control-plane":"var(--control)","execution-plane":"var(--execution)","governance-plane":"var(--governance)","memory-plane":"var(--memory)"};
-const AUTO=["executable-scenarios.json","executable-scenario-002.json","domain-payload-bindings.json","domain-payloads-001.json","domain-payloads-002.json","domain-payloads-003.json","domain-payloads-004.json","domain-payloads-fixes.json","domain-payloads-task-events.json","sequence-requirements.json","scenarios.json"];
+const AUTO=["executable-scenarios.json","executable-scenario-002.json","executable-scenario-004-incident.json","domain-payloads-canonical.json","domain-payloads-001.json","domain-payloads-002.json","domain-payloads-003.json","domain-payloads-004.json","domain-payloads-004-incident.json","domain-payloads-fixes.json","domain-payloads-task-events.json","sequence-requirements.json"];
 let store={scenarios:[],canonical:new Map(),bindings:new Map(),requirements:new Map(),sourceSteps:new Map()},selectedScenario=null,selectedStep=null;
 const $=s=>document.querySelector(s), esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 function ingest(name,data){
-  if(Array.isArray(data.scenarios)) for(const scenario of data.scenarios){for(const step of scenario.steps||[])store.sourceSteps.set(`${name}#${scenario.scenario_id}/${step.step_id}`,step);if(!store.scenarios.some(s=>s.scenario_id===scenario.scenario_id)) store.scenarios.push(scenario)}
+  if(Array.isArray(data.scenarios)) for(const scenario of data.scenarios){for(const step of scenario.steps||[])store.sourceSteps.set(`${name}#${scenario.scenario_id}/${step.step_id}`,step);if(store.scenarios.some(s=>s.scenario_id===scenario.scenario_id))throw new Error(`duplicate active scenario_id: ${scenario.scenario_id}`);store.scenarios.push(scenario)}
   for(const record of data.records||[]) store.canonical.set(record.message_id,{schema_ref:record.schema_ref,payload:record.payload,source:name});
   for(const binding of data.bindings||[]) store.bindings.set(binding.message_id,binding.source);
   for(const req of data.requirements||[]) store.requirements.set(req.scenario_id,req);

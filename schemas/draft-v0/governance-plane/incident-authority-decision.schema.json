@@ -1,0 +1,6 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema","$id":"urn:agent-harness:governance-plane:incident-authority-decision:draft-v0:r1","x-schema-version":"draft-v0","x-schema-revision":1,"x-stability":"draft",
+  "type":"object","additionalProperties":false,
+  "required":["authority_decision_id","authority_request_id","incident_id","decision","responder_principal","rationale","decided_at"],
+  "properties":{"authority_decision_id":{"$ref":"../common/primitives.schema.json#/$defs/id"},"authority_request_id":{"$ref":"../common/primitives.schema.json#/$defs/id"},"incident_id":{"$ref":"../common/primitives.schema.json#/$defs/id"},"decision":{"enum":["investigate_and_keep_suspended","resume","cancel","keep_suspended"]},"responder_principal":{"$ref":"../common/primitives.schema.json#/$defs/ref"},"rationale":{"type":"string","maxLength":65536},"decided_at":{"$ref":"../common/primitives.schema.json#/$defs/timestamp"}}
+}

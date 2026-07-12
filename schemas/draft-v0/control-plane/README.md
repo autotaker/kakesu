@@ -1,6 +1,6 @@
 # Control Plane Schema catalog — draft-v0
 
-Task責任、Contract、親子関係、Mailbox routing、Completion、外部Authorityへの判断移転を所有する。Agent RunやCASB Rule本文は所有しない。
+Task責任、Contract、親子関係、Mailbox routing、Completion、および人間・外部Authorityとの唯一の通信境界であるAuthority Gatewayを所有する。Gatewayは認証、配送、期限、重複排除、Decision永続化を担うが、各Planeが所有する判断の意味やscopeは変更しない。Agent RunやCASB Rule本文は所有しない。
 
 ## P0
 
@@ -17,6 +17,7 @@ Task責任、Contract、親子関係、Mailbox routing、Completion、外部Auth
 | `completion-review-output.schema.json` | accept / reject / insufficient evidence |
 | `task-authority-request.schema.json` | Root Task EscalationをAuthorityへ提示するpayload |
 | `task-authority-decision.schema.json` | Contract patch、terminate、responder provenance |
+| `task-containment-command.schema.json` | Containment集合のTask別suspendと保存済み状態へのresume要求 |
 
 ## P1
 

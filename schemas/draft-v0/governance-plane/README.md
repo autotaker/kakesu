@@ -1,6 +1,6 @@
 # Governance Plane Schema catalog — draft-v0
 
-Workspace Security Policy、CASB Rule、Credential scope、Egress audit、temporary Grant、恒久Policy Revision、対応Authorityを所有する。
+Workspace Security Policy、CASB Rule、Credential scope、Egress audit、temporary Grant、恒久Policy Revision、Authorityが判断する対象と要否を所有する。人間との送受信は所有せず、すべてControl PlaneのAuthority Gatewayを経由する。
 
 ## P0
 
@@ -33,6 +33,11 @@ Workspace Security Policy、CASB Rule、Credential scope、Egress audit、tempor
 | `credential-binding.schema.json` | broker sentinel、Workspace、provider principal、resource scope |
 | `policy-regression-result.schema.json` | replay dataset、見逃し、過剰block、coverage |
 | `policy-candidate.schema.json` | Revision Jobに固定するcandidate ref/digest、base version、fixed timestamp |
+| `security-incident.schema.json` | Finding、risk、containment、Revisionを結ぶIncident lifecycle |
+| `incident-risk-assessment.schema.json` | Rule floor、Reviewer推奨、effective risk、Human gate |
+| `incident-containment.schema.json` | Grant revoke、Egress制限、Workspace freeze、固定graph上の祖先・発生元・子孫Task suspend集合 |
+| `incident-authority-request.schema.json` | High/Critical Incident dispositionとTask resumeの人判断要求 |
+| `incident-authority-decision.schema.json` | keep suspended / resume / cancelの認証済み判断 |
 | `policy-finding.schema.json` | benign / bypass / suspicious / insufficient evidence |
 
 ## 現在のAPI adapter

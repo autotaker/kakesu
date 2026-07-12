@@ -3,105 +3,822 @@
   "requirements": [
     {
       "scenario_id": "E2E-001",
-      "ordered_message_types": ["MemoryContextRequest", "MemoryContext", "TaskRunning", "TestToolCall", "TestToolResult", "GitHubToolCall", "EgressAttemptBlocked", "EgressChallenge", "GrantRequest", "GrantDecisionRecord", "PolicyGrantPendingActivation", "PolicyActivationAck", "PolicyGrantActive", "AsyncCompleted", "PolicyGrantReady", "GitHubToolCallRetry", "EgressAttemptAllowed", "OutboundTransaction", "TaskReviewingCompletion", "CompletionReviewInput", "CompletionReviewOutput", "TaskCompleted", "EpisodeAgentInput", "TaskEpisode"],
+      "ordered_message_types": [
+        "MemoryContextRequest",
+        "MemoryContext",
+        "TaskRunning",
+        "TestToolCall",
+        "TestToolResult",
+        "GitHubToolCall",
+        "EgressAttemptBlocked",
+        "EgressChallenge",
+        "GrantRequest",
+        "GrantDecisionRecord",
+        "PolicyGrantPendingActivation",
+        "PolicyActivationAck",
+        "PolicyGrantActive",
+        "AsyncCompleted",
+        "PolicyGrantReady",
+        "GitHubToolCallRetry",
+        "EgressAttemptAllowed",
+        "OutboundTransaction",
+        "TaskReviewingCompletion",
+        "CompletionReviewInput",
+        "CompletionReviewOutput",
+        "TaskCompleted",
+        "EpisodeAgentInput",
+        "TaskEpisode"
+      ],
       "correlations": [
-        { "left_type": "MemoryContextRequest", "left_path": "refs.request_id", "right_type": "MemoryContext", "right_path": "refs.request_id" },
-        { "left_type": "GitHubToolCall", "left_path": "refs.call_id", "right_type": "EgressAttemptBlocked", "right_path": "refs.tool_call_id" },
-        { "left_type": "EgressChallenge", "left_path": "refs.challenge_id", "right_type": "GrantRequest", "right_path": "refs.challenge_id" },
-        { "left_type": "GrantRequest", "left_path": "refs.request_id", "right_type": "GrantDecisionRecord", "right_path": "refs.grant_request_id" },
-        { "left_type": "PolicyGrantPendingActivation", "left_path": "refs.grant_id", "right_type": "PolicyActivationAck", "right_path": "refs.grant_id" },
-        { "left_type": "PolicyGrantPendingActivation", "left_path": "refs.grant_id", "right_type": "PolicyGrantActive", "right_path": "refs.grant_id" },
-        { "left_type": "PolicyGrantActive", "left_path": "refs.grant_id", "right_type": "AsyncCompleted", "right_path": "refs.grant_id" },
-        { "left_type": "PolicyGrantActive", "left_path": "refs.grant_id", "right_type": "PolicyGrantReady", "right_path": "refs.grant_id" },
-        { "left_type": "PolicyGrantReady", "left_path": "refs.grant_id", "right_type": "GitHubToolCallRetry", "right_path": "refs.grant_id" },
-        { "left_type": "GitHubToolCallRetry", "left_path": "refs.call_id", "right_type": "EgressAttemptAllowed", "right_path": "refs.tool_call_id" },
-        { "left_type": "EgressAttemptAllowed", "left_path": "refs.attempt_id", "right_type": "OutboundTransaction", "right_path": "refs.attempt_id" },
-        { "left_type": "CompletionReviewInput", "left_path": "refs.input_digest", "right_type": "CompletionReviewOutput", "right_path": "refs.input_digest" },
-        { "left_type": "TaskCompleted", "left_path": "refs.task_id", "right_type": "EpisodeAgentInput", "right_path": "refs.task_id" }
+        {
+          "left_type": "MemoryContextRequest",
+          "left_path": "refs.request_id",
+          "right_type": "MemoryContext",
+          "right_path": "refs.request_id"
+        },
+        {
+          "left_type": "GitHubToolCall",
+          "left_path": "refs.call_id",
+          "right_type": "EgressAttemptBlocked",
+          "right_path": "refs.tool_call_id"
+        },
+        {
+          "left_type": "EgressChallenge",
+          "left_path": "refs.challenge_id",
+          "right_type": "GrantRequest",
+          "right_path": "refs.challenge_id"
+        },
+        {
+          "left_type": "GrantRequest",
+          "left_path": "refs.request_id",
+          "right_type": "GrantDecisionRecord",
+          "right_path": "refs.grant_request_id"
+        },
+        {
+          "left_type": "PolicyGrantPendingActivation",
+          "left_path": "refs.grant_id",
+          "right_type": "PolicyActivationAck",
+          "right_path": "refs.grant_id"
+        },
+        {
+          "left_type": "PolicyGrantPendingActivation",
+          "left_path": "refs.grant_id",
+          "right_type": "PolicyGrantActive",
+          "right_path": "refs.grant_id"
+        },
+        {
+          "left_type": "PolicyGrantActive",
+          "left_path": "refs.grant_id",
+          "right_type": "AsyncCompleted",
+          "right_path": "refs.grant_id"
+        },
+        {
+          "left_type": "PolicyGrantActive",
+          "left_path": "refs.grant_id",
+          "right_type": "PolicyGrantReady",
+          "right_path": "refs.grant_id"
+        },
+        {
+          "left_type": "PolicyGrantReady",
+          "left_path": "refs.grant_id",
+          "right_type": "GitHubToolCallRetry",
+          "right_path": "refs.grant_id"
+        },
+        {
+          "left_type": "GitHubToolCallRetry",
+          "left_path": "refs.call_id",
+          "right_type": "EgressAttemptAllowed",
+          "right_path": "refs.tool_call_id"
+        },
+        {
+          "left_type": "EgressAttemptAllowed",
+          "left_path": "refs.attempt_id",
+          "right_type": "OutboundTransaction",
+          "right_path": "refs.attempt_id"
+        },
+        {
+          "left_type": "CompletionReviewInput",
+          "left_path": "refs.input_digest",
+          "right_type": "CompletionReviewOutput",
+          "right_path": "refs.input_digest"
+        },
+        {
+          "left_type": "TaskCompleted",
+          "left_path": "refs.task_id",
+          "right_type": "EpisodeAgentInput",
+          "right_path": "refs.task_id"
+        }
       ],
       "causations": [
-        {"cause_type":"GitHubToolCall","effect_type":"EgressAttemptBlocked"}, {"cause_type":"EgressAttemptBlocked","effect_type":"EgressChallenge"},
-        {"cause_type":"EgressChallenge","effect_type":"GrantRequest"}, {"cause_type":"GrantRequest","effect_type":"GrantDecisionRecord"},
-        {"cause_type":"GrantDecisionRecord","effect_type":"PolicyGrantPendingActivation"}, {"cause_type":"PolicyGrantPendingActivation","effect_type":"PolicyActivationAck"},
-        {"cause_type":"PolicyActivationAck","effect_type":"PolicyGrantActive"}, {"cause_type":"PolicyGrantReady","effect_type":"GitHubToolCallRetry"},
-        {"cause_type":"GitHubToolCallRetry","effect_type":"EgressAttemptAllowed"}, {"cause_type":"EgressAttemptAllowed","effect_type":"OutboundTransaction"},
-        {"cause_type":"CompletionReviewInput","effect_type":"CompletionReviewOutput"}, {"cause_type":"CompletionReviewOutput","effect_type":"TaskCompleted"},
-        {"cause_type":"TaskCompleted","effect_type":"EpisodeAgentInput"}, {"cause_type":"EpisodeAgentInput","effect_type":"TaskEpisode"}
+        {
+          "cause_type": "GitHubToolCall",
+          "effect_type": "EgressAttemptBlocked"
+        },
+        {
+          "cause_type": "EgressAttemptBlocked",
+          "effect_type": "EgressChallenge"
+        },
+        {
+          "cause_type": "EgressChallenge",
+          "effect_type": "GrantRequest"
+        },
+        {
+          "cause_type": "GrantRequest",
+          "effect_type": "GrantDecisionRecord"
+        },
+        {
+          "cause_type": "GrantDecisionRecord",
+          "effect_type": "PolicyGrantPendingActivation"
+        },
+        {
+          "cause_type": "PolicyGrantPendingActivation",
+          "effect_type": "PolicyActivationAck"
+        },
+        {
+          "cause_type": "PolicyActivationAck",
+          "effect_type": "PolicyGrantActive"
+        },
+        {
+          "cause_type": "PolicyGrantReady",
+          "effect_type": "GitHubToolCallRetry"
+        },
+        {
+          "cause_type": "GitHubToolCallRetry",
+          "effect_type": "EgressAttemptAllowed"
+        },
+        {
+          "cause_type": "EgressAttemptAllowed",
+          "effect_type": "OutboundTransaction"
+        },
+        {
+          "cause_type": "CompletionReviewInput",
+          "effect_type": "CompletionReviewOutput"
+        },
+        {
+          "cause_type": "CompletionReviewOutput",
+          "effect_type": "TaskCompleted"
+        },
+        {
+          "cause_type": "TaskCompleted",
+          "effect_type": "EpisodeAgentInput"
+        },
+        {
+          "cause_type": "EpisodeAgentInput",
+          "effect_type": "TaskEpisode"
+        }
       ]
     },
     {
       "scenario_id": "E2E-002",
-      "ordered_message_types": ["DelegateCommand", "ChildTaskCreated", "ChildWorkspaceCreated", "MemoryContextRequest", "MemoryContext", "ChildTaskStarted", "RegistryToolCall", "EgressAttemptBlocked", "EgressChallenge", "GrantRequest", "GrantDecisionRecord", "PolicyGrantPendingActivation", "PolicyActivationAck", "PolicyGrantActive", "AsyncCompleted", "PolicyGrantReady", "RegistryToolCallRetry", "EgressAttemptAllowed", "OutboundTransaction", "ChildTaskReviewingCompletion", "ChildCompletionReviewInput", "ChildCompletionReviewOutput", "ChildTaskCompleted", "ChildEpisodeAgentInput", "ChildTaskEpisode", "MailboxChildCompleted", "MailboxChildConsumed", "ParentTaskRunning", "ParentIntegration", "ParentTaskReviewingCompletion", "ParentCompletionReviewInput", "ParentCompletionReviewOutput", "ParentTaskCompleted", "EpisodeAgentInput", "TaskEpisode"],
+      "ordered_message_types": [
+        "DelegateCommand",
+        "ChildTaskCreated",
+        "ChildWorkspaceCreated",
+        "MemoryContextRequest",
+        "MemoryContext",
+        "ChildTaskStarted",
+        "RegistryToolCall",
+        "EgressAttemptBlocked",
+        "EgressChallenge",
+        "GrantRequest",
+        "GrantDecisionRecord",
+        "PolicyGrantPendingActivation",
+        "PolicyActivationAck",
+        "PolicyGrantActive",
+        "AsyncCompleted",
+        "PolicyGrantReady",
+        "RegistryToolCallRetry",
+        "EgressAttemptAllowed",
+        "OutboundTransaction",
+        "ChildTaskReviewingCompletion",
+        "ChildCompletionReviewInput",
+        "ChildCompletionReviewOutput",
+        "ChildTaskCompleted",
+        "ChildEpisodeAgentInput",
+        "ChildTaskEpisode",
+        "MailboxChildCompleted",
+        "MailboxChildConsumed",
+        "ParentTaskRunning",
+        "ParentIntegration",
+        "ParentTaskReviewingCompletion",
+        "ParentCompletionReviewInput",
+        "ParentCompletionReviewOutput",
+        "ParentTaskCompleted",
+        "EpisodeAgentInput",
+        "TaskEpisode"
+      ],
       "correlations": [
-        { "left_type": "DelegateCommand", "left_path": "refs.child_task_id", "right_type": "ChildTaskCreated", "right_path": "refs.task_id" },
-        { "left_type": "EgressChallenge", "left_path": "refs.challenge_id", "right_type": "GrantRequest", "right_path": "refs.challenge_id" },
-        { "left_type": "GrantRequest", "left_path": "refs.request_id", "right_type": "GrantDecisionRecord", "right_path": "refs.grant_request_id" },
-        { "left_type": "PolicyGrantPendingActivation", "left_path": "refs.grant_id", "right_type": "PolicyActivationAck", "right_path": "refs.grant_id" },
-        { "left_type": "PolicyGrantPendingActivation", "left_path": "refs.grant_id", "right_type": "PolicyGrantActive", "right_path": "refs.grant_id" },
-        { "left_type": "PolicyGrantActive", "left_path": "refs.grant_id", "right_type": "PolicyGrantReady", "right_path": "refs.grant_id" },
-        { "left_type": "RegistryToolCallRetry", "left_path": "refs.call_id", "right_type": "EgressAttemptAllowed", "right_path": "refs.tool_call_id" },
-        { "left_type": "EgressAttemptAllowed", "left_path": "refs.attempt_id", "right_type": "OutboundTransaction", "right_path": "refs.attempt_id" },
-        { "left_type": "ChildTaskCompleted", "left_path": "refs.task_id", "right_type": "MailboxChildCompleted", "right_path": "refs.child_task_id" },
-        { "left_type": "MailboxChildCompleted", "left_path": "refs.child_task_id", "right_type": "ParentIntegration", "right_path": "refs.child_task_id" },
-        { "left_type": "ParentCompletionReviewInput", "left_path": "refs.input_digest", "right_type": "ParentCompletionReviewOutput", "right_path": "refs.input_digest" },
-        { "left_type": "ParentTaskCompleted", "left_path": "refs.task_id", "right_type": "EpisodeAgentInput", "right_path": "refs.task_id" }
+        {
+          "left_type": "DelegateCommand",
+          "left_path": "refs.child_task_id",
+          "right_type": "ChildTaskCreated",
+          "right_path": "refs.task_id"
+        },
+        {
+          "left_type": "EgressChallenge",
+          "left_path": "refs.challenge_id",
+          "right_type": "GrantRequest",
+          "right_path": "refs.challenge_id"
+        },
+        {
+          "left_type": "GrantRequest",
+          "left_path": "refs.request_id",
+          "right_type": "GrantDecisionRecord",
+          "right_path": "refs.grant_request_id"
+        },
+        {
+          "left_type": "PolicyGrantPendingActivation",
+          "left_path": "refs.grant_id",
+          "right_type": "PolicyActivationAck",
+          "right_path": "refs.grant_id"
+        },
+        {
+          "left_type": "PolicyGrantPendingActivation",
+          "left_path": "refs.grant_id",
+          "right_type": "PolicyGrantActive",
+          "right_path": "refs.grant_id"
+        },
+        {
+          "left_type": "PolicyGrantActive",
+          "left_path": "refs.grant_id",
+          "right_type": "PolicyGrantReady",
+          "right_path": "refs.grant_id"
+        },
+        {
+          "left_type": "RegistryToolCallRetry",
+          "left_path": "refs.call_id",
+          "right_type": "EgressAttemptAllowed",
+          "right_path": "refs.tool_call_id"
+        },
+        {
+          "left_type": "EgressAttemptAllowed",
+          "left_path": "refs.attempt_id",
+          "right_type": "OutboundTransaction",
+          "right_path": "refs.attempt_id"
+        },
+        {
+          "left_type": "ChildTaskCompleted",
+          "left_path": "refs.task_id",
+          "right_type": "MailboxChildCompleted",
+          "right_path": "refs.child_task_id"
+        },
+        {
+          "left_type": "MailboxChildCompleted",
+          "left_path": "refs.child_task_id",
+          "right_type": "ParentIntegration",
+          "right_path": "refs.child_task_id"
+        },
+        {
+          "left_type": "ParentCompletionReviewInput",
+          "left_path": "refs.input_digest",
+          "right_type": "ParentCompletionReviewOutput",
+          "right_path": "refs.input_digest"
+        },
+        {
+          "left_type": "ParentTaskCompleted",
+          "left_path": "refs.task_id",
+          "right_type": "EpisodeAgentInput",
+          "right_path": "refs.task_id"
+        }
       ],
       "causations": [
-        {"cause_type":"RegistryToolCall","effect_type":"EgressAttemptBlocked"}, {"cause_type":"EgressAttemptBlocked","effect_type":"EgressChallenge"},
-        {"cause_type":"EgressChallenge","effect_type":"GrantRequest"}, {"cause_type":"GrantRequest","effect_type":"GrantDecisionRecord"},
-        {"cause_type":"GrantDecisionRecord","effect_type":"PolicyGrantPendingActivation"}, {"cause_type":"PolicyGrantPendingActivation","effect_type":"PolicyActivationAck"},
-        {"cause_type":"PolicyActivationAck","effect_type":"PolicyGrantActive"}, {"cause_type":"PolicyGrantReady","effect_type":"RegistryToolCallRetry"},
-        {"cause_type":"RegistryToolCallRetry","effect_type":"EgressAttemptAllowed"}, {"cause_type":"EgressAttemptAllowed","effect_type":"OutboundTransaction"},
-        {"cause_type":"ChildCompletionReviewInput","effect_type":"ChildCompletionReviewOutput"}, {"cause_type":"ChildCompletionReviewOutput","effect_type":"ChildTaskCompleted"},
-        {"cause_type":"ChildTaskCompleted","effect_type":"ChildEpisodeAgentInput"}, {"cause_type":"ChildEpisodeAgentInput","effect_type":"ChildTaskEpisode"},
-        {"cause_type":"MailboxChildCompleted","effect_type":"MailboxChildConsumed"}, {"cause_type":"MailboxChildConsumed","effect_type":"ParentIntegration"},
-        {"cause_type":"ParentCompletionReviewInput","effect_type":"ParentCompletionReviewOutput"}, {"cause_type":"ParentCompletionReviewOutput","effect_type":"ParentTaskCompleted"},
-        {"cause_type":"ParentTaskCompleted","effect_type":"EpisodeAgentInput"}, {"cause_type":"EpisodeAgentInput","effect_type":"TaskEpisode"}
+        {
+          "cause_type": "RegistryToolCall",
+          "effect_type": "EgressAttemptBlocked"
+        },
+        {
+          "cause_type": "EgressAttemptBlocked",
+          "effect_type": "EgressChallenge"
+        },
+        {
+          "cause_type": "EgressChallenge",
+          "effect_type": "GrantRequest"
+        },
+        {
+          "cause_type": "GrantRequest",
+          "effect_type": "GrantDecisionRecord"
+        },
+        {
+          "cause_type": "GrantDecisionRecord",
+          "effect_type": "PolicyGrantPendingActivation"
+        },
+        {
+          "cause_type": "PolicyGrantPendingActivation",
+          "effect_type": "PolicyActivationAck"
+        },
+        {
+          "cause_type": "PolicyActivationAck",
+          "effect_type": "PolicyGrantActive"
+        },
+        {
+          "cause_type": "PolicyGrantReady",
+          "effect_type": "RegistryToolCallRetry"
+        },
+        {
+          "cause_type": "RegistryToolCallRetry",
+          "effect_type": "EgressAttemptAllowed"
+        },
+        {
+          "cause_type": "EgressAttemptAllowed",
+          "effect_type": "OutboundTransaction"
+        },
+        {
+          "cause_type": "ChildCompletionReviewInput",
+          "effect_type": "ChildCompletionReviewOutput"
+        },
+        {
+          "cause_type": "ChildCompletionReviewOutput",
+          "effect_type": "ChildTaskCompleted"
+        },
+        {
+          "cause_type": "ChildTaskCompleted",
+          "effect_type": "ChildEpisodeAgentInput"
+        },
+        {
+          "cause_type": "ChildEpisodeAgentInput",
+          "effect_type": "ChildTaskEpisode"
+        },
+        {
+          "cause_type": "MailboxChildCompleted",
+          "effect_type": "MailboxChildConsumed"
+        },
+        {
+          "cause_type": "MailboxChildConsumed",
+          "effect_type": "ParentIntegration"
+        },
+        {
+          "cause_type": "ParentCompletionReviewInput",
+          "effect_type": "ParentCompletionReviewOutput"
+        },
+        {
+          "cause_type": "ParentCompletionReviewOutput",
+          "effect_type": "ParentTaskCompleted"
+        },
+        {
+          "cause_type": "ParentTaskCompleted",
+          "effect_type": "EpisodeAgentInput"
+        },
+        {
+          "cause_type": "EpisodeAgentInput",
+          "effect_type": "TaskEpisode"
+        }
       ]
     },
     {
       "scenario_id": "E2E-003",
-      "ordered_message_types": ["TaskRunning", "ToolCall", "ToolResultAccepted", "AsyncOperationRunning", "TaskWaiting", "Continuation", "AsyncOperationCompleted", "MailboxAsyncCompleted", "MailboxAsyncConsumed", "MemoryContextRequest", "MemoryContext", "ResumeContext", "TaskResumed", "ExecutionAuditRecord", "TaskReviewingCompletion", "CompletionReviewInput", "CompletionReviewOutput", "TaskCompleted", "EpisodeAgentInput", "TaskEpisode"],
+      "ordered_message_types": [
+        "TaskRunning",
+        "ToolCall",
+        "ToolResultAccepted",
+        "AsyncOperationRunning",
+        "TaskWaiting",
+        "Continuation",
+        "AsyncOperationCompleted",
+        "MailboxAsyncCompleted",
+        "MailboxAsyncConsumed",
+        "MemoryContextRequest",
+        "MemoryContext",
+        "ResumeContext",
+        "TaskResumed",
+        "ExecutionAuditRecord",
+        "TaskReviewingCompletion",
+        "CompletionReviewInput",
+        "CompletionReviewOutput",
+        "TaskCompleted",
+        "EpisodeAgentInput",
+        "TaskEpisode"
+      ],
       "correlations": [
-        { "left_type": "AsyncOperationRunning", "left_path": "refs.async_id", "right_type": "AsyncOperationCompleted", "right_path": "refs.async_id" },
-        { "left_type": "AsyncOperationCompleted", "left_path": "refs.async_id", "right_type": "MailboxAsyncCompleted", "right_path": "refs.async_id" },
-        { "left_type": "Continuation", "left_path": "refs.continuation_id", "right_type": "ResumeContext", "right_path": "refs.continuation_id" },
-        { "left_type": "ResumeContext", "left_path": "refs.new_run_id", "right_type": "TaskResumed", "right_path": "refs.new_run_id" },
-        { "left_type": "CompletionReviewInput", "left_path": "refs.input_digest", "right_type": "CompletionReviewOutput", "right_path": "refs.input_digest" }
+        {
+          "left_type": "AsyncOperationRunning",
+          "left_path": "refs.async_id",
+          "right_type": "AsyncOperationCompleted",
+          "right_path": "refs.async_id"
+        },
+        {
+          "left_type": "AsyncOperationCompleted",
+          "left_path": "refs.async_id",
+          "right_type": "MailboxAsyncCompleted",
+          "right_path": "refs.async_id"
+        },
+        {
+          "left_type": "Continuation",
+          "left_path": "refs.continuation_id",
+          "right_type": "ResumeContext",
+          "right_path": "refs.continuation_id"
+        },
+        {
+          "left_type": "ResumeContext",
+          "left_path": "refs.new_run_id",
+          "right_type": "TaskResumed",
+          "right_path": "refs.new_run_id"
+        },
+        {
+          "left_type": "CompletionReviewInput",
+          "left_path": "refs.input_digest",
+          "right_type": "CompletionReviewOutput",
+          "right_path": "refs.input_digest"
+        }
       ],
       "causations": [
-        {"cause_type":"ToolCall","effect_type":"ToolResultAccepted"}, {"cause_type":"ToolResultAccepted","effect_type":"AsyncOperationRunning"},
-        {"cause_type":"AsyncOperationRunning","effect_type":"AsyncOperationCompleted"}, {"cause_type":"AsyncOperationCompleted","effect_type":"MailboxAsyncCompleted"},
-        {"cause_type":"MailboxAsyncCompleted","effect_type":"MailboxAsyncConsumed"}, {"cause_type":"MemoryContextRequest","effect_type":"MemoryContext"},
-        {"cause_type":"MemoryContext","effect_type":"ResumeContext"}, {"cause_type":"ResumeContext","effect_type":"TaskResumed"},
-        {"cause_type":"CompletionReviewInput","effect_type":"CompletionReviewOutput"}, {"cause_type":"CompletionReviewOutput","effect_type":"TaskCompleted"},
-        {"cause_type":"TaskCompleted","effect_type":"EpisodeAgentInput"}, {"cause_type":"EpisodeAgentInput","effect_type":"TaskEpisode"}
+        {
+          "cause_type": "ToolCall",
+          "effect_type": "ToolResultAccepted"
+        },
+        {
+          "cause_type": "ToolResultAccepted",
+          "effect_type": "AsyncOperationRunning"
+        },
+        {
+          "cause_type": "AsyncOperationRunning",
+          "effect_type": "AsyncOperationCompleted"
+        },
+        {
+          "cause_type": "AsyncOperationCompleted",
+          "effect_type": "MailboxAsyncCompleted"
+        },
+        {
+          "cause_type": "MailboxAsyncCompleted",
+          "effect_type": "MailboxAsyncConsumed"
+        },
+        {
+          "cause_type": "MemoryContextRequest",
+          "effect_type": "MemoryContext"
+        },
+        {
+          "cause_type": "MemoryContext",
+          "effect_type": "ResumeContext"
+        },
+        {
+          "cause_type": "ResumeContext",
+          "effect_type": "TaskResumed"
+        },
+        {
+          "cause_type": "CompletionReviewInput",
+          "effect_type": "CompletionReviewOutput"
+        },
+        {
+          "cause_type": "CompletionReviewOutput",
+          "effect_type": "TaskCompleted"
+        },
+        {
+          "cause_type": "TaskCompleted",
+          "effect_type": "EpisodeAgentInput"
+        },
+        {
+          "cause_type": "EpisodeAgentInput",
+          "effect_type": "TaskEpisode"
+        }
       ]
     },
     {
       "scenario_id": "E2E-004",
-      "ordered_message_types": ["EgressAuditInput", "EgressReviewFinding", "RemediationTaskCommand", "RemediationTaskCreated", "EvidenceRecord", "PolicyRevisionJob", "PolicyAgentRevisionInput", "PolicyCandidate", "PolicyRegressionResult", "PolicyRevisionDecision", "GovernanceAuthorityRequest", "GovernanceAuthorityDecision", "PolicyRevisionPendingActivation", "PolicyActivationAck", "PolicyRevisionActive", "RemediationTaskReviewingCompletion", "RemediationCompletionReviewInput", "RemediationCompletionReviewOutput", "RemediationTaskCompleted", "EpisodeAgentInput", "TaskEpisode"],
+      "ordered_message_types": [
+        "EgressAuditInput",
+        "EgressReviewFinding",
+        "SecurityIncidentCreated",
+        "IncidentEvidencePinned",
+        "IncidentRiskAssessed",
+        "TemporaryContainmentApplied",
+        "IncidentTaskScopeExpanded",
+        "IncidentActionGateClosed",
+        "SiblingTaskContinues",
+        "StopDescendantAgentRunRequested",
+        "DescendantAgentRunStopped",
+        "DescendantTaskSuspended",
+        "SuspendTaskRequested",
+        "StopSourceAgentRunRequested",
+        "SourceAgentRunStopped",
+        "SourceTaskSuspended",
+        "StopAncestorAgentRunRequested",
+        "AncestorAgentRunStopped",
+        "AncestorTaskSuspended",
+        "IncidentAuthorityRequest",
+        "IncidentAuthorityDecision",
+        "PolicyRevisionJob",
+        "PolicyAgentRevisionInput",
+        "PolicyCandidate",
+        "PolicyRegressionResult",
+        "PolicyRevisionDecision",
+        "GovernanceAuthorityRequest",
+        "GovernanceAuthorityDecision",
+        "PolicyRevisionPendingActivation",
+        "PolicyActivationAck",
+        "PolicyRevisionActive",
+        "SecurityIncidentRemediated",
+        "TaskResumeAuthorityRequest",
+        "TaskResumeAuthorityDecision",
+        "ContainmentReleased",
+        "ResumeTaskSetRequested",
+        "StartAncestorAgentRunRequested",
+        "AncestorAgentRunStarted",
+        "AncestorTaskResumed",
+        "StartSourceAgentRunRequested",
+        "SourceAgentRunStarted",
+        "SourceTaskResumed",
+        "StartDescendantAgentRunRequested",
+        "DescendantAgentRunStarted",
+        "DescendantTaskResumed"
+      ],
       "correlations": [
-        { "left_type": "PolicyCandidate", "left_path": "refs.candidate_policy_digest", "right_type": "PolicyRegressionResult", "right_path": "refs.candidate_policy_digest" },
-        { "left_type": "PolicyRevisionJob", "left_path": "refs.base_policy_version", "right_type": "PolicyAgentRevisionInput", "right_path": "refs.base_policy_version" },
-        { "left_type": "PolicyCandidate", "left_path": "refs.proposal_id", "right_type": "PolicyRegressionResult", "right_path": "refs.proposal_id" },
-        { "left_type": "PolicyRegressionResult", "left_path": "refs.proposal_id", "right_type": "PolicyRevisionDecision", "right_path": "refs.proposal_id" },
-        { "left_type": "PolicyRevisionDecision", "left_path": "refs.proposal_id", "right_type": "GovernanceAuthorityRequest", "right_path": "refs.proposal_id" },
-        { "left_type": "GovernanceAuthorityRequest", "left_path": "refs.proposal_id", "right_type": "GovernanceAuthorityDecision", "right_path": "refs.proposal_id" },
-        { "left_type": "GovernanceAuthorityDecision", "left_path": "refs.proposal_id", "right_type": "PolicyRevisionPendingActivation", "right_path": "refs.proposal_id" },
-        { "left_type": "PolicyRevisionPendingActivation", "left_path": "refs.revision_id", "right_type": "PolicyActivationAck", "right_path": "refs.revision_id" },
-        { "left_type": "PolicyRevisionPendingActivation", "left_path": "refs.revision_id", "right_type": "PolicyRevisionActive", "right_path": "refs.revision_id" },
-        { "left_type": "RemediationTaskCompleted", "left_path": "refs.task_id", "right_type": "EpisodeAgentInput", "right_path": "refs.task_id" }
+        {
+          "left_type": "PolicyCandidate",
+          "left_path": "refs.candidate_policy_digest",
+          "right_type": "PolicyRegressionResult",
+          "right_path": "refs.candidate_policy_digest"
+        },
+        {
+          "left_type": "PolicyRevisionJob",
+          "left_path": "refs.base_policy_version",
+          "right_type": "PolicyAgentRevisionInput",
+          "right_path": "refs.base_policy_version"
+        },
+        {
+          "left_type": "PolicyCandidate",
+          "left_path": "refs.proposal_id",
+          "right_type": "PolicyRegressionResult",
+          "right_path": "refs.proposal_id"
+        },
+        {
+          "left_type": "PolicyRegressionResult",
+          "left_path": "refs.proposal_id",
+          "right_type": "PolicyRevisionDecision",
+          "right_path": "refs.proposal_id"
+        },
+        {
+          "left_type": "PolicyRevisionDecision",
+          "left_path": "refs.proposal_id",
+          "right_type": "GovernanceAuthorityRequest",
+          "right_path": "refs.proposal_id"
+        },
+        {
+          "left_type": "GovernanceAuthorityRequest",
+          "left_path": "refs.proposal_id",
+          "right_type": "GovernanceAuthorityDecision",
+          "right_path": "refs.proposal_id"
+        },
+        {
+          "left_type": "GovernanceAuthorityDecision",
+          "left_path": "refs.proposal_id",
+          "right_type": "PolicyRevisionPendingActivation",
+          "right_path": "refs.proposal_id"
+        },
+        {
+          "left_type": "PolicyRevisionPendingActivation",
+          "left_path": "refs.revision_id",
+          "right_type": "PolicyActivationAck",
+          "right_path": "refs.revision_id"
+        },
+        {
+          "left_type": "PolicyRevisionPendingActivation",
+          "left_path": "refs.revision_id",
+          "right_type": "PolicyRevisionActive",
+          "right_path": "refs.revision_id"
+        },
+        {
+          "left_type": "SecurityIncidentCreated",
+          "left_path": "refs.incident_id",
+          "right_type": "IncidentRiskAssessed",
+          "right_path": "refs.incident_id"
+        },
+        {
+          "left_type": "SecurityIncidentCreated",
+          "left_path": "refs.incident_id",
+          "right_type": "TemporaryContainmentApplied",
+          "right_path": "refs.incident_id"
+        },
+        {
+          "left_type": "SecurityIncidentCreated",
+          "left_path": "refs.incident_id",
+          "right_type": "IncidentAuthorityRequest",
+          "right_path": "refs.incident_id"
+        },
+        {
+          "left_type": "SecurityIncidentCreated",
+          "left_path": "refs.incident_id",
+          "right_type": "SecurityIncidentRemediated",
+          "right_path": "refs.incident_id"
+        },
+        {
+          "left_type": "SecurityIncidentCreated",
+          "left_path": "refs.incident_id",
+          "right_type": "TaskResumeAuthorityRequest",
+          "right_path": "refs.incident_id"
+        },
+        {
+          "left_type": "IncidentAuthorityRequest",
+          "left_path": "refs.authority_request_id",
+          "right_type": "IncidentAuthorityDecision",
+          "right_path": "refs.authority_request_id"
+        },
+        {
+          "left_type": "IncidentAuthorityDecision",
+          "left_path": "refs.authority_decision_id",
+          "right_type": "PolicyRevisionJob",
+          "right_path": "refs.incident_authority_decision_id"
+        },
+        {
+          "left_type": "TaskResumeAuthorityRequest",
+          "left_path": "refs.authority_request_id",
+          "right_type": "TaskResumeAuthorityDecision",
+          "right_path": "refs.authority_request_id"
+        },
+        {
+          "left_type": "TaskResumeAuthorityDecision",
+          "left_path": "refs.authority_decision_id",
+          "right_type": "ResumeTaskSetRequested",
+          "right_path": "refs.authority_decision_id"
+        },
+        {
+          "left_type": "StopSourceAgentRunRequested",
+          "left_path": "refs.run_id",
+          "right_type": "SourceAgentRunStopped",
+          "right_path": "refs.run_id"
+        },
+        {
+          "left_type": "StartSourceAgentRunRequested",
+          "left_path": "refs.run_id",
+          "right_type": "SourceAgentRunStarted",
+          "right_path": "refs.run_id"
+        }
       ],
       "causations": [
-        {"cause_type":"EgressAuditInput","effect_type":"EgressReviewFinding"}, {"cause_type":"EgressReviewFinding","effect_type":"RemediationTaskCommand"},
-        {"cause_type":"PolicyRevisionJob","effect_type":"PolicyAgentRevisionInput"}, {"cause_type":"PolicyAgentRevisionInput","effect_type":"PolicyCandidate"},
-        {"cause_type":"PolicyCandidate","effect_type":"PolicyRegressionResult"}, {"cause_type":"PolicyRegressionResult","effect_type":"PolicyRevisionDecision"},
-        {"cause_type":"PolicyRevisionDecision","effect_type":"GovernanceAuthorityRequest"}, {"cause_type":"GovernanceAuthorityRequest","effect_type":"GovernanceAuthorityDecision"},
-        {"cause_type":"GovernanceAuthorityDecision","effect_type":"PolicyRevisionPendingActivation"}, {"cause_type":"PolicyRevisionPendingActivation","effect_type":"PolicyActivationAck"},
-        {"cause_type":"PolicyActivationAck","effect_type":"PolicyRevisionActive"}, {"cause_type":"RemediationCompletionReviewInput","effect_type":"RemediationCompletionReviewOutput"},
-        {"cause_type":"RemediationCompletionReviewOutput","effect_type":"RemediationTaskCompleted"}, {"cause_type":"RemediationTaskCompleted","effect_type":"EpisodeAgentInput"},
-        {"cause_type":"EpisodeAgentInput","effect_type":"TaskEpisode"}
+        {
+          "cause_type": "EgressAuditInput",
+          "effect_type": "EgressReviewFinding"
+        },
+        {
+          "cause_type": "EgressReviewFinding",
+          "effect_type": "SecurityIncidentCreated"
+        },
+        {
+          "cause_type": "SecurityIncidentCreated",
+          "effect_type": "IncidentEvidencePinned"
+        },
+        {
+          "cause_type": "IncidentEvidencePinned",
+          "effect_type": "IncidentRiskAssessed"
+        },
+        {
+          "cause_type": "IncidentRiskAssessed",
+          "effect_type": "TemporaryContainmentApplied"
+        },
+        {
+          "cause_type": "TemporaryContainmentApplied",
+          "effect_type": "IncidentTaskScopeExpanded"
+        },
+        {
+          "cause_type": "IncidentTaskScopeExpanded",
+          "effect_type": "IncidentActionGateClosed"
+        },
+        {
+          "cause_type": "IncidentActionGateClosed",
+          "effect_type": "SiblingTaskContinues"
+        },
+        {
+          "cause_type": "SiblingTaskContinues",
+          "effect_type": "StopDescendantAgentRunRequested"
+        },
+        {
+          "cause_type": "StopDescendantAgentRunRequested",
+          "effect_type": "DescendantAgentRunStopped"
+        },
+        {
+          "cause_type": "DescendantAgentRunStopped",
+          "effect_type": "DescendantTaskSuspended"
+        },
+        {
+          "cause_type": "TemporaryContainmentApplied",
+          "effect_type": "SuspendTaskRequested"
+        },
+        {
+          "cause_type": "DescendantTaskSuspended",
+          "effect_type": "StopSourceAgentRunRequested"
+        },
+        {
+          "cause_type": "StopSourceAgentRunRequested",
+          "effect_type": "SourceAgentRunStopped"
+        },
+        {
+          "cause_type": "SourceAgentRunStopped",
+          "effect_type": "SourceTaskSuspended"
+        },
+        {
+          "cause_type": "SourceTaskSuspended",
+          "effect_type": "StopAncestorAgentRunRequested"
+        },
+        {
+          "cause_type": "StopAncestorAgentRunRequested",
+          "effect_type": "AncestorAgentRunStopped"
+        },
+        {
+          "cause_type": "AncestorAgentRunStopped",
+          "effect_type": "AncestorTaskSuspended"
+        },
+        {
+          "cause_type": "SourceTaskSuspended",
+          "effect_type": "IncidentAuthorityRequest"
+        },
+        {
+          "cause_type": "IncidentAuthorityRequest",
+          "effect_type": "IncidentAuthorityDecision"
+        },
+        {
+          "cause_type": "IncidentAuthorityDecision",
+          "effect_type": "PolicyRevisionJob"
+        },
+        {
+          "cause_type": "PolicyRevisionJob",
+          "effect_type": "PolicyAgentRevisionInput"
+        },
+        {
+          "cause_type": "PolicyAgentRevisionInput",
+          "effect_type": "PolicyCandidate"
+        },
+        {
+          "cause_type": "PolicyCandidate",
+          "effect_type": "PolicyRegressionResult"
+        },
+        {
+          "cause_type": "PolicyRegressionResult",
+          "effect_type": "PolicyRevisionDecision"
+        },
+        {
+          "cause_type": "PolicyRevisionDecision",
+          "effect_type": "GovernanceAuthorityRequest"
+        },
+        {
+          "cause_type": "GovernanceAuthorityRequest",
+          "effect_type": "GovernanceAuthorityDecision"
+        },
+        {
+          "cause_type": "GovernanceAuthorityDecision",
+          "effect_type": "PolicyRevisionPendingActivation"
+        },
+        {
+          "cause_type": "PolicyRevisionPendingActivation",
+          "effect_type": "PolicyActivationAck"
+        },
+        {
+          "cause_type": "PolicyActivationAck",
+          "effect_type": "PolicyRevisionActive"
+        },
+        {
+          "cause_type": "PolicyRevisionActive",
+          "effect_type": "SecurityIncidentRemediated"
+        },
+        {
+          "cause_type": "SecurityIncidentRemediated",
+          "effect_type": "TaskResumeAuthorityRequest"
+        },
+        {
+          "cause_type": "TaskResumeAuthorityRequest",
+          "effect_type": "TaskResumeAuthorityDecision"
+        },
+        {
+          "cause_type": "TaskResumeAuthorityDecision",
+          "effect_type": "ContainmentReleased"
+        },
+        {
+          "cause_type": "ContainmentReleased",
+          "effect_type": "ResumeTaskSetRequested"
+        },
+        {
+          "cause_type": "ResumeTaskSetRequested",
+          "effect_type": "StartAncestorAgentRunRequested"
+        },
+        {
+          "cause_type": "StartAncestorAgentRunRequested",
+          "effect_type": "AncestorAgentRunStarted"
+        },
+        {
+          "cause_type": "AncestorAgentRunStarted",
+          "effect_type": "AncestorTaskResumed"
+        },
+        {
+          "cause_type": "AncestorTaskResumed",
+          "effect_type": "StartSourceAgentRunRequested"
+        },
+        {
+          "cause_type": "StartSourceAgentRunRequested",
+          "effect_type": "SourceAgentRunStarted"
+        },
+        {
+          "cause_type": "SourceAgentRunStarted",
+          "effect_type": "SourceTaskResumed"
+        },
+        {
+          "cause_type": "SourceTaskResumed",
+          "effect_type": "StartDescendantAgentRunRequested"
+        },
+        {
+          "cause_type": "StartDescendantAgentRunRequested",
+          "effect_type": "DescendantAgentRunStarted"
+        },
+        {
+          "cause_type": "DescendantAgentRunStarted",
+          "effect_type": "DescendantTaskResumed"
+        }
       ]
     }
   ]

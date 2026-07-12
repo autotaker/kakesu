@@ -1,0 +1,547 @@
+{
+  "schema_version": "draft-v0",
+  "records": [
+    {
+      "message_id": "e4i-m03",
+      "schema_ref": "schemas/draft-v0/governance-plane/security-incident.schema.json",
+      "payload": {
+        "incident_id": "incident-004",
+        "workspace_id": "workspace-004",
+        "source_task_id": "task-004",
+        "finding_ref": "finding:finding-004",
+        "effective_risk": "high",
+        "status": "open",
+        "containment_refs": [],
+        "revision_id": null,
+        "created_at": "2026-07-12T04:01:01Z",
+        "updated_at": "2026-07-12T04:01:01Z"
+      }
+    },
+    {
+      "message_id": "e4i-m04",
+      "schema_ref": "schemas/draft-v0/memory-plane/evidence-record.schema.json",
+      "payload": {
+        "evidence_id": "incident-evidence-004",
+        "kind": "egress",
+        "task_id": "task-004",
+        "workspace_id": "workspace-004",
+        "content_type": "application/json",
+        "content_digest": "sha256:3232323232323232323232323232323232323232323232323232323232323232",
+        "byte_length": 8192,
+        "retention_class": "policy",
+        "redaction_status": "encrypted",
+        "created_at": "2026-07-12T04:01:02Z"
+      }
+    },
+    {
+      "message_id": "e4i-m05",
+      "schema_ref": "schemas/draft-v0/governance-plane/incident-risk-assessment.schema.json",
+      "payload": {
+        "assessment_id": "risk-004",
+        "incident_id": "incident-004",
+        "rule_based_floor": "high",
+        "reviewer_recommendation": "high",
+        "effective_risk": "high",
+        "reason_codes": [
+          "policy_bypass",
+          "source_code_exfiltration",
+          "external_effect_succeeded"
+        ],
+        "human_authority_required": true,
+        "assessed_at": "2026-07-12T04:01:03Z"
+      }
+    },
+    {
+      "message_id": "e4i-m06",
+      "schema_ref": "schemas/draft-v0/governance-plane/incident-containment.schema.json",
+      "payload": {
+        "containment_id": "containment-004",
+        "incident_id": "incident-004",
+        "workspace_id": "workspace-004",
+        "source_task_id": "task-004",
+        "risk": "high",
+        "actions": [
+          "revoke_grants",
+          "restrict_workspace_egress",
+          "suspend_task"
+        ],
+        "task_suspend_required": true,
+        "task_suspend_action": "suspend_task",
+        "status": "applied",
+        "result_refs": [
+          "policy-binding:workspace-004",
+          "task:task-004"
+        ],
+        "created_at": "2026-07-12T04:01:04Z",
+        "applied_at": "2026-07-12T04:01:04Z",
+        "task_graph_revision": 42,
+        "task_targets": [
+          {
+            "task_id": "task-004-root",
+            "relation": "ancestor",
+            "previous_state": "running"
+          },
+          {
+            "task_id": "task-004",
+            "relation": "source",
+            "previous_state": "running"
+          },
+          {
+            "task_id": "task-004-child",
+            "relation": "descendant",
+            "previous_state": "running"
+          }
+        ]
+      }
+    },
+    {
+      "message_id": "e4i-m07",
+      "schema_ref": "schemas/draft-v0/control-plane/task-containment-command.schema.json",
+      "payload": {
+        "command_id": "suspend-cmd-004",
+        "incident_id": "incident-004",
+        "task_id": "task-004",
+        "workspace_id": "workspace-004",
+        "type": "suspend",
+        "authority_decision_id": null,
+        "issued_at": "2026-07-12T04:01:05Z",
+        "containment_id": "containment-004",
+        "restore_state": "running"
+      }
+    },
+    {
+      "message_id": "e4i-m08",
+      "schema_ref": "schemas/draft-v0/execution-plane/agent-run-control-command.schema.json",
+      "payload": {
+        "command_id": "stop-run-004",
+        "incident_id": "incident-004",
+        "task_id": "task-004",
+        "run_id": "run-004",
+        "type": "stop",
+        "reason_ref": "incident:incident-004",
+        "issued_at": "2026-07-12T04:01:06Z"
+      }
+    },
+    {
+      "message_id": "e4i-m09",
+      "schema_ref": "schemas/draft-v0/execution-plane/agent-run-event.schema.json",
+      "payload": {
+        "event_id": "run-stopped-004",
+        "run_id": "run-004",
+        "task_id": "task-004",
+        "assignment_event_sequence": 42,
+        "type": "run_stopped",
+        "item_ref": null,
+        "item_digest": null,
+        "created_at": "2026-07-12T04:01:07Z"
+      }
+    },
+    {
+      "message_id": "e4i-m10",
+      "schema_ref": "schemas/draft-v0/control-plane/task-event.schema.json",
+      "payload": {
+        "event_id": "task-suspended-004",
+        "subject_id": "task-004",
+        "sequence_no": 42,
+        "event_type": "TaskSuspended",
+        "actor_ref": "component:task-manager",
+        "created_at": "2026-07-12T04:01:08Z",
+        "payload_schema": {
+          "schema_id": "urn:agent-harness:control-plane:task-transition:draft-v0:r1",
+          "schema_revision": 1,
+          "schema_digest": "sha256:3030303030303030303030303030303030303030303030303030303030303030"
+        },
+        "payload": {
+          "from_state": "running",
+          "to_state": "suspended",
+          "incident_id": "incident-004"
+        }
+      }
+    },
+    {
+      "message_id": "e4i-m11",
+      "schema_ref": "schemas/draft-v0/governance-plane/incident-authority-request.schema.json",
+      "payload": {
+        "authority_request_id": "incident-authority-004",
+        "incident_id": "incident-004",
+        "request_kind": "incident_disposition",
+        "proposed_decision": "investigate_and_keep_suspended",
+        "effective_risk": "high",
+        "risk_assessment_ref": "risk-assessment:risk-004",
+        "current_containment_ref": "containment:containment-004",
+        "scope_ref": "workspace:workspace-004",
+        "question": "TaskをsuspendしたままPolicy remediationを進めるか",
+        "authority_ref": "authority:security-operator",
+        "expires_at": "2026-07-12T05:00:00Z"
+      }
+    },
+    {
+      "message_id": "e4i-m12",
+      "schema_ref": "schemas/draft-v0/governance-plane/incident-authority-decision.schema.json",
+      "payload": {
+        "authority_decision_id": "incident-authority-decision-004",
+        "authority_request_id": "incident-authority-004",
+        "incident_id": "incident-004",
+        "decision": "investigate_and_keep_suspended",
+        "responder_principal": "principal:security-lead",
+        "rationale": "恒久Policy修正と回帰確認まで停止を継続する",
+        "decided_at": "2026-07-12T04:03:00Z"
+      }
+    },
+    {
+      "message_id": "e4i-m23",
+      "schema_ref": "schemas/draft-v0/governance-plane/security-incident.schema.json",
+      "payload": {
+        "incident_id": "incident-004",
+        "workspace_id": "workspace-004",
+        "source_task_id": "task-004",
+        "finding_ref": "finding:finding-004",
+        "effective_risk": "high",
+        "status": "remediated",
+        "containment_refs": [
+          "containment:containment-004"
+        ],
+        "revision_id": "revision-004",
+        "created_at": "2026-07-12T04:01:01Z",
+        "updated_at": "2026-07-12T04:09:03Z"
+      }
+    },
+    {
+      "message_id": "e4i-m24",
+      "schema_ref": "schemas/draft-v0/governance-plane/incident-authority-request.schema.json",
+      "payload": {
+        "authority_request_id": "resume-authority-004",
+        "incident_id": "incident-004",
+        "request_kind": "task_resume",
+        "proposed_decision": "resume",
+        "effective_risk": "high",
+        "risk_assessment_ref": "risk-assessment:risk-004",
+        "current_containment_ref": "containment:containment-004",
+        "scope_ref": "task:task-004",
+        "question": "Revision v12 activation後にTaskを再開してよいか",
+        "authority_ref": "authority:security-operator",
+        "expires_at": "2026-07-12T05:00:00Z"
+      }
+    },
+    {
+      "message_id": "e4i-m25",
+      "schema_ref": "schemas/draft-v0/governance-plane/incident-authority-decision.schema.json",
+      "payload": {
+        "authority_decision_id": "resume-authority-decision-004",
+        "authority_request_id": "resume-authority-004",
+        "incident_id": "incident-004",
+        "decision": "resume",
+        "responder_principal": "principal:security-lead",
+        "rationale": "Revision v12の回帰とactivationを確認した",
+        "decided_at": "2026-07-12T04:11:00Z"
+      }
+    },
+    {
+      "message_id": "e4i-m26",
+      "schema_ref": "schemas/draft-v0/governance-plane/incident-containment.schema.json",
+      "payload": {
+        "containment_id": "containment-004",
+        "incident_id": "incident-004",
+        "workspace_id": "workspace-004",
+        "source_task_id": "task-004",
+        "risk": "high",
+        "actions": [
+          "revoke_grants",
+          "restrict_workspace_egress",
+          "suspend_task"
+        ],
+        "task_suspend_required": true,
+        "task_suspend_action": "suspend_task",
+        "status": "released",
+        "result_refs": [
+          "authority-decision:resume-authority-decision-004"
+        ],
+        "created_at": "2026-07-12T04:01:04Z",
+        "applied_at": "2026-07-12T04:01:04Z",
+        "task_graph_revision": 42,
+        "task_targets": [
+          {
+            "task_id": "task-004-root",
+            "relation": "ancestor",
+            "previous_state": "running"
+          },
+          {
+            "task_id": "task-004",
+            "relation": "source",
+            "previous_state": "running"
+          },
+          {
+            "task_id": "task-004-child",
+            "relation": "descendant",
+            "previous_state": "running"
+          }
+        ]
+      }
+    },
+    {
+      "message_id": "e4i-m27",
+      "schema_ref": "schemas/draft-v0/control-plane/task-containment-command.schema.json",
+      "payload": {
+        "command_id": "resume-cmd-004",
+        "incident_id": "incident-004",
+        "task_id": "task-004",
+        "workspace_id": "workspace-004",
+        "type": "resume",
+        "authority_decision_id": "resume-authority-decision-004",
+        "issued_at": "2026-07-12T04:11:02Z",
+        "containment_id": "containment-004",
+        "restore_state": "running"
+      }
+    },
+    {
+      "message_id": "e4i-m28",
+      "schema_ref": "schemas/draft-v0/execution-plane/agent-run-control-command.schema.json",
+      "payload": {
+        "command_id": "start-run-004b",
+        "incident_id": "incident-004",
+        "task_id": "task-004",
+        "run_id": "run-004b",
+        "type": "start",
+        "reason_ref": "authority-decision:resume-authority-decision-004",
+        "issued_at": "2026-07-12T04:11:03Z"
+      }
+    },
+    {
+      "message_id": "e4i-m29",
+      "schema_ref": "schemas/draft-v0/execution-plane/agent-run-event.schema.json",
+      "payload": {
+        "event_id": "run-started-004b",
+        "run_id": "run-004b",
+        "task_id": "task-004",
+        "assignment_event_sequence": 43,
+        "type": "run_started",
+        "item_ref": null,
+        "item_digest": null,
+        "created_at": "2026-07-12T04:11:04Z"
+      }
+    },
+    {
+      "message_id": "e4i-m30",
+      "schema_ref": "schemas/draft-v0/control-plane/task-event.schema.json",
+      "payload": {
+        "event_id": "task-resumed-004",
+        "subject_id": "task-004",
+        "sequence_no": 43,
+        "event_type": "TaskResumed",
+        "actor_ref": "component:task-manager",
+        "created_at": "2026-07-12T04:11:05Z",
+        "payload_schema": {
+          "schema_id": "urn:agent-harness:control-plane:task-transition:draft-v0:r1",
+          "schema_revision": 1,
+          "schema_digest": "sha256:3030303030303030303030303030303030303030303030303030303030303030"
+        },
+        "payload": {
+          "from_state": "suspended",
+          "to_state": "running",
+          "incident_id": "incident-004",
+          "run_id": "run-004b"
+        }
+      }
+    },
+    {
+      "message_id": "e4i-d1",
+      "schema_ref": "schemas/draft-v0/execution-plane/agent-run-control-command.schema.json",
+      "payload": {
+        "command_id": "stop-run-004-child",
+        "incident_id": "incident-004",
+        "task_id": "task-004-child",
+        "run_id": "run-004-child",
+        "type": "stop",
+        "reason_ref": "incident:incident-004",
+        "issued_at": "2026-07-12T04:01:04.4Z"
+      }
+    },
+    {
+      "message_id": "e4i-d2",
+      "schema_ref": "schemas/draft-v0/execution-plane/agent-run-event.schema.json",
+      "payload": {
+        "event_id": "e4i-d2-event",
+        "run_id": "run-004-child",
+        "task_id": "task-004-child",
+        "assignment_event_sequence": 100,
+        "type": "run_stopped",
+        "item_ref": null,
+        "item_digest": null,
+        "created_at": "2026-07-12T04:01:04.5Z"
+      }
+    },
+    {
+      "message_id": "e4i-d3",
+      "schema_ref": "schemas/draft-v0/control-plane/task-event.schema.json",
+      "payload": {
+        "event_id": "e4i-d3-event",
+        "subject_id": "task-004-child",
+        "sequence_no": 101,
+        "event_type": "TaskSuspended",
+        "actor_ref": "component:task-manager",
+        "created_at": "2026-07-12T04:01:04.6Z",
+        "payload_schema": {
+          "schema_id": "urn:agent-harness:control-plane:task-transition:draft-v0:r1",
+          "schema_revision": 1,
+          "schema_digest": "sha256:3030303030303030303030303030303030303030303030303030303030303030"
+        },
+        "payload": {
+          "from_state": "running",
+          "to_state": "suspended",
+          "incident_id": "incident-004",
+          "run_id": null
+        }
+      }
+    },
+    {
+      "message_id": "e4i-a1",
+      "schema_ref": "schemas/draft-v0/execution-plane/agent-run-control-command.schema.json",
+      "payload": {
+        "command_id": "stop-run-004-root",
+        "incident_id": "incident-004",
+        "task_id": "task-004-root",
+        "run_id": "run-004-root",
+        "type": "stop",
+        "reason_ref": "incident:incident-004",
+        "issued_at": "2026-07-12T04:01:08.1Z"
+      }
+    },
+    {
+      "message_id": "e4i-a2",
+      "schema_ref": "schemas/draft-v0/execution-plane/agent-run-event.schema.json",
+      "payload": {
+        "event_id": "e4i-a2-event",
+        "run_id": "run-004-root",
+        "task_id": "task-004-root",
+        "assignment_event_sequence": 102,
+        "type": "run_stopped",
+        "item_ref": null,
+        "item_digest": null,
+        "created_at": "2026-07-12T04:01:08.2Z"
+      }
+    },
+    {
+      "message_id": "e4i-a3",
+      "schema_ref": "schemas/draft-v0/control-plane/task-event.schema.json",
+      "payload": {
+        "event_id": "e4i-a3-event",
+        "subject_id": "task-004-root",
+        "sequence_no": 103,
+        "event_type": "TaskSuspended",
+        "actor_ref": "component:task-manager",
+        "created_at": "2026-07-12T04:01:08.3Z",
+        "payload_schema": {
+          "schema_id": "urn:agent-harness:control-plane:task-transition:draft-v0:r1",
+          "schema_revision": 1,
+          "schema_digest": "sha256:3030303030303030303030303030303030303030303030303030303030303030"
+        },
+        "payload": {
+          "from_state": "running",
+          "to_state": "suspended",
+          "incident_id": "incident-004",
+          "run_id": null
+        }
+      }
+    },
+    {
+      "message_id": "e4i-ra1",
+      "schema_ref": "schemas/draft-v0/execution-plane/agent-run-control-command.schema.json",
+      "payload": {
+        "command_id": "start-run-004-root-b",
+        "incident_id": "incident-004",
+        "task_id": "task-004-root",
+        "run_id": "run-004-root-b",
+        "type": "start",
+        "reason_ref": "incident:incident-004",
+        "issued_at": "2026-07-12T04:11:02.1Z"
+      }
+    },
+    {
+      "message_id": "e4i-ra2",
+      "schema_ref": "schemas/draft-v0/execution-plane/agent-run-event.schema.json",
+      "payload": {
+        "event_id": "e4i-ra2-event",
+        "run_id": "run-004-root-b",
+        "task_id": "task-004-root",
+        "assignment_event_sequence": 104,
+        "type": "run_started",
+        "item_ref": null,
+        "item_digest": null,
+        "created_at": "2026-07-12T04:11:02.2Z"
+      }
+    },
+    {
+      "message_id": "e4i-ra3",
+      "schema_ref": "schemas/draft-v0/control-plane/task-event.schema.json",
+      "payload": {
+        "event_id": "e4i-ra3-event",
+        "subject_id": "task-004-root",
+        "sequence_no": 105,
+        "event_type": "TaskResumed",
+        "actor_ref": "component:task-manager",
+        "created_at": "2026-07-12T04:11:02.3Z",
+        "payload_schema": {
+          "schema_id": "urn:agent-harness:control-plane:task-transition:draft-v0:r1",
+          "schema_revision": 1,
+          "schema_digest": "sha256:3030303030303030303030303030303030303030303030303030303030303030"
+        },
+        "payload": {
+          "from_state": "suspended",
+          "to_state": "running",
+          "incident_id": "incident-004",
+          "run_id": "run-004-root-b"
+        }
+      }
+    },
+    {
+      "message_id": "e4i-rd1",
+      "schema_ref": "schemas/draft-v0/execution-plane/agent-run-control-command.schema.json",
+      "payload": {
+        "command_id": "start-run-004-child-b",
+        "incident_id": "incident-004",
+        "task_id": "task-004-child",
+        "run_id": "run-004-child-b",
+        "type": "start",
+        "reason_ref": "incident:incident-004",
+        "issued_at": "2026-07-12T04:11:05.1Z"
+      }
+    },
+    {
+      "message_id": "e4i-rd2",
+      "schema_ref": "schemas/draft-v0/execution-plane/agent-run-event.schema.json",
+      "payload": {
+        "event_id": "e4i-rd2-event",
+        "run_id": "run-004-child-b",
+        "task_id": "task-004-child",
+        "assignment_event_sequence": 106,
+        "type": "run_started",
+        "item_ref": null,
+        "item_digest": null,
+        "created_at": "2026-07-12T04:11:05.2Z"
+      }
+    },
+    {
+      "message_id": "e4i-rd3",
+      "schema_ref": "schemas/draft-v0/control-plane/task-event.schema.json",
+      "payload": {
+        "event_id": "e4i-rd3-event",
+        "subject_id": "task-004-child",
+        "sequence_no": 107,
+        "event_type": "TaskResumed",
+        "actor_ref": "component:task-manager",
+        "created_at": "2026-07-12T04:11:05.3Z",
+        "payload_schema": {
+          "schema_id": "urn:agent-harness:control-plane:task-transition:draft-v0:r1",
+          "schema_revision": 1,
+          "schema_digest": "sha256:3030303030303030303030303030303030303030303030303030303030303030"
+        },
+        "payload": {
+          "from_state": "suspended",
+          "to_state": "running",
+          "incident_id": "incident-004",
+          "run_id": "run-004-child-b"
+        }
+      }
+    }
+  ]
+}

@@ -5,9 +5,8 @@ Payloadを時系列に並べ、`draft-v0` Schemaへの適合を検査する。
 
 ## 成果物
 
-- `scenarios.json`: 初回机上デバッグで不足を発見したdomain Payload trace
-- `executable-scenarios.json`, `executable-scenario-002.json`: 補完後のcomponent間sequence projection
-- `domain-payload-bindings.json`: 既存domain Payloadとsequence message IDのbinding
+- `executable-scenarios.json`, `executable-scenario-002.json`, `executable-scenario-004-incident.json`: E2E-001〜004のactive component間sequence projection（scenario ID重複は禁止）
+- `domain-payloads-canonical.json`: sequenceから独立した既存messageのcanonical domain Payload
 - `domain-payloads-001.json`〜`004.json`: 新規中間messageのcanonical domain Payload
 - `../../scripts/validate-tabletop-scenarios.mjs`: Schema適合検査
 - `independent-review.md`: Schema検査では検出できない因果関係、状態遷移、field不足の独立レビュー

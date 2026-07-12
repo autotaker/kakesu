@@ -219,6 +219,8 @@ Workspace、source Task/origin/delegation/Contract version、source Challenge、
 
 ### `authority_requests` / `authority_decisions`
 
+Control PlaneのAuthority Gatewayが、全Planeから受けた人間・外部Authority通信の正本を保存する。他Planeはこれらのtableや外部channelへ直接書き込まない。要求元Planeは判断対象と要否を所有し、Gatewayは認証・配送・期限・重複排除を所有する。
+
 `require_authority`時にGrant Request、Challenge、Grant Decision ID、immutable binding digest、Platform Policyが選んだAuthority、status、期限を固定する。Authorityはapprove/denyだけを返す。`authority_decisions`は認証済みresponder principal、decision、rationale、決定時刻をRequestごとに一件保存する。回答TransactionはRequestをlockして未解決・未期限切れを検証し、approveならTask/Challenge/Policy/DNS freshnessを再検査してpending Grantを作り、denyならGrant RequestとAsync Operationを終端する。期限切れworkerもexpired/deny/Async完了/Mailboxを原子的に確定し、late responseは既存終端結果を返す。
 
 ### `dns_resolutions`

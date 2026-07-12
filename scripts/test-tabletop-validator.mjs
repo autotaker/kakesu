@@ -12,7 +12,7 @@ if (baseline.status !== 0) {
   process.exit(1);
 }
 
-const mutations = ["missing-message", "missing-correlation-path", "state-gap", "bad-causation", "wrong-prior-causation", "duplicate-idempotency", "missing-domain", "projection-domain-mismatch", "illegal-state"];
+const mutations = ["missing-message", "missing-correlation-path", "state-gap", "bad-causation", "wrong-prior-causation", "duplicate-idempotency", "missing-domain", "projection-domain-mismatch", "illegal-state", "authority-bypasses-control", "incident-cascade-wrong-order"];
 const falseNegatives = [];
 for (const mutation of mutations) {
   const result = spawnSync(process.execPath, [validator, `--mutation=${mutation}`], { cwd: repoRoot, encoding: "utf8" });

@@ -1,0 +1,7 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema","$id":"urn:agent-harness:control-plane:task-containment-command:draft-v0:r1","x-schema-version":"draft-v0","x-schema-revision":1,"x-stability":"draft",
+  "type":"object","additionalProperties":false,
+  "required":["command_id","incident_id","containment_id","task_id","workspace_id","type","restore_state","authority_decision_id","issued_at"],
+  "properties":{"command_id":{"$ref":"../common/primitives.schema.json#/$defs/id"},"incident_id":{"$ref":"../common/primitives.schema.json#/$defs/id"},"containment_id":{"$ref":"../common/primitives.schema.json#/$defs/id"},"task_id":{"$ref":"../common/primitives.schema.json#/$defs/id"},"workspace_id":{"$ref":"../common/primitives.schema.json#/$defs/id"},"type":{"enum":["suspend","resume"]},"restore_state":{"enum":["ready","running","waiting","reviewing_completion"]},"authority_decision_id":{"anyOf":[{"$ref":"../common/primitives.schema.json#/$defs/id"},{"type":"null"}]},"issued_at":{"$ref":"../common/primitives.schema.json#/$defs/timestamp"}},
+  "anyOf":[{"properties":{"type":{"const":"suspend"}}},{"properties":{"type":{"const":"resume"},"authority_decision_id":{"$ref":"../common/primitives.schema.json#/$defs/id"}}}]
+}

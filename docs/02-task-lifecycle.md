@@ -247,7 +247,8 @@ type Suspension = {
     | "agent_run_failure"
     | "runtime_failure"
     | "workspace_failure"
-    | "resource_unavailable";
+    | "resource_unavailable"
+    | "security_incident";
   recovery_owner: "harness" | "operator";
   recovery_policy: "automatic" | "manual";
   retry_count: number;
@@ -257,6 +258,16 @@ type Suspension = {
 ```
 
 Harnessは自動復旧、同じ論理Agentの新しいRun、Workspace復元などを試みる。自動復旧できなければ`recovery_owner`をOperatorへ移して`suspended`を維持する。Operatorは復旧して`running`へ戻すか、AuthorityとしてCancellationを要求する。障害だけを理由にTaskを終端させない。
+
+### IncidentによるTask tree suspension
+
+MVPでは、Task `T` でHigh/Critical Incidentが発生した場合、Control Planeは固定したTask graph revisionから `ancestors(T) ∪ {T} ∪ descendants(T)` をContainment集合として決定論的に計算する。兄弟Taskとその子孫は集合へ含めず、継続を許可する。各対象についてTask ID、`ancestor | source | descendant`、suspend直前の状態をContainment snapshotへ保存する。
+
+Control Planeは集合全体を先にcontainment対象として予約し、対象Taskからの新規Tool Call、`delegate`、Ask、Escalation、Completion Candidate、通常resumeを拒否する。これは追加の迂回防止規則ではなく、`suspended` Taskは作業Actionを開始できないというTask lifecycleの不変条件である。Harness内部のRun停止、Authority Decision適用、復旧、Cancellationだけは許可する。
+
+実行中Agent Runは子孫から祖先の順に停止し、停止確認後に各Taskを`suspended`へ確定する。一部のRun停止に時間がかかっても予約済み集合から新規Actionは開始できない。親が停止するため、Incident Taskを破棄して同じ作業を新しい子Taskとして起票する迂回も成立しない。
+
+再開にはContainment解除と、High/CriticalではControl PlaneのAuthority Gateway経由のHuman resume decisionを必要とする。祖先から子孫の順に依存関係を再検査し、各Taskを保存済みの直前状態へ戻す。直前状態が`waiting`または`reviewing_completion`だったTaskを無条件に`running`へ変えない。
 
 ## 9. 親による子Taskキャンセル
 

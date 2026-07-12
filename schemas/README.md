@@ -8,7 +8,7 @@ schemas/
   domain-types.ts                 # 設計確認用の論理型。runtime validatorの正本ではない
   draft-v0/
     common/                       # Plane間で共有するprimitive / envelope
-    control-plane/                # Task、Contract、Mailbox、Authority routing
+    control-plane/                # Task、Contract、Mailbox、人間との唯一のAuthority routing境界
     execution-plane/              # Agent Run、Tool result、Async、Continuation
     governance-plane/             # Workspace Security Policy、CASB、Grant、Audit
     memory-plane/                 # Evidence、Task Episode、Memory Context、Wiki

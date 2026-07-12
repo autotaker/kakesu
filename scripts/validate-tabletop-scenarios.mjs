@@ -11,10 +11,10 @@ const scenarioPaths = scenarioArgument
   ? [path.resolve(repoRoot, scenarioArgument)]
   : [
       path.join(repoRoot, "examples/e2e-tabletop/executable-scenarios.json"),
-      path.join(repoRoot, "examples/e2e-tabletop/executable-scenario-002.json")
+      path.join(repoRoot, "examples/e2e-tabletop/executable-scenario-002.json"),
+      path.join(repoRoot, "examples/e2e-tabletop/executable-scenario-004-incident.json")
     ];
 const requirementPath = path.join(repoRoot, "examples/e2e-tabletop/sequence-requirements.json");
-const domainBindingPath = path.join(repoRoot, "examples/e2e-tabletop/domain-payload-bindings.json");
 const documentCache = new Map();
 
 function readJson(file) {
@@ -202,7 +202,7 @@ function validateSequenceInvariants(scenario) {
   let scenarioCorrelationId = null;
   let previousTime = -Infinity;
   const allowedTransitions = new Map([
-    ["task", new Set(["null->ready", "null->running", "ready->running", "running->waiting", "waiting->running", "running->reviewing_completion", "reviewing_completion->completed"])],
+    ["task", new Set(["null->ready", "null->running", "ready->running", "running->waiting", "waiting->running", "running->suspended", "suspended->running", "running->reviewing_completion", "reviewing_completion->completed"])],
     ["policy-grant", new Set(["null->pending_activation", "pending_activation->active", "active->revoked"])],
     ["policy-revision", new Set(["null->pending_activation", "pending_activation->active", "active->superseded"])],
     ["async-operation", new Set(["null->running", "running->completed", "running->failed", "running->cancelled"])],
@@ -213,6 +213,7 @@ function validateSequenceInvariants(scenario) {
     ["task-episode", new Set(["null->committed"])],
     ["tool-call", new Set(["null->running", "running->completed", "running->failed"])],
     ["policy-activation", new Set(["null->acked"])]
+    ,["security-incident", new Set(["null->open", "open->remediated", "remediated->closed"])]
   ]);
   for (const step of scenario.steps) {
     const payload = step.payload;
@@ -252,10 +253,12 @@ function validateSequenceInvariants(scenario) {
 }
 
 const scenarioDocuments = scenarioPaths.map(readJson);
-const document = {
-  schema_version: scenarioDocuments[0]?.schema_version,
-  scenarios: scenarioDocuments.flatMap((item) => item.scenarios ?? [])
-};
+const scenarioMap = new Map();
+for (const item of scenarioDocuments) for (const scenario of item.scenarios ?? []) {
+  if (scenarioMap.has(scenario.scenario_id)) throw new Error(`duplicate active scenario_id: ${scenario.scenario_id}`);
+  scenarioMap.set(scenario.scenario_id, scenario);
+}
+const document = { schema_version: scenarioDocuments[0]?.schema_version, scenarios: [...scenarioMap.values()] };
 const mutationArgument = process.argv.find((argument) => argument.startsWith("--mutation="))?.slice("--mutation=".length);
 if (mutationArgument === "missing-message") document.scenarios[0].steps.splice(5, 1);
 if (mutationArgument === "missing-correlation-path") delete document.scenarios[0].steps.find((step) => step.message_type === "CompletionReviewOutput").payload.refs.input_digest;
@@ -266,6 +269,13 @@ if (mutationArgument === "missing-domain") document.scenarios[0].steps.find((ste
 if (mutationArgument === "projection-domain-mismatch") document.scenarios[0].steps.find((step) => step.message_type === "EgressChallenge").payload.refs.challenge_id = "challenge-forged";
 if (mutationArgument === "illegal-state") document.scenarios.find((item) => item.scenario_id === "E2E-003").steps.find((step) => step.message_type === "TaskWaiting").payload.entity.to_state = "teleported";
 if (mutationArgument === "wrong-prior-causation") document.scenarios.find((item) => item.scenario_id === "E2E-002").steps.find((step) => step.message_type === "ParentIntegration").payload.causation_message_id = "e2-m01";
+if (mutationArgument === "authority-bypasses-control") document.scenarios.find((item) => item.scenario_id === "E2E-004").steps.find((step) => step.message_type === "IncidentAuthorityRequest").to_plane = "governance-plane";
+if (mutationArgument === "incident-cascade-wrong-order") {
+  const steps = document.scenarios.find((item) => item.scenario_id === "E2E-004").steps;
+  const descendant = steps.findIndex((step) => step.message_type === "DescendantTaskSuspended");
+  const ancestor = steps.findIndex((step) => step.message_type === "AncestorTaskSuspended");
+  [steps[descendant], steps[ancestor]] = [steps[ancestor], steps[descendant]];
+}
 if (mutationArgument === "idempotent-redelivery") {
   const scenario = document.scenarios[0];
   const index = scenario.steps.findIndex((step) => step.message_type === "PolicyGrantReady");
@@ -286,52 +296,20 @@ if (mutationArgument === "nested-correlation") {
 }
 const failures = validateScenarioEnvelope(document);
 const requirementDocument = readJson(requirementPath);
-const domainBindingDocument = readJson(domainBindingPath);
 const domainPayloadDocuments = fs.readdirSync(path.join(repoRoot, "examples/e2e-tabletop"))
   .filter((name) => /^domain-payloads-.*\.json$/.test(name))
   .sort()
   .map((name) => readJson(path.join(repoRoot, "examples/e2e-tabletop", name)));
-const legacyScenarioDocument = readJson(path.join(repoRoot, "examples/e2e-tabletop/scenarios.json"));
 const requirementSchemaFile = path.join(repoRoot, "schemas/draft-v0/common/sequence-invariant.schema.json");
 const requirementSchema = readJson(requirementSchemaFile);
 for (const [index, invariant] of (requirementDocument.requirements ?? []).entries()) {
   failures.push(...validate(invariant, requirementSchema, requirementSchemaFile, `requirements[${index}]`));
 }
 let checked = 0;
+const usedCanonicalMessageIds = new Set();
 let domainChecked = 0;
 const boundMessageIds = new Set();
 const canonicalPayloads = new Map();
-for (const binding of domainBindingDocument.bindings ?? []) {
-  if (boundMessageIds.has(binding.message_id)) failures.push(`duplicate domain binding for ${binding.message_id}`);
-  boundMessageIds.add(binding.message_id);
-  const match = /^scenarios\.json#([^/]+)\/(.+)$/.exec(binding.source);
-  if (!match) {
-    failures.push(`${binding.message_id}: invalid domain source ${binding.source}`);
-    continue;
-  }
-  const sourceScenario = legacyScenarioDocument.scenarios?.find((item) => item.scenario_id === match[1]);
-  const sourceStep = sourceScenario?.steps?.find((item) => item.step_id === match[2]);
-  if (!sourceStep) {
-    failures.push(`${binding.message_id}: domain source not found ${binding.source}`);
-    continue;
-  }
-  const [schemaFilePart, fragmentPart] = sourceStep.schema_ref.split("#", 2);
-  const schemaFile = path.resolve(repoRoot, schemaFilePart);
-  const schema = resolvePointer(readJson(schemaFile), fragmentPart === undefined ? "" : `#${fragmentPart}`);
-  failures.push(...validate(sourceStep.payload, schema, schemaFile, `domain/${binding.message_id}`));
-  canonicalPayloads.set(binding.message_id, sourceStep.payload);
-  domainChecked += 1;
-}
-for (const record of domainBindingDocument.additional_records ?? []) {
-  if (boundMessageIds.has(record.message_id)) failures.push(`duplicate domain payload for ${record.message_id}`);
-  boundMessageIds.add(record.message_id);
-  const [schemaFilePart, fragmentPart] = record.schema_ref.split("#", 2);
-  const schemaFile = path.resolve(repoRoot, schemaFilePart);
-  const schema = resolvePointer(readJson(schemaFile), fragmentPart === undefined ? "" : `#${fragmentPart}`);
-  failures.push(...validate(record.payload, schema, schemaFile, `domain/${record.message_id}`));
-  canonicalPayloads.set(record.message_id, record.payload);
-  domainChecked += 1;
-}
 for (const record of domainPayloadDocuments.flatMap((item) => item.records ?? [])) {
   if (boundMessageIds.has(record.message_id)) failures.push(`duplicate domain payload for ${record.message_id}`);
   boundMessageIds.add(record.message_id);
@@ -355,6 +333,7 @@ const domainRequiredTypes = new Set([
   "RemediationTaskCreated", "RemediationTaskReviewingCompletion", "RemediationTaskCompleted",
   "AsyncCompleted", "PolicyGrantReady", "ChildWorkspaceCreated", "MailboxAsyncConsumed", "MailboxChildConsumed",
   "PolicyRevisionJob", "PolicyAgentRevisionInput", "PolicyCandidate", "PolicyRegressionResult", "PolicyRevisionDecision", "GovernanceAuthorityRequest", "GovernanceAuthorityDecision", "PolicyRevisionPendingActivation", "PolicyRevisionActive"
+  ,"SecurityIncidentCreated", "IncidentEvidencePinned", "IncidentRiskAssessed", "TemporaryContainmentApplied", "ContainmentReleased", "SuspendTaskRequested", "StopAgentRunRequested", "AgentRunStopped", "TaskSuspended", "IncidentAuthorityRequest", "IncidentAuthorityDecision", "SecurityIncidentRemediated", "TaskResumeAuthorityRequest", "TaskResumeAuthorityDecision", "ResumeTaskRequested", "StartAgentRunRequested", "AgentRunStarted"
 ]);
 function collectNamedValues(value, result = new Map()) {
   if (Array.isArray(value)) {
@@ -388,9 +367,11 @@ for (const scenario of document.scenarios ?? []) {
     failures.push(...errors);
     checked += 1;
     const canonicalMessageId = step.payload.redelivery_of_message_id ?? step.payload.message_id;
-    if (domainRequiredTypes.has(step.message_type) && !boundMessageIds.has(canonicalMessageId)) failures.push(`${scenario.scenario_id}/${step.step_id}: canonical domain payload missing for ${step.message_type}`);
+    const changesTaskOrRunState = /(AgentRunRequested|AgentRunStopped|AgentRunStarted|TaskSuspended|TaskResumed)$/.test(step.message_type);
+    if ((domainRequiredTypes.has(step.message_type) || changesTaskOrRunState) && !boundMessageIds.has(canonicalMessageId)) failures.push(`${scenario.scenario_id}/${step.step_id}: canonical domain payload missing for ${step.message_type}`);
     const canonical = canonicalPayloads.get(canonicalMessageId);
     if (canonical) {
+      usedCanonicalMessageIds.add(canonicalMessageId);
       const named = collectNamedValues(canonical);
       const taskCandidates = [...(named.get("task_id") ?? []), ...(named.get("owner_task_id") ?? []), ...(named.get("source_task_id") ?? []), ...(named.get("subject_id") ?? [])];
       if (taskCandidates.length > 0 && !taskCandidates.includes(step.payload.task_id)) failures.push(`${scenario.scenario_id}/${step.step_id}: sequence task_id disagrees with canonical payload`);
@@ -404,6 +385,39 @@ for (const scenario of document.scenarios ?? []) {
       const canonicalToStates = named.get("to_state") ?? [];
       if (canonicalFromStates.length > 0 && !canonicalFromStates.includes(step.payload.entity?.from_state)) failures.push(`${scenario.scenario_id}/${step.step_id}: sequence from_state disagrees with canonical payload`);
       if (canonicalToStates.length > 0 && !canonicalToStates.includes(step.payload.entity?.to_state)) failures.push(`${scenario.scenario_id}/${step.step_id}: sequence to_state disagrees with canonical payload`);
+    }
+  }
+  for (const step of scenario.steps) {
+    if (step.message_type.endsWith("AuthorityRequest") && step.to_plane !== "control-plane") failures.push(`${scenario.scenario_id}/${step.step_id}: human Authority Request must enter through control-plane`);
+    if (step.message_type.endsWith("AuthorityDecision") && step.from_plane !== "control-plane") failures.push(`${scenario.scenario_id}/${step.step_id}: human Authority Decision must return through control-plane`);
+  }
+  if (scenario.scenario_id === "E2E-004") {
+    const byType = new Map(scenario.steps.map((step, index) => [step.message_type, { step, index }]));
+    const scope = byType.get("IncidentTaskScopeExpanded")?.step.payload.refs;
+    const containment = canonicalPayloads.get("e4i-m06");
+    const expected = (containment?.task_targets ?? []).map((item) => `${item.relation}:${item.task_id}`).sort();
+    const actual = [
+      ...(scope?.ancestor_task_id ? [`ancestor:${scope.ancestor_task_id}`] : []),
+      ...(scope?.source_task_id ? [`source:${scope.source_task_id}`] : []),
+      ...(scope?.descendant_task_id ? [`descendant:${scope.descendant_task_id}`] : [])
+    ].sort();
+    if (JSON.stringify(actual) !== JSON.stringify(expected)) failures.push("E2E-004: expanded task containment set disagrees with canonical targets");
+    if (scope?.task_graph_revision !== containment?.task_graph_revision) failures.push("E2E-004: task graph revision disagrees with containment snapshot");
+    const stopOrder = ["DescendantTaskSuspended", "SourceTaskSuspended", "AncestorTaskSuspended"].map((type) => byType.get(type)?.index ?? -1);
+    if (!(stopOrder[0] >= 0 && stopOrder[0] < stopOrder[1] && stopOrder[1] < stopOrder[2])) failures.push("E2E-004: tasks must suspend descendant -> source -> ancestor");
+    const resumeOrder = ["AncestorTaskResumed", "SourceTaskResumed", "DescendantTaskResumed"].map((type) => byType.get(type)?.index ?? -1);
+    if (!(resumeOrder[0] >= 0 && resumeOrder[0] < resumeOrder[1] && resumeOrder[1] < resumeOrder[2])) failures.push("E2E-004: tasks must resume ancestor -> source -> descendant");
+    const siblingId = "task-004-sibling";
+    if (!byType.has("SiblingTaskContinues") || scenario.steps.some((step) => step.payload.task_id === siblingId && step.payload.entity?.to_state === "suspended")) failures.push("E2E-004: sibling branch must remain outside containment");
+    for (const relation of ["Ancestor", "Descendant"]) {
+      const stop = byType.get(`Stop${relation}AgentRunRequested`)?.step.payload;
+      const stopped = byType.get(`${relation}AgentRunStopped`)?.step.payload;
+      const start = byType.get(`Start${relation}AgentRunRequested`)?.step.payload;
+      const started = byType.get(`${relation}AgentRunStarted`)?.step.payload;
+      const resumed = byType.get(`${relation}TaskResumed`)?.step.payload;
+      if (stop?.refs.run_id !== stopped?.refs.run_id || stop?.task_id !== stopped?.task_id) failures.push(`E2E-004: ${relation} stop command/event join mismatch`);
+      if (start?.refs.run_id !== started?.refs.run_id || start?.task_id !== started?.task_id) failures.push(`E2E-004: ${relation} start command/event join mismatch`);
+      if (started?.refs.run_id !== resumed?.refs.run_id || started?.task_id !== resumed?.task_id) failures.push(`E2E-004: ${relation} started/resumed join mismatch`);
     }
   }
   for (const plane of ["control-plane", "execution-plane", "governance-plane", "memory-plane"]) {
@@ -450,10 +464,16 @@ for (const scenario of document.scenarios ?? []) {
   }
 }
 
+if (!process.argv.includes("--partial")) {
+  for (const messageId of canonicalPayloads.keys()) {
+    if (!usedCanonicalMessageIds.has(messageId)) failures.push(`canonical/${messageId}: payload is not used by any active trace`);
+  }
+}
+
 if (failures.length > 0) {
   console.error(`FAILED: ${failures.length} error(s) across ${checked} payload(s)`);
   for (const failure of failures) console.error(`- ${failure}`);
   process.exit(1);
 }
 
-console.log(`PASS: ${document.scenarios.length} scenarios, ${checked} sequence payloads, ${domainChecked} canonical domain payloads, ${document.scenarios.length} applied sequence requirements, schema and cross-step invariants satisfied`);
+console.log(`PASS: ${document.scenarios.length} scenarios, ${checked} sequence payloads, ${usedCanonicalMessageIds.size} canonical domain payloads in active traces, ${document.scenarios.length} applied sequence requirements, schema and cross-step invariants satisfied`);

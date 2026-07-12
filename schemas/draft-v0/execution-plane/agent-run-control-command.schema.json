@@ -1,0 +1,6 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema","$id":"urn:agent-harness:execution-plane:agent-run-control-command:draft-v0:r1","x-schema-version":"draft-v0","x-schema-revision":1,"x-stability":"draft",
+  "type":"object","additionalProperties":false,
+  "required":["command_id","incident_id","task_id","run_id","type","reason_ref","issued_at"],
+  "properties":{"command_id":{"$ref":"../common/primitives.schema.json#/$defs/id"},"incident_id":{"$ref":"../common/primitives.schema.json#/$defs/id"},"task_id":{"$ref":"../common/primitives.schema.json#/$defs/id"},"run_id":{"$ref":"../common/primitives.schema.json#/$defs/id"},"type":{"enum":["stop","start"]},"reason_ref":{"$ref":"../common/primitives.schema.json#/$defs/ref"},"issued_at":{"$ref":"../common/primitives.schema.json#/$defs/timestamp"}}
+}
