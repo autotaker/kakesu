@@ -1,0 +1,4 @@
+interface:
+  display_name: "Tabletop Scenario Debugging"
+  short_description: "Validate schema-backed E2E message sequences"
+  default_prompt: "Use $tabletop-debug-scenarios to run tabletop debugging for a representative E2E scenario."
