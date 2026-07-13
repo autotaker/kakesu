@@ -35,6 +35,7 @@ const matchesAllowed = (file) => allowed.some((rule) => rule.endsWith("/**") ? f
 const prompt = `Act as the ${action} writer for ${task.id}. Read AGENTS.md, ${task.task_dir}/TASK.md, relevant evidence, and the local Wiki. Update only: ${allowed.join(", ")}. Complete the action's evidence and commit directly to work repository main. Do not bypass Git hooks. Do not change Wiki content or Schema.`;
 const command = [
   ...(args.profile ? ["-p", args.profile] : []),
+  ...(args.model ? ["-m", args.model] : []),
   "exec",
   "-C",
   root,

@@ -6784,8 +6784,8 @@ extraction_notes:
 - 新しい用語を追加したときは、docs本文と正式用語のlintポリシーを同じ変更で更新する。
 extraction_inventory:
   source: 日本語を含む**/*.md
-  raw_token_count: 11016
-  unique_token_count: 2590
+  raw_token_count: 11025
+  unique_token_count: 2595
   classification: all_extracted_termsの各レコードにcategoryを付ける。
 lint:
   textlint_config: .textlintrc.json
@@ -7340,8 +7340,8 @@ all_extracted_terms:
   abbreviations: []
   variants: []
   description: KakesuのSchemaと設計で同じ対象を指す、限定された正式ドメイン名。
-  count: 609
-  prose_count: 533
+  count: 610
+  prose_count: 534
   code_count: 76
   source_count: 36
 - token: agent
@@ -11195,10 +11195,10 @@ all_extracted_terms:
   - cli
   - command line
   description: Kakesuの利用者向けコマンドライン入口。
-  count: 37
-  prose_count: 30
+  count: 38
+  prose_count: 31
   code_count: 7
-  source_count: 10
+  source_count: 11
 - token: cli
   category: english_preferred
   formal_name: CLI
@@ -11300,6 +11300,17 @@ all_extracted_terms:
   count: 1
   prose_count: 0
   code_count: 1
+  source_count: 1
+- token: Codex
+  category: japanese_translation
+  formal_name: Codex
+  japanese: 訳語を検討
+  abbreviations: []
+  variants: []
+  description: 本文から抽出した一般技術語。自然な日本語の訳語を優先する。
+  count: 1
+  prose_count: 1
+  code_count: 0
   source_count: 1
 - token: coding/README.md
   category: identifier
@@ -18227,6 +18238,17 @@ all_extracted_terms:
   prose_count: 0
   code_count: 3
   source_count: 2
+- token: gpt-5.6-terra
+  category: identifier
+  formal_name: gpt-5.6-terra
+  japanese: null
+  abbreviations: []
+  variants: []
+  description: 本文から抽出したコード識別子。本文ではバッククォートで囲む。
+  count: 1
+  prose_count: 0
+  code_count: 1
+  source_count: 1
 - token: grace
   category: japanese_translation
   formal_name: grace
@@ -22172,6 +22194,17 @@ all_extracted_terms:
   prose_count: 0
   code_count: 3
   source_count: 3
+- token: MODEL
+  category: identifier
+  formal_name: MODEL
+  japanese: null
+  abbreviations: []
+  variants: []
+  description: 本文から抽出したコード識別子。本文ではバッククォートで囲む。
+  count: 1
+  prose_count: 0
+  code_count: 1
+  source_count: 1
 - token: model
   category: japanese_translation
   formal_name: Model
@@ -25689,9 +25722,9 @@ all_extracted_terms:
   abbreviations: []
   variants: []
   description: 本文から抽出したコード識別子。本文ではバッククォートで囲む。
-  count: 4
+  count: 5
   prose_count: 0
-  code_count: 4
+  code_count: 5
   source_count: 2
 - token: Profile
   category: japanese_translation
@@ -35029,8 +35062,8 @@ all_extracted_terms:
   abbreviations: []
   variants: []
   description: Kakesuの設計文書で正式名称として使うドメイン用語または標準技術用語。
-  count: 109
-  prose_count: 81
+  count: 110
+  prose_count: 82
   code_count: 28
   source_count: 24
 - token: wiki-agent-runner
@@ -35113,6 +35146,28 @@ all_extracted_terms:
 - token: wiki_commits
   category: identifier
   formal_name: wiki_commits
+  japanese: null
+  abbreviations: []
+  variants: []
+  description: 本文から抽出したコード識別子。本文ではバッククォートで囲む。
+  count: 1
+  prose_count: 0
+  code_count: 1
+  source_count: 1
+- token: WIKI_MODEL
+  category: identifier
+  formal_name: WIKI_MODEL
+  japanese: null
+  abbreviations: []
+  variants: []
+  description: 本文から抽出したコード識別子。本文ではバッククォートで囲む。
+  count: 1
+  prose_count: 0
+  code_count: 1
+  source_count: 1
+- token: WIKI_PROFILE
+  category: identifier
+  formal_name: WIKI_PROFILE
   japanese: null
   abbreviations: []
   variants: []

@@ -36,7 +36,16 @@ const promptByAction = {
   "context-plan": `Review ${target}, TASK.md, and the local Wiki. Update only the Related Wiki and Decision section of PLAN.md with applicable knowledge, conflicts, and open points. Follow AGENTS.md and commit directly to main. Do not bypass Git hooks.`,
   ingest: `Ingest ${target}. Maintain only the Wiki paths allowed by wiki/AGENTS.md, create an idempotent ingestion receipt from the HANDOVER digest, regenerate wiki/index.json, and commit directly to main. Do not modify Task evidence or backlog.yaml. Do not bypass Git hooks.`,
 };
-const command = ["exec", "-C", root, "--sandbox", "workspace-write", promptByAction[action]];
+const command = [
+  ...(args.profile ? ["-p", args.profile] : []),
+  ...(args.model ? ["-m", args.model] : []),
+  "exec",
+  "-C",
+  root,
+  "--sandbox",
+  "workspace-write",
+  promptByAction[action],
+];
 
 if (args.dry_run === "true") {
   process.stdout.write(`${JSON.stringify({ command: ["codex", ...command], target }, null, 2)}\n`);

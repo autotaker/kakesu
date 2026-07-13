@@ -45,6 +45,8 @@ make work-agent TASK=TASK-0001 ACTION=qa-result PROFILE=qa
 
 `ACTION`は`task | plan | qa-plan | review | qa-result | handover | main-transition | governance`のいずれかとする。`governance`はmain AgentがSchema、フック、Wiki保守規約を変更する場合にだけ使う。Task作成、ワークツリー割り当て、Wiki保守は、それぞれ専用コマンドが同じ共通ロックを使う。
 
+Wiki Agentは既定で`gpt-5.6-terra`を使う。Codex CLIの既定プロファイルまたはモデルが実行環境と互換でない場合、`PROFILE`、`MODEL`、`WIKI_PROFILE`、`WIKI_MODEL`でランチャー単位に上書きする。グローバル設定を書き換えない。
+
 ## 兼任規則
 
 - DEV Agentとレビュアー Agentの兼任は禁止する。

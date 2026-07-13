@@ -8,6 +8,8 @@ NODE ?= node
 PNPM ?= pnpm
 WORK_ROOT ?= $(abspath ../agent-harness-work)
 WIKI_CONTEXT_TARGET ?= task
+WIKI_PROFILE ?=
+WIKI_MODEL ?= gpt-5.6-terra
 GO_ENV := GOCACHE=$(CURDIR)/.build/go-cache
 UV_ENV := UV_CACHE_DIR=$(CURDIR)/.build/uv-cache
 
@@ -84,7 +86,7 @@ work-init: node-deps
 work-agent: node-deps
 	@test -n "$(TASK)" || (echo "TASK is required" >&2; exit 1)
 	@test -n "$(ACTION)" || (echo "ACTION is required" >&2; exit 1)
-	$(NODE) scripts/task/run-work-agent.mjs --work-root "$(WORK_ROOT)" --task "$(TASK)" --action "$(ACTION)" $(if $(PROFILE),--profile "$(PROFILE)",)
+	$(NODE) scripts/task/run-work-agent.mjs --work-root "$(WORK_ROOT)" --task "$(TASK)" --action "$(ACTION)" $(if $(PROFILE),--profile "$(PROFILE)",) $(if $(MODEL),--model "$(MODEL)",)
 
 task-create: node-deps
 	@test -n "$(ID)" || (echo "ID is required" >&2; exit 1)
@@ -117,11 +119,11 @@ wiki-index: node-deps
 wiki-context: node-deps
 	@test -n "$(TASK)" || (echo "TASK is required" >&2; exit 1)
 	@test "$(WIKI_CONTEXT_TARGET)" = "task" -o "$(WIKI_CONTEXT_TARGET)" = "plan" || (echo "WIKI_CONTEXT_TARGET must be task or plan" >&2; exit 1)
-	$(NODE) scripts/task/run-wiki-agent.mjs --work-root "$(WORK_ROOT)" --task "$(TASK)" --action "context-$(WIKI_CONTEXT_TARGET)"
+	$(NODE) scripts/task/run-wiki-agent.mjs --work-root "$(WORK_ROOT)" --task "$(TASK)" --action "context-$(WIKI_CONTEXT_TARGET)" $(if $(WIKI_PROFILE),--profile "$(WIKI_PROFILE)",) $(if $(WIKI_MODEL),--model "$(WIKI_MODEL)",)
 
 wiki-ingest: node-deps
 	@test -n "$(TASK)" || (echo "TASK is required" >&2; exit 1)
-	$(NODE) scripts/task/run-wiki-agent.mjs --work-root "$(WORK_ROOT)" --task "$(TASK)" --action ingest
+	$(NODE) scripts/task/run-wiki-agent.mjs --work-root "$(WORK_ROOT)" --task "$(TASK)" --action ingest $(if $(WIKI_PROFILE),--profile "$(WIKI_PROFILE)",) $(if $(WIKI_MODEL),--model "$(WIKI_MODEL)",)
 
 clean:
 	rm -rf .build memory/dist memory/.venv governance/target
