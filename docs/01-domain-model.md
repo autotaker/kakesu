@@ -2,7 +2,7 @@
 
 ## 1. Agent
 
-Agentは、TaskのOwnerになれる持続的な論理主体である。
+Agentは、Taskのオーナーになれる持続的な論理主体である。
 
 ```typescript
 type Agent = {
@@ -14,13 +14,13 @@ type Agent = {
 };
 ```
 
-AgentはLLMの1回のResponseともOSプロセスとも異なる。再起動しても同じAgentが同じTaskのOwnerとして再開できる。
+AgentはLLMの1回のレスポンスともOSプロセスとも異なる。再起動しても同じAgentが同じTaskのオーナーとして再開できる。
 
-Agentの生成、Owner割当、Run、中断復帰、解放は[03-agent-lifecycle.md](03-agent-lifecycle.md)を正本とする。
+Agentの生成、オーナー割当、実行、中断復帰、解放は[03-agent-lifecycle.md](03-agent-lifecycle.md)を正本とする。
 
 ## 2. Task
 
-Taskは、単一Ownerが責任を持つ完了判定可能な作業単位である。
+Taskは、単一オーナーが責任を持つ完了判定可能な作業単位である。
 
 ```typescript
 type Task = {
@@ -45,25 +45,25 @@ type Task = {
 
 ### Taskの成立条件
 
-- Objectiveがある
-- Acceptanceがある
-- Ownerが一人いる
-- LifecycleがHarnessで管理される
-- Ownerが完了候補を提出できる
+- 目的がある
+- 受け入れ条件がある
+- オーナーが一人いる
+- ライフサイクルがハーネスで管理される
+- オーナーが完了候補を提出できる
 
 ### Taskではないもの
 
 - 1回のLLMメッセージ
-- shell command
+- shell コマンド
 - ファイル読み書き
 - 一時的な仮説検証
-- 同じOwnerが現在Task内で行う細分化
+- 同じオーナーが現在Task内で行う細分化
 
-別Ownerへ完了責任を移すとSubTaskになる。
+別オーナーへ完了責任を移すとSubTaskになる。
 
-### Task Progress
+### Task進捗
 
-TaskはOwner Agentの作業認識をTodo形式のProgress Ledgerとして持つ。Progressは一定のResponse StepごとにHarnessが強制するMaintenance Responseで更新し、ContractやAcceptance判定とは分離する。現在値と更新履歴を永続化し、Compaction後の意味的な再開情報とEpisode生成へ利用する。
+TaskはオーナーAgentの作業認識をTODO形式の進捗 台帳として持つ。進捗は一定のレスポンス ステップごとにハーネスが強制するメンテナンス レスポンスで更新し、契約や受け入れ条件判定とは分離する。現在値と更新履歴を永続化し、圧縮後の意味的な再開情報とエピソード生成へ利用する。
 
 ## 3. Workspace
 
@@ -93,16 +93,16 @@ type Workspace = {
 | モード | 用途 |
 |---|---|
 | `fork` | 親の状態を複製し、子が自由に変更する |
-| `shared_readonly` | 親のWorkspaceを読み取り専用Viewとして参照する |
+| `shared_readonly` | 親のWorkspaceを読み取り専用ビューとして参照する |
 | `empty` | 独立した空Workspaceから開始する |
 
-実体ストレージを共有しても、Taskごとの論理Workspace IDは分ける。Git worktree、container、ローカル プロセスなどの物理実行ResourceはWorkspace Aggregateに含めず、Agent ResourceとしてHarnessがLifecycleとCleanupを管理する。
+実体ストレージを共有しても、Taskごとの論理Workspace IDは分ける。Git ワークツリー、コンテナー、ローカル プロセスなどの物理実行リソースはWorkspace 集約に含めず、Agentリソースとしてハーネスがライフサイクルとクリーンアップを管理する。
 
-Security Policyの適用主体はAgentやAgent Runではなく論理Workspaceである。Sandbox ネットワーク identity、CASB Rule、Credential スコープ、一時Grantは`workspace_id`へ束縛する。Task/Agent IDは要求者と目的を示す監査provenanceであり、Owner交代やRun再開でPolicy Bindingを変更しない。
+セキュリティ ポリシーの適用主体はAgentやAgent実行ではなく論理Workspaceである。サンドボックス ネットワーク 識別情報、CASB ルール、認証情報 スコープ、一時許可は`workspace_id`へ束縛する。Task/Agent IDは要求者と目的を示す監査来歴であり、オーナー交代や実行再開でポリシー割り当てを変更しない。
 
-`fork`は親WorkspaceのPolicyを暗黙共有せず、Platform Policyが許すprofile/バージョンだけを新しいWorkspace Bindingへcopyする。親の一時Grant、使用回数、Authority approvalは子へ継承しない。`shared_readonly`でも子は別Workspace identityを持ち、外向き通信Policyは子のBindingで評価する。
+`fork`は親Workspaceのポリシーを暗黙共有せず、プラットフォーム ポリシーが許すプロファイル/バージョンだけを新しいWorkspace 割り当てへコピーする。親の一時許可、使用回数、責任者 承認は子へ継承しない。`shared_readonly`でも子は別Workspace 識別情報を持ち、外向き通信ポリシーは子の割り当てで評価する。
 
-## 4. Agent Run
+## 4. Agent実行
 
 ```typescript
 type AgentRun = {
@@ -121,17 +121,17 @@ type AgentRun = {
 };
 ```
 
-一Taskに複数Runを許す理由を示す。
+一Taskに複数実行を許す理由を示す。
 
 - プロセス再起動
-- Responses API chainの再構築
-- Context圧縮
+- Responses API 連鎖の再構築
+- コンテキスト圧縮
 - モデル切替
 - 長時間停止後の再開
 
-## 5. Completion Review
+## 5. 完了レビュー
 
-Acceptance ReviewerはTask OwnerでもHarness管理のAgentでもない。永続化するのは1回の判定結果であり、内部のLLM sessionはAgent Runとして保存しない。
+受け入れ条件レビュアーはTaskオーナーでもハーネス管理のAgentでもない。永続化するのは1回の判定結果であり、内部のLLM セッションはAgent実行として保存しない。
 
 ```typescript
 type CompletionReview = {
@@ -146,7 +146,7 @@ type CompletionReview = {
 };
 ```
 
-`AcceptanceReviewDecision`は全判定で`evidence_refs`を持ち、`reject`では`unmet_acceptance`、`insufficient_evidence`では`required_evidence`も保存する。同じTaskで複数回のReviewを許す。
+`AcceptanceReviewDecision`は全判定で`evidence_refs`を持ち、`reject`では`unmet_acceptance`、`insufficient_evidence`では`required_evidence`も保存する。同じTaskで複数回のレビューを許す。
 
 ## 6. ER図
 
@@ -312,9 +312,9 @@ erDiagram
 
 ## 7. 主要制約
 
-### Owner排他
+### オーナー排他
 
-Ownerが割り当てられた非終端Taskは最大1つ。
+オーナーが割り当てられた非終端Taskは最大1つ。
 
 ```sql
 CREATE UNIQUE INDEX one_active_task_per_owner
@@ -322,33 +322,33 @@ ON tasks(owner_agent_id)
 WHERE status NOT IN ('completed', 'cancelled');
 ```
 
-`waiting`、`suspended`、`reviewing_completion`も非終端である。待機理由はTask statusではなく`WaitCondition.kind`で区別する。
+`waiting`、`suspended`、`reviewing_completion`も非終端である。待機理由はTask状態ではなく`WaitCondition.kind`で区別する。
 
 ### 親子制約
 
 - `parent_task_id`は自分自身を参照しない
 - 循環を禁止する
-- 子TaskのOwnerは親TaskのOwnerと異なる
-- 親Ownerがcancelできるのは直接の子Taskだけ
+- 子Taskのオーナーは親Taskのオーナーと異なる
+- 親オーナーがキャンセルできるのは直接の子Taskだけ
 
 ### Workspace制約
 
 - Taskはちょうど1つのWorkspaceを持つ
-- Workspaceはちょうど1つのSecurity Policy Bindingを持つ
-- Policy BindingはOwner AgentやAgent RunではなくWorkspace IDへ束縛する
-- fork時にtemporary GrantとAuthority approvalを継承しない
-- Workspaceのsource chainは循環しない
+- Workspaceはちょうど1つのセキュリティ ポリシー割り当てを持つ
+- ポリシー割り当てはオーナーAgentやAgent実行ではなくWorkspace IDへ束縛する
+- 分岐時に一時 許可と責任者 承認を継承しない
+- Workspaceの起点 連鎖は循環しない
 - `shared_readonly`では書き込み層を持たない
 
-### Outcome制約
+### 結果制約
 
-- Task Outcomeは終端状態で1つだけ
-- `completed` Outcomeにはaccept済みCompletion Reviewが必要
-- EpisodeはOutcome確定後に1つだけ生成する
+- Task 結果は終端状態で1つだけ
+- `completed` 結果には受理済み完了レビューが必要
+- エピソードは結果確定後に1つだけ生成する
 
-## 8. OwnerとRole
+## 8. オーナーとロール
 
-Agentは1つのTaskを持つ間、Owner Roleを担う。Policy Agent、Egress Audit Agent、Acceptance Reviewer、Wiki AgentはHarness管理Agentではなく、作業TaskのOwnerにならない専用LLMコンポーネントとして動かす。
+Agentは1つのTaskを持つ間、オーナー ロールを担う。ポリシーAgent、外向き通信監査Agent、受け入れ条件レビュアー、Wiki Agentはハーネス管理Agentではなく、作業Taskのオーナーにならない専用LLMコンポーネントとして動かす。
 
 ```text
 Work Agent   : Taskを所有する

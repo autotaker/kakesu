@@ -16,11 +16,13 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 GLOSSARY = ROOT / "docs" / "glossary.yml"
+GLOSSARY_INDEX = ROOT / "docs" / "99-glossary-index.md"
 TEXTLINT_CONFIG = ROOT / ".textlintrc.json"
 PACKAGE_JSON = ROOT / "package.json"
 TOKEN_RE = re.compile(r"[A-Za-z][A-Za-z0-9_./:+-]*")
 FENCED_RE = re.compile(r"```.*?```|~~~.*?~~~", re.DOTALL)
 INLINE_CODE_RE = re.compile(r"`[^`\n]+`")
+LINK_DESTINATION_RE = re.compile(r"\]\(([^)\s]+)(?:\s+[^)]*)?\)")
 TRAILING_PUNCTUATION = ".,;!?)]}"
 
 
@@ -38,6 +40,7 @@ def markdown_files() -> list[Path]:
 def code_spans(text: str) -> list[tuple[int, int]]:
     spans = [match.span() for match in FENCED_RE.finditer(text)]
     spans.extend(match.span() for match in INLINE_CODE_RE.finditer(text))
+    spans.extend(match.span(1) for match in LINK_DESTINATION_RE.finditer(text))
     return spans
 
 
@@ -145,6 +148,38 @@ def inventory(glossary: dict) -> tuple[list[dict], Counter[str], dict[str, set[s
     return records, counts, token_files
 
 
+def render_glossary_index(glossary: dict) -> str:
+    categorized = {
+        term["formal_name"]: (category, term)
+        for category, definition in glossary["categories"].items()
+        for term in definition.get("terms", [])
+    }
+    lines = [
+        "# Kakesu用語索引",
+        "",
+        "<!-- このファイルはdocs/glossary.ymlから自動生成する。直接編集しない。 -->",
+        "",
+        "Kakesu内で固有の意味を持つ用語について、標準表記、短い説明、定義元をまとめる。表記規則と表記揺れの正本は[glossary.yml](glossary.yml)とする。",
+        "",
+        "| 標準表記 | 正式名 | 説明 | 定義 |",
+        "|---|---|---|---|",
+    ]
+    for project_term in glossary.get("project_terms", []):
+        formal = project_term["term"]
+        category_and_term = categorized.get(formal)
+        if "display" in project_term:
+            display = project_term["display"]
+        elif category_and_term and category_and_term[0] == "japanese_translation":
+            display = category_and_term[1].get("japanese") or formal
+        else:
+            display = formal
+        definition = project_term["definition"]
+        lines.append(
+            f"| {display} | `{formal}` | {project_term['description']} | [設計書]({definition}) |"
+        )
+    return "\n".join(lines) + "\n"
+
+
 def update_glossary() -> None:
     glossary = yaml.safe_load(GLOSSARY.read_text(encoding="utf-8"))
     records, counts, _ = inventory(glossary)
@@ -159,7 +194,9 @@ def update_glossary() -> None:
         yaml.safe_dump(glossary, allow_unicode=True, sort_keys=False, width=120),
         encoding="utf-8",
     )
+    GLOSSARY_INDEX.write_text(render_glossary_index(glossary), encoding="utf-8")
     print(f"updated {GLOSSARY}: {sum(counts.values())} tokens, {len(counts)} unique")
+    print(f"updated {GLOSSARY_INDEX}: {len(glossary.get('project_terms', []))} project terms")
 
 
 def validate() -> list[str]:
@@ -174,6 +211,25 @@ def validate() -> list[str]:
         errors.append("docs/glossary.yml scope.sources must cover all Markdown files")
     if glossary.get("scope", {}).get("language") != "japanese":
         errors.append("docs/glossary.yml scope.language must limit terminology lint to Japanese Markdown")
+
+    project_terms = glossary.get("project_terms")
+    if not isinstance(project_terms, list) or not project_terms:
+        errors.append("docs/glossary.yml project_terms must define the project-specific glossary index")
+    else:
+        project_names = [term.get("term") for term in project_terms]
+        if len(project_names) != len(set(project_names)):
+            errors.append("docs/glossary.yml project_terms contains duplicate terms")
+        for project_term in project_terms:
+            if not all(project_term.get(field) for field in ("term", "description", "definition")):
+                errors.append("each project term must have term, description, and definition")
+                continue
+            definition_path = project_term["definition"].split("#", 1)[0]
+            if not (GLOSSARY.parent / definition_path).is_file():
+                errors.append(f"project term definition does not exist: {project_term['definition']}")
+
+    expected_index = render_glossary_index(glossary)
+    if not GLOSSARY_INDEX.is_file() or GLOSSARY_INDEX.read_text(encoding="utf-8") != expected_index:
+        errors.append("docs/99-glossary-index.md is stale; regenerate it with validate-terminology.py --write")
     if len(expected_records) != len(expected_by_token):
         errors.append("docs/glossary.yml all_extracted_terms contains duplicate tokens")
     if set(actual_by_token) != set(expected_by_token):
@@ -203,6 +259,23 @@ def validate() -> list[str]:
         errors.append("glossary raw_token_count is stale")
     if glossary.get("extraction_inventory", {}).get("unique_token_count") != len(counts):
         errors.append("glossary unique_token_count is stale")
+
+    review_threshold = glossary.get("lint", {}).get("review_required_at_prose_count")
+    if not isinstance(review_threshold, int) or review_threshold < 1:
+        errors.append("glossary lint.review_required_at_prose_count must be a positive integer")
+    else:
+        unreviewed = [
+            record
+            for record in records
+            if record.get("japanese") == "訳語を検討"
+            and record.get("prose_count", 0) >= review_threshold
+        ]
+        if unreviewed:
+            summary = ", ".join(
+                f"{record['token']}({record['prose_count']})"
+                for record in sorted(unreviewed, key=lambda item: -item["prose_count"])[:10]
+            )
+            errors.append(f"frequent prose terms require glossary review: {summary}")
 
     config = json.loads(TEXTLINT_CONFIG.read_text(encoding="utf-8"))
     if config.get("rules", {}).get("kakesu-glossary") is not True:

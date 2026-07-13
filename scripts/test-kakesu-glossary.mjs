@@ -33,7 +33,8 @@ function lint(markdown) {
 try {
   const invalid = lint(
     "これはmessageとmessage_idの例である。Tokio taskは別概念である。\n\n" +
-      "*message*\n\n> message\n\n[message](https://example.com/api)\n",
+      "*message*\n\n> message\n\n[message](https://example.com/api)\n\n" +
+      "block cloneとhigh rateを検査する。\n",
   );
   const invalidOutput = `${invalid.stdout}${invalid.stderr}`;
   if (invalid.status === 0) {
@@ -54,12 +55,24 @@ try {
   if ((invalidOutput.match(/message => メッセージ/g) || []).length !== 4) {
     throw new Error(`emphasis, blockquote, or link-label terminology was skipped:\n${invalidOutput}`);
   }
+  if (!invalidOutput.includes("block clone => ブロッククローン")) {
+    throw new Error(`compound terminology was not detected:\n${invalidOutput}`);
+  }
+  if (invalidOutput.includes("block => 拒否")) {
+    throw new Error(`a shorter term overlapped a compound term:\n${invalidOutput}`);
+  }
+  if (!invalidOutput.includes("high rate => 高頻度") || invalidOutput.includes("rate => 比率")) {
+    throw new Error(`the longest compound terminology rule did not win:\n${invalidOutput}`);
+  }
 
-  const valid = lint("これはメッセージと`message_id`の例である。Tokio taskは別概念である。\n");
+  const valid = lint(
+    "これはメッセージと`message_id`の例である。Tokio taskは別概念である。\n" +
+      "Work AgentはControl Planeと通信する。\n",
+  );
   if (valid.status !== 0) {
     throw new Error(`valid terminology fixture failed:\n${valid.stdout}${valid.stderr}`);
   }
-  console.log("PASS: glossary replacement, identifier formatting, and task context safety");
+  console.log("PASS: glossary replacement, canonical and translated compounds, identifier formatting, and task context safety");
 } finally {
   fs.rmSync(temporaryDirectory, { recursive: true, force: true });
 }

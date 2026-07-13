@@ -2,7 +2,7 @@
 
 ## 1. 目的
 
-長期記憶は、Work Agentが自由検索する共有データベースではない。独立したWiki AgentがTask Episode群を編纂し、Harnessが現在Taskに必要な文脈だけを強制挿入する基盤機能である。
+長期記憶は、Work Agentが自由検索する共有データベースではない。独立したWiki AgentがTaskエピソード群を編纂し、ハーネスが現在Taskに必要な文脈だけを強制挿入する基盤機能である。
 
 ```text
 Task Execution
@@ -14,35 +14,35 @@ Task Execution
   → Work Agent
 ```
 
-### 1.1 実装・Framework境界
+### 1.1 実装・フレームワーク境界
 
-Memory PlaneはPythonの独立Serviceとして実装し、OpenAI Agents SDKをEpisode AgentとWiki Agentの一時tool runnerに使用する。FrameworkのSession、trace、checkpoint、Response ID、tool call履歴をJobやTaskの正本にしない。SDK標準tracingは既定で無効化し、sanitizedなJob metadataだけを独自telemetryへ出す。
+Memory PlaneはPythonの独立サービスとして実装し、OpenAI Agent SDKをエピソード AgentとWiki Agentの一時ツール runnerに使用する。フレームワークのセッション、トレース、チェックポイント、レスポンス ID、ツール 呼び出し履歴をジョブやTaskの正本にしない。SDK標準tracingは既定で無効化し、無害化済みなジョブ メタデータだけを独自telemetryへ出す。
 
-Memory Serviceは`evidence.db`とSemantic Wiki リポジトリを単独でwrite所有する。Go CoreとはMemory Outbox/InboxとUnix domain socketでメッセージを交換し、DB fileを共有しない。Episode Compilation Jobのlease expiry時はFramework sessionを再開せず、固定入力 スナップショットから新しいRunで最初から再調査する。
+記憶サービスは`evidence.db`と意味 Wiki リポジトリを単独で書き込み所有する。Go コアとは記憶 送信キュー/受信キューとUnixドメインソケットでメッセージを交換し、DB ファイルを共有しない。エピソード 編纂 ジョブのリース 期限切れ時はフレームワーク セッションを再開せず、固定入力 スナップショットから新しい実行で最初から再調査する。
 
-初期FrameworkはOpenAI Agents SDKとする。固定graph、HITL、途中checkpointが必要になった場合だけMicrosoft Agent FrameworkまたはLangGraphを再評価する。詳細は[13-technology-stack.md](13-technology-stack.md)を正本とする。
+初期フレームワークはOpenAI Agent SDKとする。固定グラフ、HITL、途中チェックポイントが必要になった場合だけMicrosoft Agent フレームワークまたはLangGraphを再評価する。詳細は[13-technology-stack.md](13-technology-stack.md)を正本とする。
 
-## 2. なぜメッセージをRaw単位にしないか
+## 2. なぜメッセージを未加工単位にしないか
 
-LLMメッセージ、terminal command、tool callは細かすぎる。
+LLMメッセージ、終端 コマンド、ツール 呼び出しは細かすぎる。
 
 - 1つの意図が多数のメッセージへ分散する
 - 試行錯誤や撤回が多い
-- Owner責任と完了条件が見えない
+- オーナー責任と完了条件が見えない
 - 長期的に検索するとノイズが支配する
 
-長期記憶の時系列単位は、単一Ownerが責任を持ったTaskとする。
+長期記憶の時系列単位は、単一オーナーが責任を持ったTaskとする。
 
 ```text
 Message / Command / Tool Call = Evidence / Activity
 Task Episode                  = Episodic Memory Unit
 ```
 
-## 3. Task Episode
+## 3. Taskエピソード
 
-Taskが`completed`または`cancelled`に入った後、Episode Agentが1つの不変記録を作る。`suspended`中はTask Progress、Resume Cursor、障害Evidenceを保存するが、Episodeを確定しない。
+Taskが`completed`または`cancelled`に入った後、エピソード Agentが1つの不変記録を作る。`suspended`中はTask進捗、再開 カーソル、障害証跡を保存するが、エピソードを確定しない。
 
-Episode AgentはTask Progressの履歴をCourseとUnresolvedの主要入力にする。ただしProgressはOwner assertedなので、Task Events、Tool結果、Artifact、Completion Reviewと照合し、観測事実と混同しない。
+エピソード AgentはTask進捗の履歴をCourseとUnresolvedの主要入力にする。ただし進捗はオーナー申告なので、Taskイベント、ツール結果、成果物、完了レビューと照合し、観測事実と混同しない。
 
 ```typescript
 type TaskEpisode = {
@@ -84,11 +84,11 @@ type TaskEpisode = {
 };
 ```
 
-Task EpisodeはTask Outcomeの単なる要約ではない。初期状況、重要な転換、予想外、最終判断を含める。
+TaskエピソードはTask 結果の単なる要約ではない。初期状況、重要な転換、予想外、最終判断を含める。
 
-## 4. Evidence Layer
+## 4. 証跡 レイヤー
 
-Episodeから低位証拠へ辿れるようにする。Evidence Layerの正本はSQLite等のtransactional データベースとし、EvidenceごとのMarkdown、JSON、log、blobファイルは作らない。
+エピソードから低位証拠へ辿れるようにする。証跡 レイヤーの正本はSQLite等のtransactional データベースとし、証跡ごとのMarkdown、JSON、ログ、BLOBファイルは作らない。
 
 ```text
 Task Episode
@@ -103,11 +103,11 @@ Task Episode
   └─ Egress Challenge / Grant / Outbound Transaction records
 ```
 
-通常の記憶検索ではEpisodeを読む。根拠確認や矛盾解消のときだけ低位Evidenceへ掘る。
+通常の記憶検索ではエピソードを読む。根拠確認や矛盾解消のときだけ低位証跡へ掘る。
 
-Agent レスポンス logの具体的な保存範囲とRetentionは[05-runtime-and-responses-api.md](05-runtime-and-responses-api.md)の「Agent Run Record Policy」を正本とする。Episodeに必要な主張を短期Run logだけへ依存させない。
+Agent レスポンス ログの具体的な保存範囲と保持は[05-runtime-and-responses-api.md](05-runtime-and-responses-api.md)の「Agent実行記録 ポリシー」を正本とする。エピソードに必要な主張を短期実行 ログだけへ依存させない。
 
-### Evidence Database
+### 証跡 データベース
 
 ```typescript
 type EvidenceRecord = {
@@ -131,7 +131,7 @@ type EvidenceRecord = {
 };
 ```
 
-本文は`evidence_blobs`へBLOBとして保存し、大きい内容は固定sizeでchunk化する。metadata、本文、source relationを同じDB内で管理する。
+本文は`evidence_blobs`へBLOBとして保存し、大きい内容は固定サイズでチャンク化する。メタデータ、本文、起点 関係を同じDB内で管理する。
 
 ```text
 evidence_records   metadata / digest / retention
@@ -140,15 +140,15 @@ evidence_links     source -> target / relation
 evidence_text      optional FTS index
 ```
 
-`artifact://...`、`evidence://...`などのlogical refはDB recordを指すURIであり、filesystem pathではない。Episode Agentはread-only SQL ToolでEvidence DBをpageして読む。
+`artifact://...`、`evidence://...`などの論理 参照はDB 記録を指すURIであり、ファイルシステム パスではない。エピソード Agentは読み取り専用 SQL ツールで証跡DBをpageして読む。
 
-Workspace内の作業ファイルはEvidence Layerではない。根拠として固定する時点でHarnessが内容またはスナップショットをEvidence DBへ取り込み、ダイジェストを確定する。取り込み後はworktreeを削除してもEvidence参照が壊れない。
+Workspace内の作業ファイルは証跡 レイヤーではない。根拠として固定する時点でハーネスが内容またはスナップショットを証跡DBへ取り込み、ダイジェストを確定する。取り込み後はワークツリーを削除しても証跡参照が壊れない。
 
-## 5. Episode Agent
+## 5. エピソード Agent
 
-Episode AgentはMemory Planeに属する専用Agentである。Work AgentのTask Ownerにはならず、終端TaskごとのEpisode Compilation Jobを複数Response Stepで調査・編成する。1回のLLM呼び出しですべての履歴を要約する方式には依存しない。
+エピソード AgentはMemory Planeに属する専用Agentである。Work AgentのTaskオーナーにはならず、終端Taskごとのエピソード 編纂 ジョブを複数レスポンス ステップで調査・編成する。1回のLLM呼び出しですべての履歴を要約する方式には依存しない。
 
-### Compilation Job
+### 編纂 ジョブ
 
 ```typescript
 type EpisodeCompilationJob = {
@@ -178,23 +178,23 @@ type EpisodeCompilationJob = {
 };
 ```
 
-Memory PlaneはTask終端EventからJobを冪等に生成する。Jobは処理の再試行と重複防止のための機能固有レコードであり、Agent Runではない。内部Response ID、tool call履歴、stepごとの入出力は永続化しない。workerはlease付きでJobをclaimし、heartbeatで期限を更新する。期限切れの`investigating` / `validating` Jobは`attempt`を増やして再claimし、部分Responseを破棄して新しい一時sessionで初期索引から再調査する。Job失敗は終端Taskの状態を戻さず、再試行後も解消しなければ`needs_operator`にする。
+Memory PlaneはTask終端イベントからジョブを冪等に生成する。ジョブは処理の再試行と重複防止のための機能固有レコードであり、Agent実行ではない。内部レスポンス ID、ツール 呼び出し履歴、ステップごとの入出力は永続化しない。ワーカーはリース付きでジョブを確保し、heartbeatで期限を更新する。期限切れの`investigating` / `validating` ジョブは`attempt`を増やして再確保し、部分レスポンスを破棄して新しい一時セッションで初期索引から再調査する。ジョブ失敗は終端Taskの状態を戻さず、再試行後も解消しなければ`needs_operator`にする。
 
-### 初期Context
+### 初期コンテキスト
 
-Harnessは全履歴本文ではなく、調査用索引を初期Contextへ渡す。
+ハーネスは全履歴本文ではなく、調査用索引を初期コンテキストへ渡す。
 
-- Final Task ContractとOutcome
-- Task Progressの現在値とバージョン
-- Task Event、Agent Run、Child Task、Artifact、Decision、Review、Egress/Grantの件数とcursor
-- 主要ArtifactとEvidenceの参照
-- Episode Agentの調査上限と出力Schema
+- Final Task契約と結果
+- Task進捗の現在値とバージョン
+- Taskイベント、Agent実行、子Task、成果物、判断、レビュー、外向き通信/許可の件数とカーソル
+- 主要成果物と証跡の参照
+- エピソード Agentの調査上限と出力Schema
 
-Episode Agentは不足する詳細を単一のRead-only SQL Toolで取得する。
+エピソード Agentは不足する詳細を単一の読み取り専用 SQL ツールで取得する。
 
-Function Tool引数は[evidence-query-tool.schema.json](../schemas/draft-v0/memory-plane/evidence-query-tool.schema.json)、結果は[evidence-query-result.schema.json](../schemas/draft-v0/memory-plane/evidence-query-result.schema.json)を正本とする。
+関数 ツール引数は[evidence-query-tool.スキーマ.JSON](../schemas/draft-v0/memory-plane/evidence-query-tool.schema.json)、結果は[evidence-query-result.スキーマ.JSON](../schemas/draft-v0/memory-plane/evidence-query-result.schema.json)を正本とする。
 
-### Read-only Evidence Tool
+### 読み取り専用 証跡ツール
 
 ```typescript
 query_evidence({
@@ -204,7 +204,7 @@ query_evidence({
 })
 ```
 
-ToolはSQLiteのparameterized `SELECT`または`WITH ... SELECT`だけを実行し、列名付きJSON rows、truncated flag、次page用cursor情報を返す。Episode Agentには初期Contextで利用可能なread-only view、column、relation、FTS構文を提示する。
+ツールはSQLiteのparameterized `SELECT`または`WITH ... SELECT`だけを実行し、列名付きJSON rows、切り詰め済み flag、次page用カーソル情報を返す。エピソード Agentには初期コンテキストで利用可能な読み取り専用 ビュー、column、関係、FTS構文を提示する。
 
 ```text
 episode_task
@@ -221,23 +221,23 @@ episode_artifacts
 episode_evidence_text
 ```
 
-各viewはCompilation Jobの`task_id`へ固定される。SQLite 接続は`query_only`、base table非公開、extension無効とし、Authorizerで`INSERT / UPDATE / DELETE / DDL / PRAGMA / ATTACH / DETACH`を拒否する。Harnessはクエリ タイムアウト、VM step、row、返却bytes、BLOB chunkの上限を強制する。
+各ビューは編纂 ジョブの`task_id`へ固定される。SQLite 接続は`query_only`、基底 テーブル非公開、拡張無効とし、Authorizerで`INSERT / UPDATE / DELETE / DDL / PRAGMA / ATTACH / DETACH`を拒否する。ハーネスはクエリ タイムアウト、VM ステップ、行、返却バイト、BLOB チャンクの上限を強制する。
 
-Memory PlaneはJob開始前に、CoreとGovernanceのOutboxから受信した終端TaskのContract、Progress、Task/Agent Run Event、Child Outcome、Decision、Reviewをwatermarkとダイジェスト付きterminalスナップショットとしてEvidence DBへ取り込む。Egress Challenge、Policy Grant、Outbound Transaction、Artifact索引も同じスナップショットへ含める。そのスナップショットからJobスコープのTEMP/read-only viewを構築する。構築後にAgent用接続を開き、接続自身による`ATTACH`は禁止する。実行中に他Plane DBの変化を直接参照させない。
+Memory Planeはジョブ開始前に、コアと統治の送信キューから受信した終端Taskの契約、進捗、Task/Agent実行 イベント、子 結果、判断、レビューをウォーターマークとダイジェスト付き終端スナップショットとして証跡DBへ取り込む。外向き通信の許可確認、一時許可、外向きトランザクション、成果物索引も同じスナップショットへ含める。そのスナップショットからジョブスコープのTEMP/読み取り専用 ビューを構築する。構築後にAgent用接続を開き、接続自身による`ATTACH`は禁止する。実行中に他Plane DBの変化を直接参照させない。
 
-Episode AgentはSQLの`LIMIT`とkeyset paginationを使って必要なEvidenceだけを複数Stepで調査する。巨大BLOBを一度に返さず、text viewまたはchunk indexを指定して読む。
+エピソード AgentはSQLの`LIMIT`とkeyset paginationを使って必要な証跡だけを複数ステップで調査する。巨大BLOBを一度に返さず、テキスト ビューまたはチャンク インデックスを指定して読む。
 
 次の操作は許可しない。
 
-- Task、Contract、Progress、Workspaceの変更
-- 外向き通信やPolicy Grant
-- Taskの生成・Cancellation
-- Agent Resource操作
+- Task、契約、進捗、Workspaceの変更
+- 外向き通信や一時許可
+- Taskの生成・キャンセル
+- Agentリソース操作
 - Wikiの直接更新
 
-### Function CallingとStructured Output
+### 関数 呼び出しと構造化 出力
 
-各Responses API呼び出しには、最初から`query_evidence`とTask Episode用`text.format: json_schema`を同時に指定し、`tool_choice: "auto"`とする。
+各Responses API呼び出しには、最初から`query_evidence`とTaskエピソード用`text.format: json_schema`を同時に指定し、`tool_choice: "auto"`とする。
 
 `task_episode_schema`の正本は[`task-episode.schema.json`](../schemas/draft-v0/memory-plane/task-episode.schema.json)である。
 
@@ -258,28 +258,28 @@ responses.create({
 });
 ```
 
-Evidenceが不足している間はFunction Callを返し、Harnessが同じ`call_id`の`function_call_output`を返してchainを継続する。十分と判断した時点で、ModelはSchemaに従ったメッセージを返す。Harnessは調査Phaseと最終生成Phaseを分けず、`finish_investigation` Tool、`tool_choice: "none"`への切替、最終化専用Responseを要求しない。
+証跡が不足している間は関数 呼び出しを返し、ハーネスが同じ`call_id`の`function_call_output`を返して連鎖を継続する。十分と判断した時点で、モデルはSchemaに従ったメッセージを返す。ハーネスは調査フェーズと最終生成フェーズを分けず、`finish_investigation` ツール、`tool_choice: "none"`への切替、最終化専用レスポンスを要求しない。
 
-一Responseに複数Function Callがある場合はすべて処理する。未処理Callがあるメッセージは最終Episodeとして確定しない。
+一レスポンスに複数関数 呼び出しがある場合はすべて処理する。未処理呼び出しがあるメッセージは最終エピソードとして確定しない。
 
 ### 上限
 
-Memory PlaneはJob作成時に`max_steps`、入力/出力 token budget、Artifact読取bytes、Job deadline、profile/出力 schema バージョンを固定する。上限へ近づいた場合は「確認できない事項を`unresolved`へ残し、利用済みEvidenceだけで確定する」旨を次入力へ追加する。上限超過やStructured Output未生成が続く場合はJobを再試行または`needs_operator`にする。
+Memory Planeはジョブ作成時に`max_steps`、入力/出力 トークン 予算、成果物読取バイト、ジョブ 期限、プロファイル/出力 スキーマ バージョンを固定する。上限へ近づいた場合は「確認できない事項を`unresolved`へ残し、利用済み証跡だけで確定する」旨を次入力へ追加する。上限超過や構造化 出力未生成が続く場合はジョブを再試行または`needs_operator`にする。
 
 ### 出力と検証
 
-最終メッセージは`TaskEpisode` JSON Schemaへ適合しなければならない。Structured Outputは形を保証するが内容の正しさまでは保証しないため、Harnessは次を検証する。
+最終メッセージは`TaskEpisode` JSON Schemaへ適合しなければならない。構造化 出力は形を保証するが内容の正しさまでは保証しないため、ハーネスは次を検証する。
 
-- JobのTask ID、最終Contract、Outcomeとの一致
-- 全`source_refs`、Artifact、Outbound Transaction、Child Episode参照の存在
-- `observed`がHarness観測Evidenceを参照していること
-- Task Progress由来の解釈が`owner_asserted`であること
-- 未完了Progressが`unresolved`へ反映されていること
-- Secretやopaque continuation blobを本文へ含めていないこと
+- ジョブのTask ID、最終契約、結果との一致
+- 全`source_refs`、成果物、外向きトランザクション、子 エピソード参照の存在
+- `observed`がハーネス観測証跡を参照していること
+- Task進捗由来の解釈が`owner_asserted`であること
+- 未完了進捗が`unresolved`へ反映されていること
+- 秘密情報や不透明 継続情報 BLOBを本文へ含めていないこと
 
 検証成功後に`task_episodes`へ一件だけ保存する。
 
-### Epistemic status
+### Epistemic 状態
 
 ```typescript
 type EpisodeStatement = {
@@ -294,81 +294,81 @@ type EpisodeStatement = {
 
 ### Observed
 
-状態遷移、test exit code、Egress block/forward結果、Artifact ダイジェストなど、Harnessが観測したもの。
+状態遷移、テスト exit コード、外向き通信 拒否/転送結果、成果物 ダイジェストなど、ハーネスが観測したもの。
 
-### Owner asserted
+### オーナー申告
 
-「原因はXだった」「この成果でAcceptanceを満たした」などOwnerの解釈。
+「原因はXだった」「この成果で受け入れ条件を満たした」などオーナーの解釈。
 
 ### Compiler inferred
 
-複数EventからEpisode Agentが再構成した説明。既存フィールド名との互換のため`compiler_inferred`を維持する。
+複数イベントからエピソード Agentが再構成した説明。既存フィールド名との互換のため`compiler_inferred`を維持する。
 
 三者を混同しない。
 
-## 6. Episodic MemoryとSemantic Memory
+## 6. エピソード型 記憶と意味 記憶
 
 | 層 | 問い | 基本形式 |
 |---|---|---|
-| Episodic | 何が、いつ、どのTask文脈で起きたか | Task Episode |
-| Semantic | この領域をどう理解し、何を予測すべきか | Concept / Schema / Script / Case Pattern |
+| エピソード型 | 何が、いつ、どのTask文脈で起きたか | Taskエピソード |
+| 意味 | この領域をどう理解し、何を予測すべきか | 概念 / Schema / スクリプト / ケース パターン |
 
-Semantic WikiはEpisodeの要約集ではない。複数Episodeから抽象化・統合された認知モデルである。
+意味 Wikiはエピソードの要約集ではない。複数エピソードから抽象化・統合された認知モデルである。
 
 詳細は[09-semantic-wiki-schema.md](09-semantic-wiki-schema.md)を参照。
 
 ## 7. Wiki Agent
 
-Wiki AgentはWork Agentから独立したRoleで、2つのモードを持つ。
+Wiki AgentはWork Agentから独立したロールで、2つのモードを持つ。
 
-### Maintenance mode
+### メンテナンス モード
 
-- 新Episodeを読む
-- 既存Semantic Wikiとの適合を評価する
-- Concept / Schema / Script / Case Patternを更新する
+- 新エピソードを読む
+- 既存意味 Wikiとの適合を評価する
+- 概念 / Schema / スクリプト / ケース パターンを更新する
 - 矛盾や反例を保持する
-- Markdown patchを評価して公開する
+- Markdown パッチを評価して公開する
 
-### Query mode
+### クエリ モード
 
-- 現在Task Contractを読む
-- 関連Semantic modelを選ぶ
-- 必要なら類似Episodeを選ぶ
-- Task-specific Memory Contextを生成する
+- 現在Task契約を読む
+- 関連意味 モデルを選ぶ
+- 必要なら類似エピソードを選ぶ
+- Task固有の記憶コンテキストを生成する
 
-Wiki Agentは作業Taskを実行せず、外部ネットワークやEgress Grant権限を持たない。
+Wiki Agentは作業Taskを実行せず、外部ネットワークや外向き通信 許可権限を持たない。
 
 ## 8. Work Agentのアクセス
 
-Work Agentは原則としてSemantic WikiファイルやEpisode storeを直接読まない。
+Work Agentは原則として意味 Wikiファイルやエピソード ストアを直接読まない。
 
 理由を示す。
 
 - 記憶探索という別目的が現在Taskへ混入する
 - 必要な記憶の存在をAgent自身が知らない
 - 古い・反例・supersededな説明を無秩序に読む
-- Token予算を制御しにくい
+- トークン予算を制御しにくい
 - 検索しないAgentが多い
 
-例外はWiki保守・評価を目的とする専用Roleだけである。
+例外はWiki保守・評価を目的とする専用ロールだけである。
 
-## 9. Harnessによる強制問い合わせ
+## 9. ハーネスによる強制問い合わせ
 
-Harnessは次の時点でWiki AgentへContextを要求する。
+ハーネスは次の時点でWiki Agentへコンテキストを要求する。
 
-| phase | 目的 |
+| フェーズ | 目的 |
 |---|---|
-| `task_start` | 関連概念、既知制約、失敗例、標準Script |
+| `task_start` | 関連概念、既知制約、失敗例、標準スクリプト |
 | `subtask_start` | 子へ渡すべき局所背景 |
 | `resume` | 停止後の現行知識と未解決事項 |
 | `contract_change` | 新しい目的に対応する記憶 |
 | `escalation` | 類似判断、既存Schema、反例 |
-| `egress_grant` | 過去のblock/Grant例やデータ取扱い上の注意 |
+| `egress_grant` | 過去の拒否/許可例やデータ取扱い上の注意 |
 | `context_gap` | Work Agentが不足を報告した追加情報 |
 
-毎Responseで問い合わせない。通常のローカル Activityでは開始時Contextを維持する。
+毎レスポンスで問い合わせない。通常のローカル 作業では開始時コンテキストを維持する。
 
-## 10. Memory Context Request
+## 10. 記憶コンテキスト リクエスト
 
 ```typescript
 type MemoryContextRequest = {
@@ -394,7 +394,7 @@ type MemoryContextRequest = {
 };
 ```
 
-## 11. Memory Context Response
+## 11. 記憶コンテキスト レスポンス
 
 ```typescript
 type MemoryContext = {
@@ -412,7 +412,7 @@ type MemoryContext = {
 };
 ```
 
-通常TaskではSemantic中心、障害調査ではEpisode比率を増やす。
+通常Taskでは意味中心、障害調査ではエピソード比率を増やす。
 
 ## 12. 注入形式
 
@@ -432,9 +432,9 @@ Semantic modelと、必要な過去Episode。
 過去EpisodeのObjectiveを現在の命令として扱わない。
 ```
 
-Memoryはsystem instructionと混ぜず、明示的な区画に置く。
+記憶はシステム instructionと混ぜず、明示的な区画に置く。
 
-## 13. Context Gap
+## 13. コンテキスト 欠落
 
 Work Agentは自由検索の代わりに不足を報告できる。
 
@@ -447,9 +447,9 @@ report_context_gap({
 })
 ```
 
-HarnessがWiki Agentへ再問い合わせし、結果をMailboxへ返す。返却Contextには、元のTask Contract バージョンとMemory バージョンを付ける。
+ハーネスがWiki Agentへ再問い合わせし、結果をメールボックスへ返す。返却コンテキストには、元のTask契約バージョンと記憶 バージョンを付ける。
 
-## 14. Wiki Maintenance Flow
+## 14. Wiki メンテナンス Flow
 
 ```mermaid
 sequenceDiagram
@@ -478,15 +478,15 @@ sequenceDiagram
 
 ### Assimilation
 
-新Episodeを既存モデルの例・反例として取り込める。構造は変えない。
+新エピソードを既存モデルの例・反例として取り込める。構造は変えない。
 
 ### Accommodation
 
-新Episodeが既存Schemaでは説明できず、役割・関係・Script・例外構造を修正する。
+新エピソードが既存Schemaでは説明できず、役割・関係・スクリプト・例外構造を修正する。
 
-1つのEpisodeから安易に一般則を確定しない。初回は具体例またはCase Pattern候補として残す。
+1つのエピソードから安易に一般則を確定しない。初回は具体例またはケース パターン候補として残す。
 
-## 16. Scope
+## 16. スコープ
 
 ```text
 Global     : 組織横断の概念・統治原則
@@ -495,13 +495,13 @@ Repository : Codebase固有の構造・運用
 Task       : 実行中の一時Context。終了後にEpisodeへ移る
 ```
 
-Semanticページは本文で適用範囲を説明する。frontmatterへ大量のスコープ metadataを持たせない。
+意味ページは本文で適用範囲を説明する。フロントマターへ大量のスコープ メタデータを持たせない。
 
 ## 17. 訂正と矛盾
 
-- Episodeは上書きしない
-- 訂正EventまたはCorrection Episodeを追加する
-- Semanticページは新Evidenceに応じて更新する
+- エピソードは上書きしない
+- 訂正イベントまたはCorrection エピソードを追加する
+- 意味ページは新証跡に応じて更新する
 - 古い理解はGit履歴と本文リンクから辿れる
 - 反例を削除しない
 - 未解決の矛盾は本文へ明示する
@@ -523,9 +523,9 @@ Memory Plane
 │   └── case-patterns/
 ```
 
-実装file名は`evidence.db`を標準とする。Memory Inbox/Outbox、Episode Compilation Job、Memory Context生成Jobも同じDBへ置き、Memory Serviceだけがwriteする。
+実装ファイル名は`evidence.db`を標準とする。記憶 受信キュー/送信キュー、エピソード 編纂 ジョブ、記憶コンテキスト生成ジョブも同じDBへ置き、記憶サービスだけが書き込みする。
 
-Task Episodeと低位EvidenceはDBへ保存し、個別ファイルを生成しない。Semantic Wikiだけは人間が保守・レビューできるMarkdownとしてGit管理する。DB backupはSQLite Online Backup APIまたは整合したスナップショットを使い、稼働中DBファイルの単純copyには依存しない。
+Taskエピソードと低位証跡はDBへ保存し、個別ファイルを生成しない。意味 Wikiだけは人間が保守・レビューできるMarkdownとしてGit管理する。DB バックアップはSQLite Online Backup APIまたは整合したスナップショットを使い、稼働中DBファイルの単純コピーには依存しない。
 
 ## 19. 不変条件
 

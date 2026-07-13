@@ -2,14 +2,14 @@
 
 ## 1. 目的
 
-Kakesuは、経験を蓄え、必要なときに活かす長期記憶型の自律AIである。本設計は、L3・L2・L1の作業エージェントを、Responses APIを使って停止・再開可能なTask実行主体として動かすローカルCLI Harnessを定義する。
+Kakesuは、経験を蓄え、必要なときに活かす長期記憶型の自律AIである。本設計は、L3・L2・L1のWork Agentを、Responses APIを使って停止・再開可能なTask実行主体として動かすローカルCLI ハーネスを定義する。
 
 設計の中心はモデルの能力差ではない。次の5つを明示的に管理することである。
 
 - 誰がどのTaskの責任を持つか
 - どのWorkspaceで自由に作業するか
 - どのイベントを待ち、どこから再開するか
-- Sandbox外への作用を誰が評価し、誰が実行するか
+- サンドボックス外への作用を誰が評価し、誰が実行するか
 - 終了したTaskをどう長期記憶へ変換するか
 
 ## 2. 基本原則
@@ -28,31 +28,31 @@ Harness
   状態・排他・Mailbox・Continuation・Workspace・配送・監査・Human Authority Gateway
 ```
 
-### 2.1 Sandbox内では自由
+### 2.1 サンドボックス内では自由
 
-各Taskには隔離Workspaceを与える。ファイル編集、ローカルGit、ビルド、テスト、一時DB、ローカルプロセス、試行錯誤は原則自由にする。Harnessは個々のシェルコマンドの意味を逐次審査しない。
+各Taskには隔離Workspaceを与える。ファイル編集、ローカルGit、ビルド、テスト、一時DB、ローカルプロセス、試行錯誤は原則自由にする。ハーネスは個々のシェルコマンドの意味を逐次審査しない。
 
 ### 2.2 外部世界との接点だけを統治
 
-Sandboxの外向き通信はHTTPS/DNS ProxyとWorkspaceスコープのFirewallからなるEgress Control Planeへ強制routingする。Agentは通常のCLIを使い、WorkspaceのCASB Ruleでblockされた通信だけを`request_grant`で申請する。
+サンドボックスの外向き通信はHTTPS/DNS プロキシとWorkspaceスコープのファイアウォールからなる外向き通信Control Planeへ強制ルーティングする。Agentは通常のCLIを使い、WorkspaceのCASB ルールで拒否された通信だけを`request_grant`で申請する。
 
-inlineのallow/blockはバージョン付きCASB Ruleだけで決め、通信ごとにLLMを呼ばない。自然言語や未知の攻撃をRuleで完全に防げるとは仮定せず、Rule作成・更新をPolicy Agentの確率的判断で支援する。通過通信も事後Reviewし、bypassを発見したらPolicy AgentがRule、Eval、回帰テストの改定を作る。
+インラインの許可/拒否はバージョン付きCASB ルールだけで決め、通信ごとにLLMを呼ばない。自然言語や未知の攻撃をルールで完全に防げるとは仮定せず、ルール作成・更新をポリシーAgentの確率的判断で支援する。通過通信も事後レビューし、迂回を発見したらポリシーAgentがルール、評価、回帰テストの改定を作る。
 
 ### 2.3 作業階層と統治階層を分離
 
-L3/L2/L1の親子関係は、目的・作業・文脈の移譲経路である。Egress Policy更新の承認経路ではない。Policy AgentとAuthorityは別系統に置く。
+L3/L2/L1の親子関係は、目的・作業・文脈の移譲経路である。外向き通信 ポリシー更新の承認経路ではない。ポリシーAgentと責任者は別系統に置く。
 
 ### 2.4 人間との通信境界をControl Planeへ一元化
 
-人間への質問、承認要求、Incident判断、Task再開判断と、その回答の受領は、Harness Control PlaneのAuthority Gatewayを通してのみ行う。Work Agent、Execution Plane、Governance Plane、Memory Planeは人間へ直接通信しない。各PlaneはimmutableなAuthority RequestをControl Planeへ渡し、Control Planeが認証・配送・期限・重複回答を管理して、immutableなAuthority Decisionを要求元へ返す。判断対象と判断要否は要求元Planeが所有し、Control Planeはその意味判断を代行しない。
+人間への質問、承認要求、インシデント判断、Task再開判断と、その回答の受領は、ハーネス Control Planeの責任者ゲートウェイを通してのみ行う。Work Agent、Execution Plane、Governance Plane、Memory Planeは人間へ直接通信しない。各Planeは不変な責任者への依頼をControl Planeへ渡し、Control Planeが認証・配送・期限・重複回答を管理して、不変な責任者の判断を要求元へ返す。判断対象と判断要否は要求元Planeが所有し、Control Planeはその意味判断を代行しない。
 
 ### 2.5 自然言語判断を偽装しない
 
-Objective、Acceptance、指示、意味的Policyは自然言語でよい。型にするのは、状態、ID、参照、予算、Egress Challenge、Grant スコープ、Decision種別など、Harnessが強制する部分に限る。
+目的、受け入れ条件、指示、意味的ポリシーは自然言語でよい。型にするのは、状態、ID、参照、予算、外向き通信の許可確認、許可範囲、判断種別など、ハーネスが強制する部分に限る。
 
 ### 2.6 API状態を正本にしない
 
-Responses APIのResponse IDや`previous_response_id`は推論継続の補助である。Task、Workspace、Mailbox、Logical Continuation、成果物は独自ストアを正本とする。
+Responses APIのレスポンス IDや`previous_response_id`は推論継続の補助である。Task、Workspace、メールボックス、論理継続情報、成果物は独自ストアを正本とする。
 
 ## 3. 全体アーキテクチャ
 
@@ -131,7 +131,7 @@ flowchart TB
 
 ### 3.1 実装境界とPlane間配送
 
-初期実装はローカルCLI applicationとし、Go Core Runtime、Python Memory Service、Rust Governance Serviceの三プロセス群で構成する。詳細な選定理由は[13-technology-stack.md](13-technology-stack.md)を正本とする。
+初期実装はローカルCLI アプリケーションとし、Go コアランタイム、Python 記憶サービス、Rust 統治サービスの三プロセス群で構成する。詳細な選定理由は[13-technology-stack.md](13-technology-stack.md)を正本とする。
 
 ```text
 Go Core Runtime
@@ -144,66 +144,66 @@ Rust Governance Service
   Governance Plane / Egress enforcement / governance.db
 ```
 
-Plane間の意味的メッセージはcanonical JSON Schemaを使い、各PlaneのOutbox/Inboxへ永続化してUnix domain socketでat-least-once配送する。socketやプロセス内チャネルは通知・転送手段であり正本ではない。受信側Inboxへのコミットを`ACK`境界とし、重複適用は`message_id`とidempotency keyで防ぐ。
+Plane間の意味的メッセージは正規JSON Schemaを使い、各Planeの送信キュー/受信キューへ永続化してUnixドメインソケットで少なくとも1回配送する。ソケットやプロセス内チャネルは通知・転送手段であり正本ではない。受信側受信キューへのコミットを`ACK`境界とし、重複適用は`message_id`と冪等キーで防ぐ。
 
-異なるPlane データベースをまたぐTransactionは作らない。各Plane内の状態とOutboxを原子的に確定し、Plane間ワークフローは`ACK`とreconciliationで収束させる。安全性に関わる処理は必要な`ACK`までAction gate、Grant、Egressを安全側状態に保つ。Human Authorityとの通信はプロセス分割後もControl Plane Authority Gatewayだけを通る。
+異なるPlane データベースをまたぐトランザクションは作らない。各Plane内の状態と送信キューを原子的に確定し、Plane間ワークフローは`ACK`と照合で収束させる。安全性に関わる処理は必要な`ACK`まで操作ゲート、許可、外向き通信を安全側状態に保つ。人間の責任者との通信はプロセス分割後もControl Planeの責任者ゲートウェイだけを通る。
 
 ## 4. 主要概念
 
 ### Agent
 
-継続的な論理主体。能力Profileを持ち、TaskのOwnerになれる。実行プロセスやResponse chainとは区別する。
+継続的な論理主体。能力プロファイルを持ち、Taskのオーナーになれる。実行プロセスやレスポンス 連鎖とは区別する。
 
 ### Task
 
-単一Ownerが責任を持つ、ObjectiveとAcceptanceを備えた完了判定可能な単位。Ownerは同時に複数Taskを処理しない。
+単一オーナーが責任を持つ、目的と受け入れ条件を備えた完了判定可能な単位。オーナーは同時に複数Taskを処理しない。
 
 ### Workspace
 
-Task専用の論理作業領域であり、Security Policyの適用主体でもある。子Taskは親Workspaceから`fork`、`shared_readonly`、または`empty`で作られる。Owner AgentやAgent Runが変わってもPolicy Bindingは変わらず、fork先へ一時Grantを継承しない。
+Task専用の論理作業領域であり、セキュリティ ポリシーの適用主体でもある。子Taskは親Workspaceから`fork`、`shared_readonly`、または`empty`で作られる。オーナーAgentやAgent実行が変わってもポリシー割り当ては変わらず、分岐先へ一時許可を継承しない。
 
-### Agent Run
+### Agent実行
 
-あるAgentがあるTaskを処理する実行セッション。再起動・Context再構築・モデル切替により、一Taskに複数Runが存在しうる。
+あるAgentがあるTaskを処理する実行セッション。再起動・コンテキスト再構築・モデル切替により、一Taskに複数実行が存在しうる。
 
 ### SubAgent
 
-親Task Ownerが`delegate`で生成した子TaskのOwner。別人格というより、独立した責任とContinuationを持つ子コルーチンである。
+親Taskオーナーが`delegate`で生成した子Taskのオーナー。別人格というより、独立した責任と継続情報を持つ子コルーチンである。
 
-### Ask
+### 質問
 
-子TaskのOwner Agentが判断責任を保持したまま、親TaskのOwner Agentへ知見を求める、Agent間のコミュニケーションである。回答は助言であり、Task Contractを変更せず、子Taskを拘束しない。
+子TaskのオーナーAgentが判断責任を保持したまま、親TaskのオーナーAgentへ知見を求める、Agent間のコミュニケーションである。回答は助言であり、Task契約を変更せず、子Taskを拘束しない。
 
-### Escalation
+### 上位判断依頼
 
-Objective、Acceptance、優先順位、作業範囲など、現在のTask Contractでは決めるべきでない判断責任を上位Authorityへ移すプロトコルである。Child Taskでは親Task、Root Taskでは人間のRoot Authorityが移転先になる。AgentはTaskのOwnerとして送信するが、移転する責任はAgent個人ではなくTask Contractに属する。Egress Grantの許可とは分離する。
+目的、受け入れ条件、優先順位、作業範囲など、現在のTask契約では決めるべきでない判断責任を上位責任者へ移すプロトコルである。子Taskでは親Task、ルートTaskでは人間のルート責任者が移転先になる。AgentはTaskのオーナーとして送信するが、移転する責任はAgent個人ではなくTask契約に属する。外向き通信の許可とは分離する。
 
-両者は同じMailbox経路を利用しても、意味上の主体が異なる。
+両者は同じメールボックス経路を利用しても、意味上の主体が異なる。
 
 | 操作 | 意味上の主体 | 移動するもの | 子Taskへの作用 |
 |---|---|---|---|
-| Ask | Owner Agent間 | 情報・助言 | Contractは変えず、子Ownerが判断する |
-| Escalation | Taskと上位Authority間 | Contract上の判断責任 | 上位決定によりContractを明確化・更新・Cancellationしうる |
+| 質問 | オーナーAgent間 | 情報・助言 | 契約は変えず、子オーナーが判断する |
+| 上位判断依頼 | Taskと上位責任者間 | 契約上の判断責任 | 上位決定により契約を明確化・更新・キャンセルしうる |
 
-### Egress Challenge / Policy Grant
+### 外向き通信の許可確認 / 一時許可
 
-Egress ChallengeはWorkspaceのCASB Ruleが外向き通信をblockした不変記録である。Policy Grantは特定Workspace、source Task、Challenge、宛先、リクエスト制約、期限へ束縛した一時Ruleである。Agentは外部作用を事前申告せず、Mailboxで通知されたChallengeに対してだけGrantを申請する。
+外向き通信の許可確認はWorkspaceのCASB ルールが外向き通信を拒否した不変記録である。一時許可は特定Workspace、起点Task、許可確認、宛先、リクエスト制約、期限へ束縛した一時ルールである。Agentは外部作用を事前申告せず、メールボックスで通知された許可確認に対してだけ許可を申請する。
 
-### Task Episode
+### Taskエピソード
 
 Taskが終端状態へ入ると確定する、時系列の長期記憶単位。メッセージ単位ではない。
 
 ## 5. L3・L2・L1
 
-すべて同じRuntimeを使う。差はProfileで表す。
+すべて同じランタイムを使う。差はプロファイルで表す。
 
 | 層 | 典型的な責務 | 文脈範囲 | 委譲先 |
 |---|---|---|---|
-| L3 | 広い目的、統合、優先順位、親TaskのAcceptance評価 | 広い | L2 / L3 |
+| L3 | 広い目的、統合、優先順位、親Taskの受け入れ条件評価 | 広い | L2 / L3 |
 | L2 | 独立した実装・分析・運用Task | 中間 | L1 / L2 |
 | L1 | 狭く局所的だが完了判定可能なTask | 狭い | 原則なし、必要ならL1 |
 
-L1でもTask Ownerになれる。単なるコマンドや1回の検索はTaskではなくActivityである。
+L1でもTaskオーナーになれる。単なるコマンドや1回の検索はTaskではなく作業である。
 
 ## 6. Task実行の基本ループ
 
@@ -221,7 +221,7 @@ L1でもTask Ownerになれる。単なるコマンドや1回の検索はTaskで
 11. Episode AgentとWiki Agentへ非同期投入する
 ```
 
-## 7. LLMが選択するAction
+## 7. LLMが選択する操作
 
 ```typescript
 type AgentAction =
@@ -239,7 +239,7 @@ type AgentAction =
   | CancelAsync;
 ```
 
-すべての長時間Actionは`timeout_ms`を受け取る。期限内に完了しなければ処理を止めず、`async_id`を返す。最終結果はTask Mailboxへ配送する。
+すべての長時間操作は`timeout_ms`を受け取る。期限内に完了しなければ処理を止めず、`async_id`を返す。最終結果はTaskメールボックスへ配送する。
 
 詳細は[06-tools-and-async.md](06-tools-and-async.md)を参照。
 
@@ -247,24 +247,24 @@ type AgentAction =
 
 ### 移譲
 
-親AgentはTaskレコードを直接書かない。`delegate`でTask Proposalを提出し、HarnessがOwner、Task ID、Workspace、予算、親子関係を確定する。
+親AgentはTaskレコードを直接書かない。`delegate`でTask申請を提出し、ハーネスがオーナー、Task ID、Workspace、予算、親子関係を確定する。
 
 ### 子の完了
 
-子OwnerがCompletion Candidateを提出し、Acceptance Reviewerを通過した後、`ChildTaskCompleted`が親Mailboxへ届く。親はその成果を親TaskのAcceptanceへ統合する。
+子オーナーが完了案を提出し、受け入れ条件レビュアーを通過した後、`ChildTaskCompleted`が親メールボックスへ届く。親はその成果を親Taskの受け入れ条件へ統合する。
 
 ### 子のキャンセル
 
-親Task Ownerは直接の子Taskに`cancel_child_task`を要求できる。Harnessは権限検証後、Taskを直ちに`cancelled`へ確定する。プロセス停止やworktree削除はTask状態から分離したAgent Resource CleanupとしてHarnessが実行する。デフォルトは子孫へのcascade cancellationである。
+親Taskオーナーは直接の子Taskに`cancel_child_task`を要求できる。ハーネスは権限検証後、Taskを直ちに`cancelled`へ確定する。プロセス停止やワークツリー削除はTask状態から分離したAgentリソースのクリーンアップとしてハーネスが実行する。デフォルトは子孫へのカスケード キャンセルである。
 
 ### 完了責任
 
-- Owner: 作業が完成したと判断し、完了候補を提出する
-- Reviewer: 提示成果がAcceptanceを満たすと軽量に確認する
-- Harness: 状態遷移を確定する
-- Parent Owner: 子成果を親Taskへ統合する
+- オーナー: 作業が完成したと判断し、完了候補を提出する
+- レビュアー: 提示成果が受け入れ条件を満たすと軽量に確認する
+- ハーネス: 状態遷移を確定する
+- 親 オーナー: 子成果を親Taskへ統合する
 
-## 9. Egress統治
+## 9. 外向き通信統治
 
 ```text
 Work Agent
@@ -283,13 +283,13 @@ Work Agent
   → Agentが元のCLI commandを再実行
 ```
 
-親Agentは子のGrantを承認しない。ChallengeとGrantにTask identityとdelegation chainを保持し、Spawnによる権限ロンダリングを防ぐ。
+親Agentは子の許可を承認しない。許可確認と許可にTask 識別情報と委譲 連鎖を保持し、生成による権限ロンダリングを防ぐ。
 
 詳細は[07-governance.md](07-governance.md)を参照。
 
 ## 10. 長期記憶
 
-Task終了後、Task Episodeを生成する。Work AgentにWikiの直接探索を任せない。Harnessが独立Wiki Agentへ問い合わせ、Task-specific Memory ContextをContractと別区画で強制挿入する。
+Task終了後、Taskエピソードを生成する。Work AgentにWikiの直接探索を任せない。ハーネスが独立Wiki Agentへ問い合わせ、Task固有の記憶コンテキストを契約と別区画で強制挿入する。
 
 ```text
 Task Events + Outcome + Evidence
@@ -304,7 +304,7 @@ Task Events + Outcome + Evidence
 
 ## 11. 非目的
 
-- 全シェルコマンドの意味的Policy審査
+- 全シェルコマンドの意味的ポリシー審査
 - LLM内部思考の永続化
 - 親子関係による権限承認
 - Taskごとの完全なコードレビュー

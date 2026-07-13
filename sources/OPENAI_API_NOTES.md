@@ -6,99 +6,99 @@
 
 ## Responses API
 
-公式API Referenceを確認した。
+公式API 参照を確認した。
 
 - https://platform.openai.com/docs/api-reference/responses
 
 確認事項を示す。
 
-- Custom function toolsを`tools`へ渡せる。
+- Custom 関数 ツールを`tools`へ渡せる。
 - `parallel_tool_calls`を設定できる。
 - `previous_response_id`でマルチターン継続できる。
 - `previous_response_id`と`conversation`は同時使用できない。
-- top-level `instructions` parameterは現在のResponseのContextへsystemまたはdeveloper メッセージとして挿入される。
-- `previous_response_id`を使っても、前Responseで指定したtop-level `instructions` parameterは次Responseへ引き継がれない。公式Referenceは、これにより新Responseでsystem/developer メッセージを差し替えやすいとしている。
-- `input` itemとして渡せる`role: "developer"` メッセージと、top-level `instructions` parameterはAPI上の別の入力面である。
-- `background`でResponseを非同期実行できる。
+- 最上位 `instructions` パラメーターは現在のレスポンスのコンテキストへシステムまたは開発者 メッセージとして挿入される。
+- `previous_response_id`を使っても、前レスポンスで指定した最上位 `instructions` パラメーターは次レスポンスへ引き継がれない。公式参照は、これにより新レスポンスでシステム/開発者 メッセージを差し替えやすいとしている。
+- `input` 項目として渡せる`role: "developer"` メッセージと、最上位 `instructions` パラメーターはAPI上の別の入力面である。
+- `background`でレスポンスを非同期実行できる。
 
-## Function Calling
+## 関数 呼び出し
 
-公式Guideを確認した。
+公式ガイドを確認した。
 
 - https://developers.openai.com/api/docs/guides/function-calling
 
 確認事項を示す。
 
-- Response 出力の`function_call` itemは`call_id`、`name`、JSON encoded `arguments`を持つ。
-- Tool実行結果は`function_call_output` itemとして同じ`call_id`へ対応付けられる。
-- Responses APIのFunction Toolは`type: function`、`name`、`description`、JSON Schema `parameters`で定義できる。
+- レスポンス 出力の`function_call` 項目は`call_id`、`name`、JSON encoded `arguments`を持つ。
+- ツール実行結果は`function_call_output` 項目として同じ`call_id`へ対応付けられる。
+- Responses APIの関数 ツールは`type: function`、`name`、`description`、JSON Schema `parameters`で定義できる。
 - `strict: true`を利用できる。
 
-### Function CallとStructured Text Outputの境界
+### 関数 呼び出しと構造化 テキスト 出力の境界
 
-公式Guideを確認した。
+公式ガイドを確認した。
 
 - https://developers.openai.com/api/docs/guides/structured-outputs
 - https://developers.openai.com/api/docs/guides/function-calling
 
 確認事項を示す。
 
-- Responses APIのStructured Outputsには2つの別経路がある。Application Toolへ接続する場合はFunction Calling、ユーザーへ返すテキスト応答をJSON Schemaへ制約する場合は`text.format`を使う。
-- `text.format`はメッセージとして生成されるtext 出力の形式を制約する。Response全体の`output` item列を独自Envelopeへ変換する機能ではない。
-- ModelがFunction Toolを選ぶと、Responseの`output` arrayには`type: "function_call"`の独立itemが入り、`name`、`call_id`、JSON encoded `arguments`を持つ。
-- Function Call引数を構造化したい場合は、各Function Toolの`parameters` JSON Schemaと`strict: true`を使う。
-- `tool_choice: "auto"`はメッセージ生成またはTool CallをModelに選ばせる。`tool_choice: "required"`は1つ以上のTool Callを要求する。
+- Responses APIの構造化出力には2つの別経路がある。アプリケーション ツールへ接続する場合は関数 呼び出し、ユーザーへ返すテキスト応答をJSON Schemaへ制約する場合は`text.format`を使う。
+- `text.format`はメッセージとして生成されるテキスト 出力の形式を制約する。レスポンス全体の`output` 項目列を独自共通形式へ変換する機能ではない。
+- モデルが関数 ツールを選ぶと、レスポンスの`output` 配列には`type: "function_call"`の独立項目が入り、`name`、`call_id`、JSON encoded `arguments`を持つ。
+- 関数 呼び出し引数を構造化したい場合は、各関数 ツールの`parameters` JSON Schemaと`strict: true`を使う。
+- `tool_choice: "auto"`はメッセージ生成またはツール 呼び出しをモデルに選ばせる。`tool_choice: "required"`は1つ以上のツール 呼び出しを要求する。
 
 設計上の判断を示す。
 
-- `text.format`を使って、すべてのAgent Response Stepを`{ action, progress_delta }`のような共通Envelopeにはできない。
-- Tool Callが出るStepにも別の構造化text 出力が必ず出ることを前提にしない。
-- 本設計ではHarnessが一定の通常Response Stepごとに別のMaintenance Responseを開始し、利用可能Toolを`update_progress`だけに限定したうえで`tool_choice`に同Functionを指定する。これはResponses APIによる自動付加ではなく、Harnessが明示的に追加するFunction Calling Stepである。
-- Episode AgentではSQLite read-only `query_evidence` Function Tool、`tool_choice: "auto"`、Task Episode用`text.format: json_schema`を最初から同時指定する。ModelがEvidence不足時にFunction Call、十分な時にSchema準拠メッセージを返す通常Tool Loopとして扱い、Harness側で調査Phaseと最終生成Phaseを切り替えない。
+- `text.format`を使って、すべてのAgent レスポンス ステップを`{ action, progress_delta }`のような共通共通形式にはできない。
+- ツール 呼び出しが出るステップにも別の構造化テキスト 出力が必ず出ることを前提にしない。
+- 本設計ではハーネスが一定の通常レスポンス ステップごとに別のメンテナンス レスポンスを開始し、利用可能ツールを`update_progress`だけに限定したうえで`tool_choice`に同関数を指定する。これはResponses APIによる自動付加ではなく、ハーネスが明示的に追加する関数 呼び出し ステップである。
+- エピソード AgentではSQLite 読み取り専用 `query_evidence` 関数 ツール、`tool_choice: "auto"`、Taskエピソード用`text.format: json_schema`を最初から同時指定する。モデルが証跡不足時に関数 呼び出し、十分な時にSchema準拠メッセージを返す通常ツール ループとして扱い、ハーネス側で調査フェーズと最終生成フェーズを切り替えない。
 
-## Conversation state
+## Conversation 状態
 
-公式Guideを確認した。
+公式ガイドを確認した。
 
 - https://developers.openai.com/api/docs/guides/conversation-state
 
 設計上の判断を示す。
 
-- `previous_response_id`は同一Agent Runの短期継続にだけ利用する。
-- Response保存期間やContext課金、API側状態に依存せず、Task / Continuation / Workspaceを独自永続化する。
+- `previous_response_id`は同一Agent実行の短期継続にだけ利用する。
+- レスポンス保存期間やコンテキスト課金、API側状態に依存せず、Task / 継続情報 / Workspaceを独自永続化する。
 
-## Background mode
+## バックグラウンド モード
 
-公式Guideを確認した。
+公式ガイドを確認した。
 
 - https://developers.openai.com/api/docs/guides/background
 
 確認事項を示す。
 
-- `background: true`で長時間Responseを非同期開始できる。
+- `background: true`で長時間レスポンスを非同期開始できる。
 - GET Responsesで`queued` / `in_progress`をpollできる。
-- in-flight Responseをcancelできる。
-- Background modeは単一推論の実行方式であり、Task schedulerやHarnessのAsync Operationを代替しない。
+- in-flight レスポンスをキャンセルできる。
+- バックグラウンド モードは単一推論の実行方式であり、Task schedulerやハーネスの非同期操作を代替しない。
 
-## Compaction
+## 圧縮
 
-公式Guideを確認した。
+公式ガイドを確認した。
 
 - https://developers.openai.com/api/docs/guides/compaction
 
-公式API Referenceを確認した。
+公式API 参照を確認した。
 
 - https://developers.openai.com/api/reference/resources/responses/methods/compact
 
-### Server-side compaction
+### サーバー側 圧縮
 
 - `POST /responses`または`client.responses.create`で、`context_management`に`type: "compaction"`と`compact_threshold`を指定できる。
-- rendered token countが閾値を超えると、同じResponse処理内でserver-side compactionが走る。別の`/responses/compact`呼び出しは不要。
-- Response streamには暗号化された`compaction` 出力 itemが含まれる。
-- compaction itemは過去の重要なstateとreasoningを少ないtokenで次のwindowへ運ぶが、opaqueであり、人間が解釈する用途ではない。
-- stateless input-array chainingでは通常どおりResponse 出力を次の入力へ追加する。最新compaction itemより前のitemは削除できる。
-- `previous_response_id` chainingでは新しいuser メッセージだけを渡し、手動で過去itemをpruneしない。
-- `store=false`を指定したserver-side compactionはZDR-friendlyと公式Guideに記載されている。
+- rendered トークン 回数が閾値を超えると、同じレスポンス処理内でサーバー側 圧縮が走る。別の`/responses/compact`呼び出しは不要。
+- レスポンス ストリームには暗号化された`compaction` 出力 項目が含まれる。
+- 圧縮 項目は過去の重要な状態と推論を少ないトークンで次のウィンドウへ運ぶが、不透明であり、人間が解釈する用途ではない。
+- ステートレス input-array 連結では通常どおりレスポンス 出力を次の入力へ追加する。最新圧縮 項目より前の項目は削除できる。
+- `previous_response_id` 連結では新しいuser メッセージだけを渡し、手動で過去項目を枝刈りしない。
+- `store=false`を指定したサーバー側 圧縮はZDR-friendlyと公式ガイドに記載されている。
 
 例を示す。
 
@@ -115,11 +115,11 @@ response = client.responses.create(
 
 ### Standalone compact endpoint
 
-- `POST /responses/compact`または`client.responses.compact`はstatelessで、ZDR-friendlyな明示的Compaction手段である。
-- 呼び出し側がmessages、tools、reasoningやtool interactionを含む完全なContext Windowを`input`として渡す。入力はCompaction前の時点で対象モデルのContext Window内に収まる必要がある。
-- 戻り値は次の`/responses`へ渡せる新しいcompacted context windowである。
-- 出力はcompaction itemだけとは限らず、以前のwindowから保持されたitemを含みうる。
-- `/responses/compact`の出力を呼び出し側でpruneしてはならない。返された`output`全体をそのまま次のResponses 入力へ渡す。
+- `POST /responses/compact`または`client.responses.compact`はステートレスで、ZDR-friendlyな明示的圧縮手段である。
+- 呼び出し側がmessages、ツール、推論やツール interactionを含む完全なコンテキスト ウィンドウを`input`として渡す。入力は圧縮前の時点で対象モデルのコンテキスト ウィンドウ内に収まる必要がある。
+- 戻り値は次の`/responses`へ渡せる新しいcompacted コンテキスト ウィンドウである。
+- 出力は圧縮 項目だけとは限らず、以前のウィンドウから保持された項目を含みうる。
+- `/responses/compact`の出力を呼び出し側で枝刈りしてはならない。返された`output`全体をそのまま次のResponses 入力へ渡す。
 
 ```python
 compacted = client.responses.compact(
@@ -136,8 +136,8 @@ next_response = client.responses.create(
 
 ### 設計上の判断
 
-- Responses API CompactionはLLM Context Windowの圧縮機構であり、Task、Owner、Mailbox、Async Operation、Artifact、Workspaceの正本ではない。
-- opaqueなcompaction itemをTask ProgressやHarnessのResume Cursorの代替にしない。
-- server-side compactionは同一Agent Run内で利用できる。API Compactionが発生しただけではRunを閉じない。
-- Contract変更、モデル変更、Response chain喪失、長時間停止などでHarnessが新Runを作る場合は、API Compactionとは別に最小Resume Cursorを作り、Task Progressを含む各正本を再読込する。
-- standalone endpointを利用する場合、その出力全体をAPI向けの次Contextとして保持し、Harness固有のContractやMailbox Viewは次の入力構築時に明示的に加える。
+- Responses API 圧縮はLLM コンテキスト ウィンドウの圧縮機構であり、Task、オーナー、メールボックス、非同期操作、成果物、Workspaceの正本ではない。
+- 不透明な圧縮 項目をTask進捗やハーネスの再開 カーソルの代替にしない。
+- サーバー側 圧縮は同一Agent実行内で利用できる。API 圧縮が発生しただけでは実行を閉じない。
+- 契約変更、モデル変更、レスポンス 連鎖喪失、長時間停止などでハーネスが新実行を作る場合は、API 圧縮とは別に最小再開 カーソルを作り、Task進捗を含む各正本を再読込する。
+- スタンドアロン endpointを利用する場合、その出力全体をAPI向けの次コンテキストとして保持し、ハーネス固有の契約やメールボックス ビューは次の入力構築時に明示的に加える。

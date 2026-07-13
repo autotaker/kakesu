@@ -3,27 +3,27 @@ kind: schema
 title: Task Ownership
 ---
 
-# Task Ownership
+# Task 所有権
 
 Taskの実行責任、完了確認、状態遷移を分離するための構造である。
 
 ## 登場主体
 
-### Task Owner
+### Taskオーナー
 
-Objectiveを達成し、Acceptanceを解釈し、必要ならSubtaskを生成する。作業が完成したと判断した時点でCompletion Candidateを提出する。([Owner責任Episode](episode://design/task-owner-unit))
+目的を達成し、受け入れ条件を解釈し、必要ならSubtaskを生成する。作業が完成したと判断した時点で完了案を提出する。([オーナー責任エピソード](episode://design/task-owner-unit))
 
-### Acceptance Reviewer
+### 受け入れ条件レビュアー
 
-Owner Agent Runから分離した一時API sessionで、提出されたOutcomeとEvidenceが元のAcceptanceを満たすかだけを軽量確認する。Harness管理のAgent Runには登録せず、新しい要件や詳細コードレビューを追加しない。([Completion Review導入Episode](episode://design/completion-review))
+オーナーAgent 実行から分離した一時API セッションで、提出された結果と証跡が元の受け入れ条件を満たすかだけを軽量確認する。ハーネス管理のAgent実行には登録せず、新しい要件や詳細コードレビューを追加しない。([完了レビュー導入エピソード](episode://design/completion-review))
 
-### Parent Owner
+### 親 オーナー
 
-子Taskを生成し、子のOutcomeを親Taskへ統合する。直接の子Taskをキャンセルできるが、子Taskを直接`completed`にしない。([子Task取消Episode](episode://design/child-cancellation))
+子Taskを生成し、子の結果を親Taskへ統合する。直接の子Taskをキャンセルできるが、子Taskを直接`completed`にしない。([子Task取消エピソード](episode://design/child-cancellation))
 
-### Harness
+### ハーネス
 
-Owner排他、Task状態、Mailbox、Continuation、Workspace、Reviewer起動を管理し、状態遷移を確定する。
+オーナー排他、Task状態、メールボックス、継続情報、Workspace、レビュアー起動を管理し、状態遷移を確定する。
 
 ## 関係
 
@@ -38,13 +38,13 @@ flowchart LR
 
 ## 構造上の制約
 
-- 一TaskにOwnerは一人。
-- Owner Agent RunとReviewerの一時API sessionを分離する。
-- Parent Ownerは直接の子だけをcancelできる。
-- ReviewerはTaskの実行へ参加しない。
-- HarnessはAcceptanceの意味判断を自分では行わない。
+- 一Taskにオーナーは一人。
+- オーナーAgent 実行とレビュアーの一時API セッションを分離する。
+- 親 オーナーは直接の子だけをキャンセルできる。
+- レビュアーはTaskの実行へ参加しない。
+- ハーネスは受け入れ条件の意味判断を自分では行わない。
 
 ## 関連
 
 - [Task](../concepts/task.md)
-- [Task Completion](../scripts/task-completion.md)
+- [Task 完了](../scripts/task-completion.md)

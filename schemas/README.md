@@ -1,4 +1,4 @@
-# Schema構成とDraft バージョン規約
+# Schema構成と下書き バージョン規約
 
 JSON Schemaは、状態と判断の所有境界に合わせて次の4 Planeへ分ける。
 
@@ -15,13 +15,13 @@ schemas/
     api/                          # Responses APIへ渡す合成済みadapter bundle
 ```
 
-Plane directoryのcanonical Schemaが正本である。`api/`は複数PlaneのSchemaからResponses API形式へ合成するadapterであり、domain modelの所有境界にはしない。
+Plane ディレクトリの正規 Schemaが正本である。`api/`は複数PlaneのSchemaからResponses API形式へ合成するアダプターであり、ドメイン モデルの所有境界にはしない。
 
-## Draft バージョン
+## 下書き バージョン
 
-初期実装中のSchema familyは`draft-v0`とする。`draft-v0`の間は後方互換性を保証せず、実装知見に基づくbreaking changeを許可する。
+初期実装中のSchema familyは`draft-v0`とする。`draft-v0`の間は後方互換性を保証せず、実装知見に基づくbreaking 変更を許可する。
 
-canonical Schemaは次のmetadataを持つ。
+正規 Schemaは次のメタデータを持つ。
 
 ```json
 {
@@ -34,20 +34,20 @@ canonical Schemaは次のmetadataを持つ。
 ```
 
 - breaking / non-breakingを問わず、検証結果へ影響する変更では`x-schema-revision`と`$id`末尾を増やす。
-- 永続化する入力 スナップショット、出力、Event、Policy documentには`schema_id`、`schema_revision`、`schema_digest`を記録する。
-- 同じ`$id`の内容を上書きしない。永続instanceが存在するrevisionはvalidatorとともに保持する。
-- `draft-v0`内ではmigrationを必須にしないが、replay時はinstanceが記録したrevisionで検証する。
-- 実装契約を安定化した時点で`v1` familyを作り、それ以降のcompatibility policyを別途定める。
+- 永続化する入力 スナップショット、出力、イベント、ポリシー 文書には`schema_id`、`schema_revision`、`schema_digest`を記録する。
+- 同じ`$id`の内容を上書きしない。永続インスタンスが存在する改訂は検証器とともに保持する。
+- `draft-v0`内では移行を必須にしないが、再実行時はインスタンスが記録した改訂で検証する。
+- 実装契約を安定化した時点で`v1` familyを作り、それ以降のcompatibility ポリシーを別途定める。
 
-`draft-v0`はJSON Schema仕様のDraft番号ではない。JSON Schema dialectは2020-12に固定し、製品Schemaの安定度を`draft-v0`で表す。
+`draft-v0`はJSON Schema仕様の下書き番号ではない。JSON Schema dialectは2020-12に固定し、製品Schemaの安定度を`draft-v0`で表す。
 
-## Product namespace
+## Product 名前空間
 
-Schema URNの製品namespaceは`urn:kakesu:`とする。Kakesuへの改名前の`urn:agent-harness:` namespaceは実装・永続化開始前のdraft artifactであり、active aliasとして残さない。外部永続instanceが生じた後に製品namespaceを変更する場合は、旧validator保持と明示的migrationを必須とする。
+Schema URNの製品名前空間は`urn:kakesu:`とする。Kakesuへの改名前の`urn:agent-harness:` 名前空間は実装・永続化開始前の下書き 成果物であり、`active` aliasとして残さない。外部永続インスタンスが生じた後に製品名前空間を変更する場合は、旧検証器保持と明示的移行を必須とする。
 
-## Canonical SchemaとAPI adapter
+## 正規 SchemaとAPI アダプター
 
-OpenAI Function ToolやStructured Outputsが受け付けるJSON Schemaはdialectのsubsetである。そのため次を分離する。
+OpenAI 関数 ツールや構造化出力が受け付けるJSON Schemaはdialectのsubsetである。そのため次を分離する。
 
 ```text
 canonical JSON Schema
@@ -56,22 +56,22 @@ canonical JSON Schema
   -> draft-v0/api/*.json
 ```
 
-conditional constraint、reference pattern、size limitなどがAPI subsetで表現できない場合も、canonical Schemaまたは適用前semantic validatorから削除しない。
+条件付き制約、参照パターン、サイズ 上限などがAPI subsetで表現できない場合も、正規 Schemaまたは適用前意味 検証器から削除しない。
 
 ## Schema化する境界
 
 次のいずれかに該当するデータはJSON Schemaを正本にする。
 
-1. LLMへ渡す固定入力 スナップショットまたはLLMのStructured Output
-2. Function Call 入力 / 出力
-3. Mailbox、Outbox、Event Busを通るペイロード
-4. Authority adapterとのリクエスト / decision
-5. Rule Engineが実行するPolicy document
-6. crash recoveryや再試行でreplayするimmutable スナップショット
-7. Evidence、Episode、Memory Contextとして長期保持する文書
+1. LLMへ渡す固定入力 スナップショットまたはLLMの構造化 出力
+2. 関数 呼び出し 入力 / 出力
+3. メールボックス、送信キュー、イベント Busを通るペイロード
+4. 責任者 アダプターとのリクエスト / 判断
+5. ルールエンジンが実行するポリシー 文書
+6. クラッシュ 復旧や再試行で再実行する不変 スナップショット
+7. 証跡、エピソード、記憶コンテキストとして長期保持する文書
 
-DB内部だけで完結する正規化rowは、外部化・スナップショット化しない限りSQL制約と論理型だけでもよい。
+DB内部だけで完結する正規化行は、外部化・スナップショット化しない限りSQL制約と論理型だけでもよい。
 
 ## 実装順
 
-各PlaneのREADMEで`P0`を先に実装する。`draft-v0:r1`ではCommon、Control、Execution、Governance、MemoryのP0 canonical Schemaを追加済みである。次の変更は実装検証の結果に応じてrevisionを増やす。
+各PlaneのREADMEで`P0`を先に実装する。`draft-v0:r1`ではCommon、制御、実行、統治、記憶のP0 正規 Schemaを追加済みである。次の変更は実装検証の結果に応じて改訂を増やす。

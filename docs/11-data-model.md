@@ -75,23 +75,23 @@ Memory Aggregate
   memory_outbox
 ```
 
-Task状態とTask Eventは同一Transactionで更新する。他AggregateとはOutbox/Eventで連携する。
+Task状態とTaskイベントは同一トランザクションで更新する。他集約とは送信キュー/イベントで連携する。
 
 ### 1.1 データベース所有境界
 
 初期実装は3つのSQLiteへ分ける。
 
-| データベース | write owner | Aggregate |
+| データベース | 書き込み オーナー | 集約 |
 |---|---|---|
-| `control.db` | Go Core Runtime | Task、Execution、Workspace、Authority、Core Inbox/Outbox |
-| `evidence.db` | Python Memory Service | Evidence、Episode、Memory Context、Wiki Job、Memory Inbox/Outbox |
-| `governance.db` | Rust Governance Service | Workspace Policy Binding、Egress、Grant、Finding、Revision、Governance Inbox/Outbox |
+| `control.db` | Go コアランタイム | Task、実行、Workspace、責任者、コア 受信キュー/送信キュー |
+| `evidence.db` | Python 記憶サービス | 証跡、エピソード、記憶コンテキスト、Wiki ジョブ、記憶 受信キュー/送信キュー |
+| `governance.db` | Rust 統治サービス | Workspaceポリシー割り当て、外向き通信、許可、検出事項、改訂、統治 受信キュー/送信キュー |
 
-各Serviceは所有外DBを直接開かない。ER図のPlane横断relationは論理joinであり、SQLiteのcross-database FKではない。送信元は参照ID、バージョン、ダイジェストをOutbox ペイロードへ固定し、受信側はInbox コミット後にローカル recordまたは固定スナップショットとして検証する。
+各サービスは所有外DBを直接開かない。ER図のPlane横断関係は論理結合であり、SQLiteのcross-database FKではない。送信元は参照ID、バージョン、ダイジェストを送信キュー ペイロードへ固定し、受信側は受信キュー コミット後にローカル 記録または固定スナップショットとして検証する。
 
-異なるDBをまたぐ原子Transactionは作らない。各Plane内ではdomain stateとOutboxを同一Transactionで確定し、Plane間はat-least-once配送、durable `ACK`、idempotent apply、reconciliationで収束させる。詳細は[13-technology-stack.md](13-technology-stack.md)を正本とする。
+異なるDBをまたぐ原子トランザクションは作らない。各Plane内ではドメイン 状態と送信キューを同一トランザクションで確定し、Plane間は少なくとも1回配送、永続 `ACK`、冪等 apply、照合で収束させる。詳細は[13-technology-stack.md](13-technology-stack.md)を正本とする。
 
-本書の`uuid`、`timestamptz`、`boolean`は論理型である。SQLite実装ではUUIDとtimestampをcanonical text、booleanをCHECK付きintegerとして保存し、application typeとSchema validatorで形式を強制する。
+本書の`uuid`、`timestamptz`、`boolean`は論理型である。SQLite実装ではUUIDとタイムスタンプを正規 テキスト、booleanをCHECK付きintegerとして保存し、アプリケーション 型とSchema 検証器で形式を強制する。
 
 ## 2. 主要テーブル
 
@@ -99,38 +99,38 @@ Task状態とTask Eventは同一Transactionで更新する。他AggregateとはO
 
 | 列 | 型 | 説明 |
 |---|---|---|
-| `agent_id` | uuid PK | 論理Agent |
-| `profile_id` | text | L1/L2/L3等のProfile |
-| `status` | text | idle / assigned / retired |
-| `current_task_id` | uuid nullable | 現在Task |
-| `created_at` | timestamptz | 生成時刻 |
+| `agent_id` | UUID PK | 論理Agent |
+| `profile_id` | テキスト | L1/L2/L3等のプロファイル |
+| `status` | テキスト | idle / assigned / retired |
+| `current_task_id` | UUID NULL許容 | 現在Task |
+| `created_at` | `timestamptz` | 生成時刻 |
 
 ### `tasks`
 
 | 列 | 型 | 説明 |
 |---|---|---|
-| `task_id` | uuid PK | Task ID |
-| `parent_task_id` | uuid FK nullable | 直接親 |
-| `owner_agent_id` | uuid FK | Owner |
-| `workspace_id` | uuid FK unique | 論理Workspace |
-| `objective` | text | 現行Objective |
-| `acceptance` | text | 現行Acceptance |
-| `instructions` | text nullable | 補助指示 |
+| `task_id` | UUID PK | Task ID |
+| `parent_task_id` | UUID FK NULL許容 | 直接親 |
+| `owner_agent_id` | UUID FK | オーナー |
+| `workspace_id` | UUID FK 一意 | 論理Workspace |
+| `objective` | テキスト | 現行目的 |
+| `acceptance` | テキスト | 現行受け入れ条件 |
+| `instructions` | テキスト NULL許容 | 補助指示 |
 | `contract_version` | int | 楽観ロック対象 |
-| `status` | text | Lifecycle state |
-| `dependency` | text | required / optional |
-| `version` | bigint | state更新用 |
-| `created_at` | timestamptz | |
-| `started_at` | timestamptz nullable | |
-| `ended_at` | timestamptz nullable | |
+| `status` | テキスト | ライフサイクル 状態 |
+| `dependency` | テキスト | 必須 / optional |
+| `version` | bigint | 状態更新用 |
+| `created_at` | `timestamptz` | |
+| `started_at` | `timestamptz` NULL許容 | |
+| `ended_at` | `timestamptz` NULL許容 | |
 
 ### `task_contract_versions`
 
-Contract変更の履歴を保存する。過去のCompletion CandidateがどのContractを基準にしたか追跡できる。
+契約変更の履歴を保存する。過去の完了案がどの契約を基準にしたか追跡できる。
 
 ### `task_progress` / `task_progress_events`
 
-現在のTodo形式Progressとappend-onlyな更新履歴を保存する。`task_progress`は`task_id`、`version`、`current_focus_id`、Task EventとAgent Run Eventのwatermark、`updated_at`を持ち、itemは子tableまたはJSONとして保持できる。更新はOwner Agentの認識であり、Acceptance達成の正本ではない。
+現在のTODO形式進捗とappend-onlyな更新履歴を保存する。`task_progress`は`task_id`、`version`、`current_focus_id`、TaskイベントとAgent実行 イベントのウォーターマーク、`updated_at`を持ち、項目は子テーブルまたはJSONとして保持できる。更新はオーナーAgentの認識であり、受け入れ条件達成の正本ではない。
 
 ### `task_events`
 
@@ -138,153 +138,153 @@ append-only。`event_id`、`task_id`、`sequence_no`、`event_type`、`payload_r
 
 ### `agent_runs`
 
-一Taskの実行セッション。`previous_response_id`は補助列で、復元の必須条件にしない。`normal_step_count`と`last_progress_refresh_step`を持ち、Maintenance Responseを除いたStep周期でProgress Refreshを起動する。
+一Taskの実行セッション。`previous_response_id`は補助列で、復元の必須条件にしない。`normal_step_count`と`last_progress_refresh_step`を持ち、メンテナンス レスポンスを除いたステップ周期で進捗 更新を起動する。
 
 ### `agent_run_steps` / `agent_run_items`
 
-Responses API呼び出し単位のStep metadataと、完成した出力 itemの正規化記録を保存する。同じOwner Assignment内で単調増加する`assignment_event_sequence`を持ち、Runをまたぐ再開Contextの選択に使う。リクエスト本文やStreaming deltaを無条件には保存せず、Context バージョン／参照／ダイジェストと完成itemを基本とする。保存対象、Retention、Reasoning、Compaction item、Redactionの正本は[05-runtime-and-responses-api.md](05-runtime-and-responses-api.md)の「Agent Run Record Policy」とする。
+Responses API呼び出し単位のステップ メタデータと、完成した出力 項目の正規化記録を保存する。同じオーナー 割り当て内で単調増加する`assignment_event_sequence`を持ち、実行をまたぐ再開コンテキストの選択に使う。リクエスト本文やストリーミング 差分を無条件には保存せず、コンテキスト バージョン／参照／ダイジェストと完成項目を基本とする。保存対象、保持、推論、圧縮 項目、秘匿化の正本は[05-runtime-and-responses-api.md](05-runtime-and-responses-api.md)の「Agent実行記録 ポリシー」とする。
 
 ### `agent_resources`
 
 | 列 | 説明 |
 |---|---|
-| `resource_id` | Agent Resource ID |
-| `agent_id` | Resourceを所有する論理Agent |
-| `assignment_id` | assignment スコープのOwner割当ID、nullable |
-| `run_id` | run スコープの場合のAgent Run、nullable |
-| `kind` | プロセス / サーバー / worktree / temporary_directory |
-| `resource_ref` | Process ManagerやWorkspace Manager上の参照 |
-| `lifetime` | run / assignment / Agent |
+| `resource_id` | Agentリソース ID |
+| `agent_id` | リソースを所有する論理Agent |
+| `assignment_id` | 割り当て スコープのオーナー割当ID、NULL許容 |
+| `run_id` | 実行 スコープの場合のAgent実行、NULL許容 |
+| `kind` | プロセス / サーバー / ワークツリー / temporary_directory |
+| `resource_ref` | プロセス マネージャーやWorkspace マネージャー上の参照 |
+| `lifetime` | 実行 / 割り当て / Agent |
 | `cleanup_policy` | stop / delete / retain |
-| `status` | active / cleanup_pending / cleaning / released / needs_operator |
-| `retry_count` | Cleanup試行回数 |
-| `last_error_ref` | 最終Cleanupエラー、nullable |
+| `status` | `active` / cleanup_pending / cleaning / released / needs_operator |
+| `retry_count` | クリーンアップ試行回数 |
+| `last_error_ref` | 最終クリーンアップエラー、NULL許容 |
 
-AgentまたはTool実行基盤がResourceを登録し、HarnessがCleanup開始、再試行、Operator移管を管理する。Task終端後もCleanup状態は独立して進み、Task状態を変更しない。
+Agentまたはツール実行基盤がリソースを登録し、ハーネスがクリーンアップ開始、再試行、運用者移管を管理する。Task終端後もクリーンアップ状態は独立して進み、Task状態を変更しない。
 
 ### `resume_cursors`
 
-Run切替境界ごとの最小再開位置を保存する。`cursor_id`、`task_id`、`agent_id`、`source_run_id`、`contract_version`、`task_version`、`progress_version`、Workspace参照、Task Event・Agent Run Event・Mailboxのwatermark、`created_at`を持つ。
+実行切替境界ごとの最小再開位置を保存する。`cursor_id`、`task_id`、`agent_id`、`source_run_id`、`contract_version`、`task_version`、`progress_version`、Workspace参照、Taskイベント・Agent実行 イベント・メールボックスのウォーターマーク、`created_at`を持つ。
 
-Cursorは意味的要約を持たない。Task、Contract、Progress、Mailbox、Async Operation、Artifact、Workspaceの正本を置き換えない。新Runが参照したCursor IDを`agent_runs`へ記録し、再開元を監査可能にする。
+カーソルは意味的要約を持たない。Task、契約、進捗、メールボックス、非同期操作、成果物、Workspaceの正本を置き換えない。新実行が参照したカーソル IDを`agent_runs`へ記録し、再開元を監査可能にする。
 
 ### `continuations`
 
-待機理由、awaited イベント、contract バージョン、Workspace スナップショット、context スナップショットを保持する。
+待機理由、awaited イベント、契約バージョン、Workspace スナップショット、コンテキスト スナップショットを保持する。
 
 ### `async_operations`
 
 | 列 | 説明 |
 |---|---|
-| `async_id` | Harness Operation ID |
+| `async_id` | ハーネス 操作 ID |
 | `owner_task_id` | 結果を受け取るTask |
-| `tool_call_id` | 元Responses Function call |
+| `tool_call_id` | 元Responses 関数 呼び出し |
 | `tool_name` | `delegate`等 |
 | `status` | `running` / `completed` / `failed` / `cancelled` |
 | `sync_deadline` | 直接待機の期限 |
 | `result_ref` | 最終結果 |
-| `operation_key` | `task_id + call_id + tool_name`からHarnessが生成する重複防止key |
+| `operation_key` | `task_id + call_id + tool_name`からハーネスが生成する重複防止キー |
 
 ### `mailbox_entries`
 
-Taskごとのイベントキュー。at-least-once deliveryを前提とし、`event_id` unique、`consumed_at` nullable、`sequence_no`を持つ。
+Taskごとのイベントキュー。少なくとも1回 配送を前提とし、`event_id` 一意、`consumed_at` NULL許容、`sequence_no`を持つ。
 
 ### `ask_requests` / `ask_advices`
 
-Agent間助言の正本を保存する。リクエストにはchild/parent Task、双方のOwner Agent、Contract バージョン、question、status、`async_id`を持たせ、adviceにはresponderと解決時刻を持たせる。Task Contractを変更するフィールドは持たない。
+Agent間助言の正本を保存する。リクエストには子/親 Task、双方のオーナーAgent、契約バージョン、質問、状態、`async_id`を持たせ、adviceには回答者と解決時刻を持たせる。Task契約を変更するフィールドは持たない。
 
 ### `escalation_requests` / `escalation_decisions`
 
-TaskからAuthorityへの判断移転の正本を保存する。リクエストには要求元Task、親Authority TaskまたはRoot Authority refの排他的な一方、Contractバージョン、question、options、status、`async_id`を持たせる。decisionにはAuthority、判断、任意のContract patch、terminate、解決時刻を持たせる。Ask aggregateと同一テーブルへ潰さない。
+Taskから責任者への判断移転の正本を保存する。リクエストには要求元Task、親責任者 Taskまたはルート責任者 参照の排他的な一方、契約バージョン、質問、options、状態、`async_id`を持たせる。判断には責任者、判断、任意の契約 パッチ、terminate、解決時刻を持たせる。質問 集約と同一テーブルへ潰さない。
 
 ### `completion_candidates` / `completion_review_jobs` / `completion_reviews`
 
-`completion_candidates`はOwnerが提出したOutcome、Artifact、Evidence、Contractバージョンのimmutableスナップショットとダイジェストを保存する。`completion_review_jobs`はcandidate/入力スナップショットrefとダイジェスト、status、attempt、lease、invocation deadline、lastエラー、reviewer profileバージョン、出力schemaバージョンを持つ。プロセス再起動後も同じ入力を冪等な再試行に使える。期限切れ`reviewing` Jobは部分Responseを破棄して新しい一時sessionで再claimする。`completion_reviews`は確定したStructured Outputと入力ダイジェスト、使用したEvidence参照を保存する。
+`completion_candidates`はオーナーが提出した結果、成果物、証跡、契約バージョンの不変スナップショットとダイジェストを保存する。`completion_review_jobs`は候補/入力スナップショット参照とダイジェスト、状態、試行、リース、呼び出し 期限、lastエラー、レビュアー プロファイルバージョン、出力スキーマバージョンを持つ。プロセス再起動後も同じ入力を冪等な再試行に使える。期限切れ`reviewing` ジョブは部分レスポンスを破棄して新しい一時セッションで再確保する。`completion_reviews`は確定した構造化 出力と入力ダイジェスト、使用した証跡参照を保存する。
 
-Reviewerの一時API session、Response ID、tool call履歴は保存しない。独立性はOwnerと分離した入力Snapshot、Profile バージョン、Tool権限、入力ダイジェストで監査する。
+レビュアーの一時API セッション、レスポンス ID、ツール 呼び出し履歴は保存しない。独立性はオーナーと分離した入力スナップショット、プロファイル バージョン、ツール権限、入力ダイジェストで監査する。
 
-Review確定時はCompletion Review insert、Review Job `completed`、Task遷移、`CompletionReviewed` EventをTask Aggregateの同一Transactionでコミットする。
+レビュー確定時は完了レビュー 挿入、レビュー ジョブ `completed`、Task遷移、`CompletionReviewed` イベントをTask 集約の同一トランザクションでコミットする。
 
 ### `workspaces`
 
-Taskと1:1。source Workspace、mode、storage ref、statusを持つ。
+Taskと1:1。起点 Workspace、モード、storage 参照、状態を持つ。
 
 ### `workspace_security_policy_bindings`
 
-Workspaceと1:1で、Security Profile ref、active Baseline Policy バージョン、pending Revision/バージョン予約、status、バージョンを持つ。CASB Rule Engine、Credential Broker、FirewallはAgent/TaskではなくこのBindingを適用する。Owner交代やAgent Run再開では更新しない。Workspace fork時はPlatform Policyが許すProfileだけを新Bindingへcopyし、一時Grantは継承しない。
+Workspaceと1:1で、セキュリティ プロファイル 参照、`active` 基本ポリシーバージョン、`pending` 改訂/バージョン予約、状態、バージョンを持つ。CASB ルールエンジン、認証情報 ブローカー、ファイアウォールはAgent/Taskではなくこの割り当てを適用する。オーナー交代やAgent実行再開では更新しない。Workspace 分岐時はプラットフォーム ポリシーが許すプロファイルだけを新割り当てへコピーし、一時許可は継承しない。
 
-global baselineを改定する場合は`global_security_policy_bindings`をtarget rowとし、`global:<profile_ref>` key、active バージョン、pending Revision/バージョン予約を持たせる。Workspace Bindingと同じCAS/`ACK` lifecycleを適用する。
+全体 ベースラインを改定する場合は`global_security_policy_bindings`を対象 行とし、`global:<profile_ref>` キー、`active` バージョン、`pending` 改訂/バージョン予約を持たせる。Workspace 割り当てと同じCAS/`ACK` ライフサイクルを適用する。
 
 ### `artifacts`
 
-immutable content ダイジェストとlogical refを持つ。Artifact本文はfilesystemへ保存せず、Evidence DBの`evidence_blobs`を参照する。Task Outcome、Grant Request、Episodeから参照される。
+不変 内容 ダイジェストと論理 参照を持つ。成果物本文はファイルシステムへ保存せず、証跡DBの`evidence_blobs`を参照する。Task 結果、許可申請、エピソードから参照される。
 
 ### `egress_attempts` / `outbound_transactions`
 
-Egress Enforcement Pointが実通信を観測した時点で`egress_attempts`へWorkspace ネットワーク identity、Task/Agent provenance、プロトコル、宛先、sanitized リクエスト metadata、body ダイジェスト/size/classification、Rule結果を保存する。同じTransactionでAttemptを一意参照するCapture Manifestも必ず作る。Manifestはリクエスト/レスポンス別のtotal bytes、captured/redacted rangesとchunk ダイジェスト、truncated flag/reason、classification、encrypted blob/key ref、completion status、retention/pinを持つ。capture不能・部分captureでもManifestを必須とし、欠落範囲と理由を表す。captureは原則全通信を短期保持し、high-risk/Finding関連を長期保持へ昇格する。allowしてforwardした通信は`outbound_transactions`へリクエスト/レスポンス ダイジェスト、適用Grant、開始・完了状態を保存する。
+外向き通信 強制 点が実通信を観測した時点で`egress_attempts`へWorkspace ネットワーク 識別情報、Task/Agent 来歴、プロトコル、宛先、無害化済み リクエスト メタデータ、本文 ダイジェスト/サイズ/分類、ルール結果を保存する。同じトランザクションで試行を一意参照するキャプチャ マニフェストも必ず作る。マニフェストはリクエスト/レスポンス別の合計 バイト、captured/秘匿済み rangesとチャンク ダイジェスト、切り詰め済み flag/理由、分類、暗号化済み BLOB/キー 参照、完了 状態、保持/ピン留めを持つ。キャプチャ不能・部分キャプチャでもマニフェストを必須とし、欠落範囲と理由を表す。キャプチャは原則全通信を短期保持し、高リスク/検出事項関連を長期保持へ昇格する。許可して転送した通信は`outbound_transactions`へリクエスト/レスポンス ダイジェスト、適用許可、開始・完了状態を保存する。
 
 ### `egress_rule_decisions`
 
-Attemptごとにallow/block、Policy バージョン、matched Rule refs、reason codes、評価時刻を保存する。同じcanonical bindingとPolicy バージョンからRule Engineの判断を再現でき、後続のEgress Reviewが「どのRuleで通過したか」を確認する監査正本とする。
+試行ごとに許可/拒否、ポリシーバージョン、一致 ルール 参照、理由 コード、評価時刻を保存する。同じ正規 割り当てとポリシーバージョンからルールエンジンの判断を再現でき、後続の外向き通信 レビューが「どのルールで通過したか」を確認する監査正本とする。
 
 ### `egress_challenges` / `challenge_observations`
 
-blockした通信に対してimmutableなChallenge coreを作る。Workspace、要求元Task/origin/delegation/Contract、canonicalリクエストbinding、sanitized refs、reason、grant eligibilityを持つ。Platform Policyが決めた`auto_grant_eligible`と`required_authority_ref`、期限も保存する。個々の`egress_attempt`は`challenge_observations` joinでChallengeへ関連付け、再試行 count/last seenはObservation集計から求める。同一binding fingerprintの短時間再試行だけを同じChallengeへcoalesceする。
+拒否した通信に対して不変な許可確認 コアを作る。Workspace、要求元Task/origin/委譲/契約、正規リクエスト割り当て、無害化済み 参照、理由、許可 適格性を持つ。プラットフォーム ポリシーが決めた`auto_grant_eligible`と`required_authority_ref`、期限も保存する。個々の`egress_attempt`は`challenge_observations` 結合で許可確認へ関連付け、再試行 回数/最終観測時刻はObservation集計から求める。同一割り当て フィンガープリントの短時間再試行だけを同じ許可確認へcoalesceする。
 
 ### `grant_requests` / `grant_evaluation_jobs` / `grant_decisions`
 
-`request_grant`からWorkspace、要求元Task/origin/delegation、Challenge、Async Operation、justification、Evidence、Harness生成Operation Key、statusを保存する。`(workspace_id, challenge_id)`には非終端Requestのpartial unique制約を置く。Owner交代や別`call_id`で再申請されても既存Request/Async Operationを返す。Evaluation Jobは入力スナップショット/ダイジェスト、Profile/Schemaバージョン、attempt、lease、deadline、エラーを持ち、技術障害時は同じ入力で再試行する。Policy Agentの確定Structured Outputはdecision ID、Job、入力ダイジェスト、Profile/Schemaバージョン、決定時刻を持つimmutableな`grant_decisions`へ保存するが、一時API session、Response ID、tool call履歴は保存しない。
+`request_grant`からWorkspace、要求元Task/origin/委譲、許可確認、非同期操作、justification、証跡、ハーネス生成操作 キー、状態を保存する。`(workspace_id, challenge_id)`には非終端リクエストのpartial 一意制約を置く。オーナー交代や別`call_id`で再申請されても既存リクエスト/非同期操作を返す。評価 ジョブは入力スナップショット/ダイジェスト、プロファイル/Schemaバージョン、試行、リース、期限、エラーを持ち、技術障害時は同じ入力で再試行する。ポリシーAgentの確定構造化 出力は判断 ID、ジョブ、入力ダイジェスト、プロファイル/Schemaバージョン、決定時刻を持つ不変な`grant_decisions`へ保存するが、一時API セッション、レスポンス ID、ツール 呼び出し履歴は保存しない。
 
 ### `policy_grants`
 
-Workspace、source Task/origin/delegation/Contractバージョン、source Challengeを`governance.db`へ保存する。source Grant Request/Decision、Authority経由ならsource Authority Decision ref、bindingダイジェストも保存する。exact IP/port/プロトコル、Credentialスコープ、`max_uses=1`、接続/byte limit、期限、Policyバージョン、`pending_activation | active | revoked` status、use count、revocationも保存する。Policy作成Transactionでは認可経路を検証してpending Grantとpending Ready Outboxを保存する。Enforcement Point `ACK`後のactivation TransactionでGrantをactiveにしてControl向け結果Outboxを確定する。Controlは結果Inbox適用時にAsync Operationを完了してReady EventをTask Mailboxへ追加する。
+Workspace、起点Task/origin/委譲/契約バージョン、起点 許可確認を`governance.db`へ保存する。起点 許可申請/判断、責任者経由なら起点 責任者の判断 参照、割り当てダイジェストも保存する。完全一致 IP/ポート/プロトコル、認証情報スコープ、`max_uses=1`、接続/バイト 上限、期限、ポリシーバージョン、`pending_activation | active | revoked` 状態、使用回数、revocationも保存する。ポリシー作成トランザクションでは認可経路を検証して`pending` 許可と`pending` 準備完了 送信キューを保存する。強制 点 `ACK`後の有効化 トランザクションで許可を`active`にして制御向け結果送信キューを確定する。制御は結果受信キュー適用時に非同期操作を完了して準備完了 イベントをTaskメールボックスへ追加する。
 
 ### `authority_requests` / `authority_decisions`
 
-Control PlaneのAuthority Gatewayが、全Planeから受けた人間・外部Authority通信の正本を保存する。他Planeはこれらのtableや外部チャネルへ直接書き込まない。要求元Planeは判断対象と要否を所有し、Gatewayは認証・配送・期限・重複排除を所有する。
+Control Planeの責任者ゲートウェイが、全Planeから受けた人間・外部責任者通信の正本を保存する。他Planeはこれらのテーブルや外部チャネルへ直接書き込まない。要求元Planeは判断対象と要否を所有し、ゲートウェイは認証・配送・期限・重複排除を所有する。
 
-`require_authority`時にControl PlaneはGrant Request、Challenge、Grant Decision ID、immutable binding ダイジェスト、Platform Policyが選んだAuthority、status、期限を固定する。Authorityはapprove/denyだけを返す。`authority_decisions`は認証済みresponder principal、decision、rationale、決定時刻をRequestごとに一件保存する。回答TransactionはRequestをlockして未解決・未期限切れを検証し、DecisionとGovernance向けOutboxを確定する。GovernanceはInbox適用時にTask スナップショット、Challenge、Policy/DNS freshnessを再検査してGrantまたはdenyを確定し、Controlは結果メッセージでAsync OperationとMailboxを終端する。late レスポンスは既存終端結果へ収束する。
+`require_authority`時にControl Planeは許可申請、許可確認、許可判断 ID、不変 割り当て ダイジェスト、プラットフォーム ポリシーが選んだ責任者、状態、期限を固定する。責任者は承認/拒否だけを返す。`authority_decisions`は認証済み回答者 主体、判断、根拠、決定時刻をリクエストごとに一件保存する。回答トランザクションはリクエストをロックして未解決・未期限切れを検証し、判断と統治向け送信キューを確定する。統治は受信キュー適用時にTask スナップショット、許可確認、ポリシー/DNS 鮮度を再検査して許可または拒否を確定し、制御は結果メッセージで非同期操作とメールボックスを終端する。遅延 レスポンスは既存終端結果へ収束する。
 
 ### `dns_resolutions`
 
-WorkspaceごとのFQDN、resolved IPv4/IPv6、DNS TTL、観測時刻と要求元Task provenanceを保存する。L4 Grantは同一WorkspaceのSnapshotに含まれるIPだけへ適用し、fork先へSnapshotを継承せず、Sandboxからの外部DNS、DoH、DoTによる迂回を許さない。
+WorkspaceごとのFQDN、解決済み IPv4/IPv6、DNS TTL、観測時刻と要求元Task 来歴を保存する。L4 許可は同一Workspaceのスナップショットに含まれるIPだけへ適用し、分岐先へスナップショットを継承せず、サンドボックスからの外部DNS、DoH、DoTによる迂回を許さない。
 
 ### `egress_review_jobs` / `egress_findings`
 
-Review Jobは固定watermark、選定理由（high risk / anomaly / random sample / incident replay）、入力Snapshot/ダイジェスト、Profile/Schema バージョン、status、attempt、lease、review deadline、capture pin、エラーを保存する。一Jobは最大一Findingとし、Findingは対象Attempt群、`benign | policy_bypass | suspicious | insufficient_evidence`、severity、rationale、Evidenceを保存する。Job完了とFinding insertを同一Transactionで確定し、`review_job_id` uniqueで再試行重複を防ぐ。Egress Audit AgentのAgent Run、Response ID、tool call履歴は保存しない。
+レビュー ジョブは固定ウォーターマーク、選定理由（high リスク / 異常 / ランダム sample / インシデント 再実行）、入力スナップショット/ダイジェスト、プロファイル/Schema バージョン、状態、試行、リース、レビュー 期限、キャプチャ ピン留め、エラーを保存する。一ジョブは最大一検出事項とし、検出事項は対象試行群、`benign | policy_bypass | suspicious | insufficient_evidence`、severity、根拠、証跡を保存する。ジョブ完了と検出事項 挿入を同一トランザクションで確定し、`review_job_id` 一意で再試行重複を防ぐ。外向き通信監査AgentのAgent実行、レスポンス ID、ツール 呼び出し履歴は保存しない。
 
 ### `policy_revision_jobs` / `policy_revision_proposals` / `policy_revisions`
 
-FindingからPolicy Agentを起動するJobはtarget Policy key、対象Workspace（global baselineならnull）、固定入力スナップショット/ダイジェスト、nullable candidate Rule ref/ダイジェストを保存する。base Policyバージョン、candidate fixed timestamp、Profile/Schemaバージョン、attempt、lease、deadline、エラーも保存する。Finding群は`policy_revision_job_findings` joinでFK固定する。candidateは最終Decision前にJobへ原子的に固定し、ProposalはJobの固定値だけをcopyして回帰Evidence、`update | no_change | require_authority` Decision、application statusを保存する。
+検出事項からポリシーAgentを起動するジョブは対象 ポリシー キー、対象Workspace（全体 ベースラインならNULL）、固定入力スナップショット/ダイジェスト、NULL許容 候補 ルール 参照/ダイジェストを保存する。基底 ポリシーバージョン、候補 固定 タイムスタンプ、プロファイル/Schemaバージョン、試行、リース、期限、エラーも保存する。検出事項群は`policy_revision_job_findings` 結合でFK固定する。候補は最終判断前にジョブへ原子的に固定し、提案はジョブの固定値だけをコピーして回帰証跡、`update | no_change | require_authority` 判断、アプリケーション 状態を保存する。
 
-`require_authority`ではProposal ID/ダイジェスト、target Policy key、スコープ、base バージョン、Authority、status、期限をRevision Authority Requestへ固定し、Decisionへ認証済みresponder、approve/deny、rationale、時刻を一件保存する。確定Revisionはsource Proposal、必要なAuthority Decision、target Policy key/ref/ダイジェスト、base/previous/new バージョン、`pending_activation | active | superseded | cancelled`、`ACK`を保存する。Policy Agentの提案からPolicy Managerによるバージョン CAS、Rule Engine `ACK`、active切替までを追跡可能にする。Policy AgentのAgent Run、Response ID、tool call履歴は保存しない。
+`require_authority`では提案 ID/ダイジェスト、対象 ポリシー キー、スコープ、基底 バージョン、責任者、状態、期限を改訂 責任者への依頼へ固定し、判断へ認証済み回答者、承認/拒否、根拠、時刻を一件保存する。確定改訂は起点 提案、必要な責任者の判断、対象 ポリシー キー/参照/ダイジェスト、基底/previous/新規 バージョン、`pending_activation | active | superseded | cancelled`、`ACK`を保存する。ポリシーAgentの提案からポリシー マネージャーによるバージョン CAS、ルールエンジン `ACK`、`active`切替までを追跡可能にする。ポリシーAgentのAgent実行、レスポンス ID、ツール 呼び出し履歴は保存しない。
 
 ### `task_episodes`
 
-Task終端後に一件。`TaskEpisode`はStructured Output本文型であり、`task_episodes`永続行は`episode_id`、`task_id`、本文を保持するEvidence DBへの`evidence_ref`、ダイジェストを持つ。ランタイムではEpisode Markdownファイルを生成しない。
+Task終端後に一件。`TaskEpisode`は構造化 出力本文型であり、`task_episodes`永続行は`episode_id`、`task_id`、本文を保持する証跡DBへの`evidence_ref`、ダイジェストを持つ。ランタイムではエピソード Markdownファイルを生成しない。
 
 ### `episode_compilation_jobs`
 
-終端TaskごとのEpisode Agent調査Jobを保存する。status、step/入力/出力 token使用量の集計、上限Snapshot、profile/出力 schema バージョン、Evidence参照、attempt、lease/heartbeat、エラーを持つが、Agent ID、Agent Run、Response ID、tool call履歴は持たない。`task_id`で冪等化し、期限切れleaseは新しい一時sessionで最初から再調査する。Job失敗や`needs_operator`はTask状態へ影響させない。
+終端Taskごとのエピソード Agent調査ジョブを保存する。状態、ステップ/入力/出力 トークン使用量の集計、上限スナップショット、プロファイル/出力 スキーマ バージョン、証跡参照、試行、リース/heartbeat、エラーを持つが、Agent ID、Agent実行、レスポンス ID、ツール 呼び出し履歴は持たない。`task_id`で冪等化し、期限切れリースは新しい一時セッションで最初から再調査する。ジョブ失敗や`needs_operator`はTask状態へ影響させない。
 
 ### `evidence_records` / `evidence_blobs` / `evidence_links`
 
-Evidence LayerはSQLiteを初期実装の正本とする。
+証跡 レイヤーはSQLiteを初期実装の正本とする。
 
-| table | 役割 |
+| テーブル | 役割 |
 |---|---|
-| `evidence_records` | kind、Task、content type、ダイジェスト、size、retention、redaction metadata |
-| `evidence_blobs` | compressed/encrypted contentのchunk BLOB |
-| `evidence_links` | Episode Statement、Artifact、Run Item等の根拠関係 |
-| `evidence_text` | 検索対象textのFTS index。再構築可能 |
+| `evidence_records` | 種別、Task、内容 型、ダイジェスト、サイズ、保持、秘匿化 メタデータ |
+| `evidence_blobs` | compressed/暗号化済み 内容のチャンク BLOB |
+| `evidence_links` | エピソード Statement、成果物、実行 項目等の根拠関係 |
+| `evidence_text` | 検索対象テキストのFTS インデックス。再構築可能 |
 
-Evidence IDとcontent ダイジェストをuniqueにし、metadata insertとBLOB保存を同一Transactionで確定する。Evidence contentを個別ファイル、sidecar JSON、Markdownへ二重保存しない。
+証跡 IDと内容 ダイジェストを一意にし、メタデータ 挿入とBLOB保存を同一トランザクションで確定する。証跡 内容を個別ファイル、sidecar JSON、Markdownへ二重保存しない。
 
-Artifactなど別Aggregateまたは別DBから取り込む場合は、先にEvidence DBでBLOBとmetadataをコミットしてimmutable `evidence_ref`を得てから、Aggregate側の参照をoutbox付きTransactionで確定する。逆順は禁止する。参照されなかったEvidenceはorphan reconciliation/GCで回収し、参照確定時と定期監査でダイジェストを照合する。
+成果物など別集約または別DBから取り込む場合は、先に証跡DBでBLOBとメタデータをコミットして不変 `evidence_ref`を得てから、集約側の参照を送信キュー付きトランザクションで確定する。逆順は禁止する。参照されなかった証跡は孤立 照合/GCで回収し、参照確定時と定期監査でダイジェストを照合する。
 
-Episode Compilation Job開始時に、対象`task_id`へ固定した`episode_*` read-only viewを接続上へ公開する。Episode Agentはbase tableへアクセスせず、単一`query_evidence` ToolからこれらのviewだけをSQL クエリする。
+エピソード 編纂 ジョブ開始時に、対象`task_id`へ固定した`episode_*` 読み取り専用 ビューを接続上へ公開する。エピソード Agentは基底 テーブルへアクセスせず、単一`query_evidence` ツールからこれらのビューだけをSQL クエリする。
 
-CoreまたはGovernanceの状態をEvidence DBへ取り込む場合は、Job開始前に対象Taskのterminalスナップショットをwatermark/ダイジェスト付きメッセージとして受信し、Evidence DBへmaterializeしてからJobスコープのviewを構築する。Agent用接続には別DBを`ATTACH`せず、スナップショット後の変化を混入させない。
+コアまたは統治の状態を証跡DBへ取り込む場合は、ジョブ開始前に対象Taskの終端スナップショットをウォーターマーク/ダイジェスト付きメッセージとして受信し、証跡DBへmaterializeしてからジョブスコープのビューを構築する。Agent用接続には別DBを`ATTACH`せず、スナップショット後の変化を混入させない。
 
 ## 3. 詳細ER図
 
@@ -699,15 +699,15 @@ CREATE UNIQUE INDEX one_revision_authority_decision_per_request
 ON policy_revision_authority_decisions(authority_request_id);
 ```
 
-`egress_rule_decisions.attempt_id`と`egress_capture_manifests.attempt_id`だけをFK方向とし、Attemptとの循環必須FKを作らない。Attempt、Capture Manifest、Rule Decision、Outbound intentはdeferred constraintもしくは1つのTransactionで確定し、コミット時に一対一を満たす。Capture Manifestはリクエスト/レスポンス coverageのいずれも無言のnullにせず、`complete | partial | unavailable | incomplete`と欠落理由をCHECK/validatorで要求する。Policy Grantはsource Request/Decisionを必須とし、Authority経由ではapprove済みsource Authority Decisionを要求するtriggerまたはPolicy Manager検証を置く。
+`egress_rule_decisions.attempt_id`と`egress_capture_manifests.attempt_id`だけをFK方向とし、試行との循環必須FKを作らない。試行、キャプチャ マニフェスト、ルール 判断、外向き 意図はdeferred constraintもしくは1つのトランザクションで確定し、コミット時に一対一を満たす。キャプチャ マニフェストはリクエスト/レスポンス 網羅率のいずれも無言のNULLにせず、`complete | partial | unavailable | incomplete`と欠落理由をCHECK/検証器で要求する。一時許可は起点 リクエスト/判断を必須とし、責任者経由では承認済み起点 責任者の判断を要求するトリガーまたはポリシー マネージャー検証を置く。
 
-Policy Revision Jobはfinal Decision受理前にcandidate ref/ダイジェスト/base バージョン/fixed timeを原子的に固定する。`update | require_authority`では全candidate フィールドを必須、`no_change`ではcandidate ref/ダイジェストをnullにする。ProposalはJob固定値との一致をCHECK/validatorで要求する。target rowのpending reservationとpartial unique indexを併用し、同じtargetへ複数Revisionを配布しない。
+ポリシー 改訂 ジョブはfinal 判断受理前に候補 参照/ダイジェスト/基底 バージョン/固定 時刻を原子的に固定する。`update | require_authority`では全候補 フィールドを必須、`no_change`では候補 参照/ダイジェストをNULLにする。提案はジョブ固定値との一致をCHECK/検証器で要求する。対象 行の`pending` reservationとpartial 一意 インデックスを併用し、同じ対象へ複数改訂を配布しない。
 
-循環Task graphはDB triggerまたはTask Managerで検査する。
+循環TaskツリーはDB トリガーまたはTask マネージャーで検査する。
 
-## 5. Transaction境界
+## 5. トランザクション境界
 
-### Task state transition
+### Task状態 transition
 
 ```text
 BEGIN
@@ -720,7 +720,7 @@ BEGIN
 COMMIT
 ```
 
-### Mailbox consume
+### メールボックス 消費
 
 ```text
 BEGIN
@@ -731,58 +731,58 @@ BEGIN
 COMMIT
 ```
 
-### CASB blockとGrant反映
+### CASB 拒否と許可反映
 
-以下のGovernance Aggregate更新は`governance.db`内、Task Mailbox、Async Operation、Authority更新は`control.db`内で原子的に行う。両者の間はOutbox/Inbox メッセージと`ACK`で接続し、説明中の「同時確定」は同一所有DB内に限る。
+以下の統治 集約更新は`governance.db`内、Taskメールボックス、非同期操作、責任者更新は`control.db`内で原子的に行う。両者の間は送信キュー/受信キュー メッセージと`ACK`で接続し、説明中の「同時確定」は同一所有DB内に限る。
 
-通常allowでも外側接続前にEgress Attempt、Rule Decision、リクエスト Capture Manifest、`intent_committed` Outbound Transactionをコミットする。DNS upstream クエリとL4 接続も同じ順序を使う。レスポンス captureと完了状態はSandboxへ返す前にコミットする。外部到達の可能性がある途中crashはManifestを`incomplete`、Transactionを`outcome_unknown`としてreconcileする。必ずhigh-risk Reviewへ送る。`failed`は外部未到達または失敗が確定した場合だけに使う。監査を永続化できない場合はforwardしない。
+通常許可でも外側接続前に外向き通信 試行、ルール 判断、リクエスト キャプチャ マニフェスト、`intent_committed` 外向きトランザクションをコミットする。DNS 上流 クエリとL4 接続も同じ順序を使う。レスポンス キャプチャと完了状態はサンドボックスへ返す前にコミットする。外部到達の可能性がある途中クラッシュはマニフェストを`incomplete`、トランザクションを`outcome_unknown`として照合する。必ず高リスク レビューへ送る。`failed`は外部未到達または失敗が確定した場合だけに使う。監査を永続化できない場合は転送しない。
 
-ChallengeとGovernance `EgressBlocked` Outboxを`governance.db`の同一TransactionでコミットしてからCLIへblock レスポンスを返す。Controlは受信InboxとTask Mailboxを`control.db`で確定する。Grant作成時はGovernanceがWorkspace Policy Binding、Grant Request、Challenge、Decisionと固定済みsource Task スナップショットを再検査し、`pending_activation` PolicyGrant、Policy バージョン、pending Ready Outboxを確定する。この時点ではControlのAsyncを完了しない。authoritative Enforcement Pointのバージョン `ACK`を受けるGovernance activation TransactionでGrantを`active`にし、結果Outboxを作る。Controlは結果Inboxを適用してAsync Operationを`completed`にし、`AsyncCompleted`と`PolicyGrantReady`をTask Mailboxへ追加する。各Dispatcherは最新のWorkspace/Task gate、Grant active、Policy バージョンを再検査する。
+許可確認と統治の`EgressBlocked`送信キューを`governance.db`の同一トランザクションでコミットしてから、CLIへ拒否レスポンスを返す。制御は受信キューとTaskメールボックスを`control.db`で確定する。許可作成時は統治がWorkspaceポリシー割り当て、許可申請、許可確認、判断、固定済み起点Taskスナップショットを再検査し、`pending_activation`の`PolicyGrant`、ポリシーバージョン、`pending`の準備完了送信キューを確定する。この時点では制御の非同期操作を完了しない。正本となる強制点のバージョン`ACK`を受けた統治の有効化トランザクションで許可を`active`にし、結果送信キューを作る。制御は結果受信キューを適用して非同期操作を`completed`にし、`AsyncCompleted`と`PolicyGrantReady`をTaskメールボックスへ追加する。各Dispatcherは最新のWorkspace/Taskゲート、許可の`active`状態、ポリシーバージョンを再検査する。
 
-Task cancellationとWorkspace freeze/archive/destroyでは、ControlがAction gateを閉じてrevoke commandを送る。Governanceは未解決Request/Evaluation Jobをcancelし、pendingまたはactive Grantをrevokeし、pending Ready Outboxを無効化して`ACK`する。Controlは`ACK`適用TransactionでAsyncとMailboxを終端する。Authority期限切れもControl Decision、Governance deny、Control Async完了の順にidempotent メッセージで収束させる。
+Task キャンセルとWorkspace 凍結/archive/destroyでは、制御が操作ゲートを閉じて失効 コマンドを送る。統治は未解決リクエスト/評価 ジョブをキャンセルし、`pending`または`active` 許可を失効し、`pending` 準備完了 送信キューを無効化して`ACK`する。制御は`ACK`適用トランザクションで非同期とメールボックスを終端する。責任者期限切れも制御 判断、統治 拒否、制御 非同期完了の順に冪等 メッセージで収束させる。
 
-Enforcement Pointはforward前にactive/unexpired/unrevoked/binding一致/use countを条件付き更新し、use count incrementまたはL4 接続 slot reserveとOutbound Transaction intentを同一原子操作で確定する。reserve失敗時は外部へ接続しない。
+強制 点は転送前に`active`/unexpired/unrevoked/割り当て一致/使用回数を条件付き更新し、使用回数 incrementまたはL4 接続 slot 予約と外向きトランザクション 意図を同一原子操作で確定する。予約失敗時は外部へ接続しない。
 
-### 恒久Rule Revision
+### 恒久ルール 改訂
 
-Policy Managerは対象Workspace Bindingまたはglobal Policy rowをlockする。Proposalのcandidateダイジェスト、target Policy key、スコープ、回帰結果、必要なapprove済みRevision Authority Decision、`current_version == base_policy_version`、`pending_revision_id IS NULL`を検証する。lock下の単調sequenceでnewバージョンを一意発番し、Revisionを`pending_activation`で保存すると同時にtarget rowへpending revision/バージョンを予約する。activeバージョンは切り替えず、この一件だけをRule Engineへ配布する。
+ポリシー マネージャーは対象Workspace 割り当てまたは全体 ポリシー 行をロックする。提案の候補ダイジェスト、対象 ポリシー キー、スコープ、回帰結果、必要な承認済み改訂 責任者の判断、`current_version == base_policy_version`、`pending_revision_id IS NULL`を検証する。ロック下の単調シーケンスで新規バージョンを一意発番し、改訂を`pending_activation`で保存すると同時に対象 行へ`pending` 改訂/バージョンを予約する。`active`バージョンは切り替えず、この一件だけをルールエンジンへ配布する。
 
-Rule Engineのバージョン `ACK`後に同じtargetを再lockし、`pending_revision_id == revision_id`とバージョンを再検査してRevisionを`active`、旧Revisionを`superseded`、Binding current バージョンをnew バージョンへ切り替え、pending予約をclearする。競合Proposalは配布前に`stale`とし、配布失敗・cancel・タイムアウトでは旧バージョンをactiveのまま保って予約を原子的に解放する。
+ルールエンジンのバージョン `ACK`後に同じ対象を再ロックし、`pending_revision_id == revision_id`とバージョンを再検査して改訂を`active`、旧改訂を`superseded`、割り当て 現在 バージョンを新規 バージョンへ切り替え、`pending`予約をclearする。競合提案は配布前に`stale`とし、配布失敗・キャンセル・タイムアウトでは旧バージョンを`active`のまま保って予約を原子的に解放する。
 
-Revision Authorityのdeny/expiry、重複・late レスポンスはRequestをlockして一度だけ終端し、Proposal statusと通知Outboxを同一Transactionで確定する。
+改訂 責任者の拒否/期限切れ、重複・遅延 レスポンスはリクエストをロックして一度だけ終端し、提案 状態と通知送信キューを同一トランザクションで確定する。
 
 ## 6. 状態の正本
 
 | 対象 | 正本 |
 |---|---|
-| Task lifecycle | `tasks` + `task_events` |
-| Workspace content | Workspace storage + スナップショット |
-| Workspace security policy | `workspace_security_policy_bindings` + バージョン付きRule documents |
-| LLM short continuation | Response ID補助、独自Continuationが正本 |
-| Async result | `async_operations` + `mailbox_entries` |
-| Egress policy / audit | Attempts + Rule Decisions + Challenges + Grants + Transactions + Findings + Revisions |
-| Episodic memory | immutable Task Episode |
-| Semantic memory | Git管理Markdown |
+| Taskライフサイクル | `tasks` + `task_events` |
+| Workspace 内容 | Workspace storage + スナップショット |
+| Workspace セキュリティ ポリシー | `workspace_security_policy_bindings` + バージョン付きルール documents |
+| LLM short 継続情報 | レスポンス ID補助、独自継続情報が正本 |
+| 非同期 結果 | `async_operations` + `mailbox_entries` |
+| 外向き通信 ポリシー / 監査 | Attempts + ルール Decisions + Challenges + Grants + Transactions + Findings + Revisions |
+| エピソード型 記憶 | 不変 Taskエピソード |
+| 意味 記憶 | Git管理Markdown |
 
-## 7. Retention
+## 7. 保持
 
-- Task Events / Outcomes / Egress Decision・Challenge・Grant・Finding・Revision Audit: 長期保持
-- sanitized/encrypted Egress capture: 全通信を短期保持し、high-risk/Finding関連は長期保持へ昇格
-- Agent レスポンス logs: retention policyに従う
-- terminal logs: Artifact化された重要部分以外は短期化可能
-- Workspace: Task終端後にEvidence DBへスナップショットを取り込み、作業実体はpolicyで削除
-- Task Episode:長期保持
-- Semantic Wiki: Git履歴付きで長期保持
+- Taskイベント / Outcomes / 外向き通信 判断・許可確認・許可・検出事項・改訂 監査: 長期保持
+- 無害化済み/暗号化済み 外向き通信 キャプチャ: 全通信を短期保持し、高リスク/検出事項関連は長期保持へ昇格
+- Agent レスポンス logs: 保持 ポリシーに従う
+- 終端 logs: 成果物化された重要部分以外は短期化可能
+- Workspace: Task終端後に証跡DBへスナップショットを取り込み、作業実体はポリシーで削除
+- Taskエピソード:長期保持
+- 意味 Wiki: Git履歴付きで長期保持
 
-PIIやSecretを含むEvidenceは分類し、EpisodeやSemantic本文へ直接複製しない。
+PIIや秘密情報を含む証跡は分類し、エピソードや意味本文へ直接複製しない。
 
 ## 8. Versioning
 
-- `task.contract_version`: Objective / Acceptance / Instructions変更
+- `task.contract_version`: 目的 / 受け入れ条件 / 指示変更
 - `task.version`: すべての状態更新
-- `memory_version`: Query時のWiki コミット
-- `candidate_version`: Completion Candidateの連番
-- `policy_bundle_digest`: Judgeが読んだPolicy集合
-- `request_digest`: CASBが評価・forwardしたEgress リクエスト
+- `memory_version`: クエリ時のWiki コミット
+- `candidate_version`: 完了案の連番
+- `policy_bundle_digest`: Judgeが読んだポリシー集合
+- `request_digest`: CASBが評価・転送した外向き通信 リクエスト
 
-これらをEventへ記録して再現性を確保する。
+これらをイベントへ記録して再現性を確保する。

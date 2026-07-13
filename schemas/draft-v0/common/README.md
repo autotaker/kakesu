@@ -1,6 +1,6 @@
-# Common Schema catalog — draft-v0
+# Common Schema カタログ — draft-v0
 
-Plane間で共有するprimitiveとEnvelopeを所有する。業務上のDecisionやLifecycleは各Planeへ置く。
+Plane間で共有するprimitiveと共通形式を所有する。業務上の判断やライフサイクルは各Planeへ置く。
 
 ## P0
 
@@ -8,21 +8,21 @@ Plane間で共有するprimitiveとEnvelopeを所有する。業務上のDecisio
 
 | Schema | 固定する内容 |
 |---|---|
-| `primitives.schema.json` | UUID/ID、logical ref、SHA-256 ダイジェスト、timestamp、duration、sequence、bounded text |
+| `primitives.schema.json` | UUID/ID、論理 参照、SHA-256 ダイジェスト、タイムスタンプ、duration、シーケンス、上限付き テキスト |
 | `schema-reference.schema.json` | `schema_id`、`schema_revision`、`schema_digest` |
-| `error.schema.json` | エラー code、メッセージ、retryable、details ref、safe diagnostics |
-| `evidence-reference.schema.json` | Evidence / Artifact / Snapshot refとダイジェスト |
-| `event-envelope.schema.json` | イベント ID、subject、sequence、timestamp、actor、ペイロード schema ref |
-| `message-envelope.schema.json` | コンポーネント、correlation、causationを持つcross-plane メッセージ envelope |
-| `sequence-invariant.schema.json` | predecessor/successorとjoin フィールドによるstep間制約 |
+| `error.schema.json` | エラー コード、メッセージ、retryable、details 参照、safe diagnostics |
+| `evidence-reference.schema.json` | 証跡 / 成果物 / スナップショット 参照とダイジェスト |
+| `event-envelope.schema.json` | イベント ID、subject、シーケンス、タイムスタンプ、actor、ペイロード スキーマ 参照 |
+| `message-envelope.schema.json` | コンポーネント、相関、因果関係を持つcross-plane メッセージ 共通形式 |
+| `sequence-invariant.schema.json` | predecessor/successorと結合 フィールドによるステップ間制約 |
 | `sequence-message.schema.json` | 机上実行用メッセージのコンポーネント間因果、冪等性、entity状態遷移 |
 
 ## P1
 
 | Schema | 固定する内容 |
 |---|---|
-| `pagination.schema.json` | cursor、limit、truncated |
-| `lease.schema.json` | owner、expiry、attempt |
-| `budget.schema.json` | step、token、byte、deadline上限 |
+| `pagination.schema.json` | カーソル、上限、切り詰め済み |
+| `lease.schema.json` | オーナー、期限切れ、試行 |
+| `budget.schema.json` | ステップ、トークン、バイト、期限上限 |
 
-すべてのarrayには必要に応じて`maxItems`と`uniqueItems`、文字列には`minLength` / `maxLength`、timestampには`format: date-time`を指定する。
+すべての配列には必要に応じて`maxItems`と`uniqueItems`、文字列には`minLength` / `maxLength`、タイムスタンプには`format: date-time`を指定する。

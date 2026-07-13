@@ -2,54 +2,54 @@
 
 ## 最終判定
 
-**PASS**。Schema reviewer、sequence reviewerの双方が、対象4シナリオを無条件PASSと判定した。
+**PASS**。Schema レビュアー、シーケンス レビュアーの双方が、対象4シナリオを無条件PASSと判定した。
 
 | 検査対象 | 結果 |
 |---|---:|
-| E2E Scenario | 4 PASS |
-| Sequence Payload | 124 PASS |
-| Canonical domain Payload | 119 PASS |
-| Sequence Requirement | 4 PASS |
-| Negative mutation | 11 reject |
-| Idempotent redelivery | PASS |
-| Nested correlation | PASS |
+| E2E シナリオ | 4 PASS |
+| シーケンス ペイロード | 124 PASS |
+| 正規 ドメイン ペイロード | 119 PASS |
+| シーケンス Requirement | 4 PASS |
+| ネガティブ 変異 | 11 拒否 |
+| Idempotent 再配送 | PASS |
+| Nested 相関 | PASS |
 
 ## 初回レビューで発見した不足と解消
 
 | 発見 | 解消内容 |
 |---|---|
-| GrantがChallengeからactiveへ直行 | Request、Decision、pending activation、Rule Engine `ACK`、active、Ready、CLI 再試行を追加 |
-| ToolCallとEgressの因果が不明 | Tool call、プロセス、attempt、challenge、grant、transactionをID結合 |
-| Review後のTask terminal確定がない | ReviewingCompletion、Review Input/Output、`TaskCompleted`、Episode Inputを追加 |
-| Child Task生成・親統合が不完全 | Child Workspace/Task、Child Episode、Mailbox consume、Parent Integration/Review/Episodeを追加 |
-| Asyncが`running`のまま完了通知 | Async `completed`永続化、Mailbox consume、ResumeContext、新Run、TaskResumedを追加 |
-| Policy Revisionが`ACK`前にactive | Candidate、Regression、Authority、pending revision、`ACK`、activeを分離 |
-| Requirementが宣言だけでvacuous pass | 必須type、順序、フィールド join、direct causationを各Scenarioへ適用 |
-| Generic Schemaでdomain フィールド不足を検出不能 | 98 メッセージをcanonical domain Schemaへ接続し、projectionと値を比較 |
-| Task状態が任意文字列 | canonical Task Event、状態連続性、許可遷移表を追加 |
-| Workspace fork/Grant継承が未定義 | Workspace Created Schemaで親、mode、Policy binding、Grant非継承を固定 |
-| Mailbox consumeが未定義 | consumer、sequence、watermark、冪等性、status、時刻をSchema化 |
-| 再配送を一律拒否 | 同一operation fingerprintとredelivery metadataを持つ再配送だけ許可 |
+| 許可が許可確認から`active`へ直行 | リクエスト、判断、`pending` 有効化、ルールエンジン `ACK`、`active`、準備完了、CLI 再試行を追加 |
+| `ToolCall`と外向き通信の因果が不明 | ツール 呼び出し、プロセス、試行、許可確認、許可、トランザクションをID結合 |
+| レビュー後のTask 終端確定がない | ReviewingCompletion、レビュー 入力/出力、`TaskCompleted`、エピソード 入力を追加 |
+| 子Task生成・親統合が不完全 | 子 Workspace/Task、子 エピソード、メールボックス 消費、親 Integration/レビュー/エピソードを追加 |
+| 非同期が`running`のまま完了通知 | 非同期 `completed`永続化、メールボックス 消費、ResumeContext、新実行、TaskResumedを追加 |
+| ポリシー 改訂が`ACK`前に`active` | 案、Regression、責任者、`pending` 改訂、`ACK`、`active`を分離 |
+| Requirementが宣言だけでvacuous pass | 必須型、順序、フィールド 結合、直接 因果関係を各シナリオへ適用 |
+| Generic Schemaでドメイン フィールド不足を検出不能 | 98 メッセージを正規 ドメイン Schemaへ接続し、投影と値を比較 |
+| Task状態が任意文字列 | 正規 Taskイベント、状態連続性、許可遷移表を追加 |
+| Workspace 分岐/許可継承が未定義 | Workspace Created Schemaで親、モード、ポリシー割り当て、許可非継承を固定 |
+| メールボックス 消費が未定義 | consumer、シーケンス、ウォーターマーク、冪等性、状態、時刻をSchema化 |
+| 再配送を一律拒否 | 同一操作 フィンガープリントと再配送 メタデータを持つ再配送だけ許可 |
 
-## 独立sequence review
+## 独立シーケンス レビュー
 
-4シナリオとも、開始メッセージからTask Episode確定まで到達可能である。
+4シナリオとも、開始メッセージからTaskエピソード確定まで到達可能である。
 
-- E2E-001: Test、GitHub Egress Grant、再試行、PR transaction、Task完了
-- E2E-002: Child生成、Child限定Grant、Child Episode、Mailbox consume、Parent統合・完了
-- E2E-003: Async wait、completion、Mailbox consume、Compaction後の新Run再開、Task完了
-- E2E-004: bypass finding、Policy candidate/regression、Authority、`ACK`後activation、remediation完了
+- E2E-001: テスト、GitHub 外向き通信 許可、再試行、PR トランザクション、Task完了
+- E2E-002: 子生成、子限定許可、子 エピソード、メールボックス 消費、親統合・完了
+- E2E-003: 非同期 待機、完了、メールボックス 消費、圧縮後の新実行再開、Task完了
+- E2E-004: 迂回 検出事項、ポリシー 候補/regression、責任者、`ACK`後有効化、是正完了
 
-## 独立Schema review
+## 独立Schema レビュー
 
-124 sequence Payloadのうち、独立domain stateを表す119 メッセージはcanonical Schemaで検証する。
-残りは独立domain stateを更新しないprojectionであり、代表例は次である。
+124 シーケンス ペイロードのうち、独立ドメイン 状態を表す119 メッセージは正規 Schemaで検証する。
+残りは独立ドメイン 状態を更新しない投影であり、代表例は次である。
 
-- `ExecutionAuditRecord`: 実行後の監査projection
-- `ParentIntegration`: Mailbox消費後の親Run内部処理
+- `ExecutionAuditRecord`: 実行後の監査投影
+- `ParentIntegration`: メールボックス消費後の親実行内部処理
 
-Sequenceとcanonical Payloadはメッセージ IDだけでなく、Task、Workspace、同名ref/ダイジェスト、
-Task Eventのfrom/to stateで照合する。
+シーケンスと正規 ペイロードはメッセージ IDだけでなく、Task、Workspace、同名参照/ダイジェスト、
+Taskイベントのfrom/to 状態で照合する。
 
 ## 機械検査
 
@@ -58,48 +58,48 @@ node scripts/validate-tabletop-scenarios.mjs
 node scripts/test-tabletop-validator.mjs
 ```
 
-Negative testは、必須メッセージ欠落、join path欠落、状態gap、不正cause、誤ったprior cause、
-idempotency衝突、canonical binding欠落、projection/canonical不一致、不正状態遷移を拒否する。
+ネガティブ テストは、必須メッセージ欠落、結合 パス欠落、状態欠落、不正cause、誤ったprior cause、
+冪等性衝突、正規 割り当て欠落、投影/正規不一致、不正状態遷移を拒否する。
 
-## 非blockingな将来メモ
+## 非ブロッキングな将来メモ
 
-- 製品実装時はAjv等の完全なDraft 2020-12 validatorでも検証する。
-- DB unique constraint、並行delivery race、Rule Engine実装はintegration testで確認する。
-- `shared_readonly` WorkspaceのE2Eを追加するとき、Workspace Created Schemaのmode拡張要否を判断する。
+- 製品実装時はAjv等の完全な下書き 2020-12 検証器でも検証する。
+- DB 一意 constraint、並行配送 race、ルールエンジン実装はintegration テストで確認する。
+- `shared_readonly` WorkspaceのE2Eを追加するとき、Workspace Created Schemaのモード拡張要否を判断する。
 
-## 004 Incident責務改定
+## 004 インシデント責務改定
 
-独立レビュー後、E2E-004はGovernance主体のIncident ワークフローへ改定した。Policy修正を
-Control PlaneのRemediation Taskとして扱わず、High risk判定、一時containment、Task suspend、
-Human Incident Authority、Policy Revision Authority、remediation後のHuman resume判断を表現する。
+独立レビュー後、E2E-004は統治主体のインシデント ワークフローへ改定した。ポリシー修正を
+Control Planeの是正Taskとして扱わず、High リスク判定、一時封じ込め、Task 停止、
+人間のインシデント責任者、ポリシー 改訂 責任者、是正後の人間 再開判断を表現する。
 
-改定後はcontainment解除、停止済みRunとは別のAgent Run開始、Task再開までを追加した。
-E2E-004のHuman Incident、Revision、Task resumeの各Authority通信は、Governance Planeから
-Control PlaneのAuthority GatewayへRequestを渡し、GatewayからDecisionを返す経路に統一する。
+改定後は封じ込め解除、停止済み実行とは別のAgent実行開始、Task再開までを追加した。
+E2E-004の人間 インシデント、改訂、Task 再開の各責任者通信は、Governance Planeから
+Control Planeの責任者ゲートウェイへリクエストを渡し、ゲートウェイから判断を返す経路に統一する。
 Governance Planeから人間への直接通信は許可しない。
-Task tree fixtureによる祖先・発生元・子孫のcascadeと兄弟除外を追加した。最終機械検査は、
+Taskツリー fixtureによる祖先・発生元・子孫のカスケードと兄弟除外を追加した。最終機械検査は、
 `4 scenarios / 124 sequence payloads / 119 canonical domain payloads`でPASSし、
-sequence reviewerとschema reviewerの独立再レビューもともにPASSした。未使用canonical ペイロードは
-検査エラーとし、停止・開始双方のAgent Run command/イベントをcanonical Schemaで検証する。
+シーケンス レビュアーとスキーマ レビュアーの独立再レビューもともにPASSした。未使用正規 ペイロードは
+検査エラーとし、停止・開始双方のAgent実行 コマンド/イベントを正規 Schemaで検証する。
 
-非blockingな実装上の課題として、`AgentRunStarted`から`TaskResumed`までExecutionがTool Callを
-dispatchしないgate、Incident固有negative mutation、Authority リクエスト kindとdecisionの条件制約、
-containmentの適用・解除時刻制約を追加する。
+非ブロッキングな実装上の課題として、`AgentRunStarted`から`TaskResumed`まで実行がツール 呼び出しを
+配送しないゲート、インシデント固有ネガティブ 変異、責任者 リクエスト 種別と判断の条件制約、
+封じ込めの適用・解除時刻制約を追加する。
 
 ## 2026-07-13 技術スタック・プロセス境界レビュー
 
-Go Core、Python Memory、Rust Governanceへの実装分割と、`control.db`、`evidence.db`、`governance.db`のwrite ownershipをレビューした。
+Go コア、Python 記憶、Rust 統治への実装分割と、`control.db`、`evidence.db`、`governance.db`の書き込み 所有権をレビューした。
 
-- Domain メッセージのsource/target Plane、Authority Gateway経路、Task/Grant/Episodeの状態遷移は変更していない。
-- Outbox転送、Inbox durable `ACK`、再送、reconciliationはinfrastructure メッセージであり、既存domain sequence projectionへ追加しない。
-- `EgressBlocked`はGovernance AggregateとGovernance OutboxをコミットしてからCLIへblockを返し、Control Inbox適用後にTask Mailboxへ一度だけ追加する。
-- Plane横断Transactionを廃止しても、Grant activation/revokeではGovernance `ACK`までAction gateを閉じるため安全性を弱めない。
-- Memory FrameworkのSession/checkpointは正本にせず、既存Episode Jobの固定入力、lease、再試行 semanticsを維持する。
+- ドメイン メッセージの起点/対象 Plane、責任者ゲートウェイ経路、Task/許可/エピソードの状態遷移は変更していない。
+- 送信キュー転送、受信キュー 永続 `ACK`、再送、照合はinfrastructure メッセージであり、既存ドメイン シーケンス 投影へ追加しない。
+- `EgressBlocked`は統治 集約と統治 送信キューをコミットしてからCLIへ拒否を返し、制御 受信キュー適用後にTaskメールボックスへ一度だけ追加する。
+- Plane横断トランザクションを廃止しても、許可 有効化/失効では統治 `ACK`まで操作ゲートを閉じるため安全性を弱めない。
+- 記憶 フレームワークのセッション/チェックポイントは正本にせず、既存エピソード ジョブの固定入力、リース、再試行 semanticsを維持する。
 
-Schema reviewではcanonical ペイロードのフィールド、メッセージ type、状態enumに変更がないことを確認したため、Schema revisionとnegative mutationの追加は不要と判定した。baseline、11 negative mutations、idempotent redelivery、nested correlationは再実行してPASSした。
+Schema レビューでは正規 ペイロードのフィールド、メッセージ 型、状態enumに変更がないことを確認したため、Schema 改訂とネガティブ 変異の追加は不要と判定した。ベースライン、11 ネガティブ mutations、冪等 再配送、nested 相関は再実行してPASSした。
 
-## Kakesu namespace改名レビュー
+## Kakesu 名前空間改名レビュー
 
-製品名をKakesuへ変更し、CLI、package、crate、Python module、Schema URN、canonical ペイロード、Viewerを同時移行した。`draft-v0`の実装・永続化開始前であるため、旧`urn:agent-harness:`をactive aliasとして残さず`urn:kakesu:`へ置換した。
+製品名をKakesuへ変更し、CLI、package、crate、Python module、Schema URN、正規 ペイロード、ビューアーを同時移行した。`draft-v0`の実装・永続化開始前であるため、旧`urn:agent-harness:`を`active` aliasとして残さず`urn:kakesu:`へ置換した。
 
-Schemaのフィールド、required条件、状態enum、メッセージ type、sequence order、causation、correlationは変更していない。したがって新しいnegative mutationは追加せず、旧namespaceがactive artifactへ残っていないことと、全canonical ペイロードが新namespaceで検証されることをrename固有の検査とした。
+Schemaのフィールド、必須条件、状態enum、メッセージ 型、シーケンス order、因果関係、相関は変更していない。したがって新しいネガティブ 変異は追加せず、旧名前空間が`active` 成果物へ残っていないことと、全正規 ペイロードが新名前空間で検証されることをrename固有の検査とした。

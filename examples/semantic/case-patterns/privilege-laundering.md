@@ -3,43 +3,43 @@ kind: case-pattern
 title: Privilege Laundering via Child Task
 ---
 
-# Privilege Laundering via Child Task
+# 権限ロンダリング via 子Task
 
-作業上の親が、Spawnした子TaskのEgress Grantを承認できると、親自身の意図を子の通信として表現して自己承認する経路が生まれる。([権限モデルV2レビューEpisode](episode://design/authority-v2-review))
+作業上の親が、生成した子Taskの外向き通信 許可を承認できると、親自身の意図を子の通信として表現して自己承認する経路が生まれる。([権限モデルV2レビューエピソード](episode://design/authority-v2-review))
 
 ## 発生条件
 
 - 親Agentが子Taskを生成できる。
-- 子Taskの外向き通信がCASBでblockされる。
-- 子のGrant Requestが作業上の親へ承認Escalationされる。
-- ChallengeのTask identityやdelegation chainを見ない。
+- 子Taskの外向き通信がCASBで拒否される。
+- 子の許可申請が作業上の親へ承認上位判断依頼される。
+- 許可確認のTask 識別情報や委譲 連鎖を見ない。
 
 ## 典型的な進行
 
 1. 親が許可されていない外向き通信を望む。
 2. 親がその処理を子Taskへ委譲する。
-3. 子の通信がblockされ、Grantを要求する。
+3. 子の通信が拒否され、許可を要求する。
 4. 要求が親へ上がる。
 5. 親が「子の要求」として承認する。
 
 ## 起こりうる帰結
 
-- Spawnによって実質権限が増える。
+- 生成によって実質権限が増える。
 - 同じ目的の系統内で自己承認が成立する。
 - 監査上のoriginが隠れる。
 
 ## 対策
 
 - 作業階層とGovernance Planeを分離する。
-- Policy Agentを作業Agentから独立させる。
-- ChallengeへTask identityとdelegation chainを保存する。
-- AuthorityをPolicyから解決する。
-- CredentialをCredential Brokerだけが保持する。
+- ポリシーAgentをWork Agentから独立させる。
+- 許可確認へTask 識別情報と委譲 連鎖を保存する。
+- 責任者をポリシーから解決する。
+- 認証情報を認証情報 ブローカーだけが保持する。
 
 ## 適用限界
 
-Sandbox内の実装方針やTask Contractの変更を親が判断すること自体はこのPatternに該当しない。問題は外向き通信のGrantを同じ親子系統で判断する場合である。
+サンドボックス内の実装方針やTask契約の変更を親が判断すること自体はこのパターンに該当しない。問題は外向き通信の許可を同じ親子系統で判断する場合である。
 
 ## 関連
 
-- [Task Ownership](../schemas/task-ownership.md)
+- [Task 所有権](../schemas/task-ownership.md)

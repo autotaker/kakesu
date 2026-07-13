@@ -25,14 +25,17 @@ const replacementRules = terms
   .filter((term) => term.lint.mode === "replace")
   .flatMap((term) => {
     const lint = term.lint;
-    return (lint.patterns || []).map((pattern) => {
+    const patterns = [...new Set([...(lint.patterns || []), lint.replacement])];
+    return patterns.map((pattern) => {
       return {
         formalName: term.formal_name,
+        pattern,
         replacement: lint.replacement,
         expression: expressionFor(pattern),
       };
     });
-  });
+  })
+  .sort((left, right) => right.pattern.length - left.pattern.length);
 
 const identifierRules = [
   ...new Map(
@@ -71,11 +74,20 @@ function reporter(context) {
         return;
       }
       const source = getSource(node);
+      const occupied = [];
+      const overlaps = (start, end) =>
+        occupied.some(([occupiedStart, occupiedEnd]) => start < occupiedEnd && end > occupiedStart);
       for (const rule of replacementRules) {
         for (const match of source.matchAll(rule.expression)) {
-          if (match[0] === rule.replacement) {
+          const end = match.index + match[0].length;
+          if (overlaps(match.index, end)) {
             continue;
           }
+          if (match[0] === rule.replacement) {
+            occupied.push([match.index, end]);
+            continue;
+          }
+          occupied.push([match.index, end]);
           report(
             node,
             new RuleError(`${match[0]} => ${rule.replacement} (glossary: ${rule.formalName})`, {
@@ -90,6 +102,11 @@ function reporter(context) {
       }
       for (const rule of identifierRules) {
         for (const match of source.matchAll(rule.expression)) {
+          const end = match.index + match[0].length;
+          if (overlaps(match.index, end)) {
+            continue;
+          }
+          occupied.push([match.index, end]);
           report(
             node,
             new RuleError(

@@ -39,398 +39,398 @@ governance/ (Rust)
   governance.db
 ```
 
-利用者からは1つのローカルCLI applicationとして提供するが、MemoryとGovernanceは独立プロセスにする。Core、Memory、Governanceはそれぞれ所有SQLiteへだけwriteし、Outbox/InboxとUnix domain socketで非同期メッセージを配送する。Evidenceを個別ファイルへfallbackしない。技術選定と再評価条件は[13-technology-stack.md](13-technology-stack.md)を正本とする。
+利用者からは1つのローカルCLI アプリケーションとして提供するが、記憶と統治は独立プロセスにする。コア、記憶、統治はそれぞれ所有SQLiteへだけ書き込みし、送信キュー/受信キューとUnixドメインソケットで非同期メッセージを配送する。証跡を個別ファイルへfallbackしない。技術選定と再評価条件は[13-technology-stack.md](13-technology-stack.md)を正本とする。
 
 ## 2. 実装順序
 
-### Phase 1: Task Runtime
+### フェーズ 1: Task ランタイム
 
-- Go Coreのサービス run groupとgraceful shutdown
-- `control.db` migration、Core Inbox/Outbox
-- UDS メッセージ transportとSchema validation
+- Go コアのサービス 実行 グループとgraceful shutdown
+- `control.db` 移行、コア 受信キュー/送信キュー
+- UDS メッセージ 転送方式とSchema validation
 - Agent / Task / Workspace
-- Owner排他
-- terminal
+- オーナー排他
+- 終端
 - `delegate`
-- Task Mailbox
-- Completion Candidate + Acceptance Review
-- direct child cancellation
+- Taskメールボックス
+- 完了案 + 受け入れ条件レビュー
+- 直接 子 キャンセル
 
-### Phase 2: Async統一
+### フェーズ 2: 非同期統一
 
 - `timeout_ms`
 - `async_id`
-- async operation table
-- Mailbox delivery
-- Harness生成Operation Key / cancellation
-- プロセス restart recovery
+- 非同期操作 テーブル
+- メールボックス 配送
+- ハーネス生成操作 キー / キャンセル
+- プロセス restart 復旧
 
-### Phase 3: Governance
+### フェーズ 3: 統治
 
-- Rust Governance Serviceと`governance.db`
-- Governance Inbox/Outbox、Controlとの`ACK`/reconciliation
-- TaskごとのNetwork egress強制routing
-- HTTPS Interception Proxy / Harness DNS Proxy
-- WorkspaceスコープのFirewall
-- バージョン付きCASB Rule Engineによるinline allow/block
-- Egress Challenge / Mailbox notification
-- `request_grant` / Policy Agent
-- CASB Policy Manager / Credential Broker
-- Authority routing / Audit ledger
-- Egress Audit Agent / Finding / Policy feedback loop
-- Policy Revision Job / candidate Rule Proposal / バージョン付きdeployment
+- Rust 統治サービスと`governance.db`
+- 統治 受信キュー/送信キュー、制御との`ACK`/照合
+- Taskごとのネットワーク 外向き通信強制ルーティング
+- HTTPS Interception プロキシ / ハーネス DNS プロキシ
+- Workspaceスコープのファイアウォール
+- バージョン付きCASB ルールエンジンによるインライン 許可/拒否
+- 外向き通信の許可確認 / メールボックス notification
+- `request_grant` / ポリシーAgent
+- CASB ポリシー マネージャー / 認証情報 ブローカー
+- 責任者 ルーティング / 監査 ledger
+- 外向き通信監査Agent / 検出事項 / ポリシー フィードバック ループ
+- ポリシー 改訂 ジョブ / 候補 ルール 提案 / バージョン付きdeployment
 
-### Phase 4: Memory
+### フェーズ 4: 記憶
 
-- Python Memory Serviceと`evidence.db`
-- OpenAI Agents SDKのephemeral Runner adapter
-- Memory Inbox/Outbox、Coreとのterminal スナップショット transfer
-- 複数StepのTask Episode Agent
-- SQLite `query_evidence` Tool
-- Task Episode Structured Output
-- Episode Compilation Job / 再試行 / validation
-- Episodic store
-- SQLite Evidence Store / FTS / backup
-- Semantic Markdown リポジトリ
-- Wiki Agent maintenance/クエリ
-- Harness forced injection
-- context gap feedback
+- Python 記憶サービスと`evidence.db`
+- OpenAI Agent SDKのephemeral ランナー アダプター
+- 記憶 受信キュー/送信キュー、コアとの終端 スナップショット transfer
+- 複数ステップのTaskエピソード Agent
+- SQLite `query_evidence` ツール
+- Taskエピソード 構造化 出力
+- エピソード 編纂 ジョブ / 再試行 / validation
+- エピソード型 ストア
+- SQLite 証跡 ストア / FTS / バックアップ
+- 意味 Markdown リポジトリ
+- Wiki Agent メンテナンス/クエリ
+- ハーネス 強制 injection
+- コンテキスト 欠落 フィードバック
 
-### Phase 5: Optimization
+### フェーズ 5: Optimization
 
-- multiple owner profiles
-- child concurrency limit
-- Response chain compaction
+- multiple オーナー profiles
+- 子 concurrency 上限
+- レスポンス 連鎖 圧縮
 - background Responses
-- memory evaluation questions
-- cost / latency routing
+- 記憶 評価 questions
+- cost / レイテンシ ルーティング
 
-Response chain compactionは、定期Progress Refresh、最小Resume Cursor、正本の再読込、旧Run停止、新Run開始を分離して実装する。後付けの完全な会話要約だけで再開しない。
+レスポンス 連鎖 圧縮は、定期進捗 更新、最小再開 カーソル、正本の再読込、旧実行停止、新実行開始を分離して実装する。後付けの完全な会話要約だけで再開しない。
 
-## 3. Core acceptance tests
+## 3. コア 受け入れ条件 テスト
 
-### Owner排他
+### オーナー排他
 
 1. Agent AがT1を`running`
 2. T2をAへassign
-3. rejectされること
-4. T1が`waiting`でもrejectされること
+3. 拒否されること
+4. T1が`waiting`でも拒否されること
 5. T1終端後はT2をassignできること
 
 ### Task creation
 
 - AgentがDBへ直接Taskを作れない
-- `delegate` ProposalからHarnessがID/Owner/Workspaceを確定
-- Ownerまたは論理Workspace準備失敗時に中間Taskレコードを残さない
+- `delegate` 提案からハーネスがID/オーナー/Workspaceを確定
+- オーナーまたは論理Workspace準備失敗時に中間Taskレコードを残さない
 - 作成成功時の初期状態は`ready`
-- 同じ`call_id`の再配送で同じ子Task Operationへ収束する
-- Task graph循環を拒否
+- 同じ`call_id`の再配送で同じ子Task 操作へ収束する
+- Taskツリー循環を拒否
 
-### Completion review
+### 完了 レビュー
 
-- Owner以外のcandidateを拒否
-- stale contract バージョンを拒否
-- required child active時に拒否
-- Reviewer acceptで`completed`
-- rejectで`running`
-- insufficient evidenceで`running`へ戻り、OwnerがEvidenceを追加できる
-- Reviewerが新要件を追加した場合をEvaluatorで検出
-- Reviewer invocationでAgent Registry / Agent Run / Response ID / tool call履歴を永続化しない
-- Completion Review JobはCandidate/入力 スナップショット、ダイジェスト、attempt/エラー/leaseを保存し、プロセス再起動後に同じ入力を再試行する一方、Response/tool履歴は保存しない
-- Reviewer出力の全`evidence_refs`をTask スコープとダイジェストで検証する
+- オーナー以外の候補を拒否
+- 古い 契約バージョンを拒否
+- 必須 子 `active`時に拒否
+- レビュアー 受理で`completed`
+- 拒否で`running`
+- 不十分 証跡で`running`へ戻り、オーナーが証跡を追加できる
+- レビュアーが新要件を追加した場合をEvaluatorで検出
+- レビュアー 呼び出しでAgent レジストリ / Agent実行 / レスポンス ID / ツール 呼び出し履歴を永続化しない
+- 完了レビュー ジョブは案/入力 スナップショット、ダイジェスト、試行/エラー/リースを保存し、プロセス再起動後に同じ入力を再試行する一方、レスポンス/ツール履歴は保存しない
+- レビュアー出力の全`evidence_refs`をTask スコープとダイジェストで検証する
 
 ### Built-in Agentコンポーネント
 
-- 全組み込みAgent invocationでAgent/Runレコードを生成しない
-- 一時Response chainとtool call履歴を永続化しない
-- 機能固有Jobのlease期限切れ後は新しいsessionで最初から再試行する
-- 機能固有Job metadata、確定結果、Evidence、Profile/Schema バージョンで監査可能であり、Agent Run Recordへ依存しない
-- Episode Jobのlease期限切れを回収し、部分Responseを使わず再調査する
-- Evidence BLOB コミット後・Aggregate参照確定前の障害でorphanを回収する
-- Aggregateが未コミットのEvidence参照を公開しない
-- Control DBとEvidence SQLiteを分離した構成でterminal スナップショットからEpisode viewを構築する
-- Memory SDK Session、trace、checkpointをJob recoveryの正本にしない
-- Memory Inboxへの重複配送を`message_id`で1回だけ適用する
-- Reviewerは固定済みrequired descendant Evidenceを読めるが、無関係Task Evidenceを拒否する
-- Completion Review確定Transactionの各境界でcrash/replayして部分適用を残さない
+- 全組み込みAgent 呼び出しでAgent/実行レコードを生成しない
+- 一時レスポンス 連鎖とツール 呼び出し履歴を永続化しない
+- 機能固有ジョブのリース期限切れ後は新しいセッションで最初から再試行する
+- 機能固有ジョブ メタデータ、確定結果、証跡、プロファイル/Schema バージョンで監査可能であり、Agent実行記録へ依存しない
+- エピソード ジョブのリース期限切れを回収し、部分レスポンスを使わず再調査する
+- 証跡 BLOB コミット後・集約参照確定前の障害で孤立を回収する
+- 集約が未コミットの証跡参照を公開しない
+- 制御 DBと証跡 SQLiteを分離した構成で終端 スナップショットからエピソード ビューを構築する
+- 記憶 SDK セッション、トレース、チェックポイントをジョブ 復旧の正本にしない
+- 記憶 受信キューへの重複配送を`message_id`で1回だけ適用する
+- レビュアーは固定済み必須 descendant 証跡を読めるが、無関係Task 証跡を拒否する
+- 完了レビュー確定トランザクションの各境界でクラッシュ/再実行して部分適用を残さない
 
-### Parent cancellation
+### 親 キャンセル
 
-- direct childはcancel可
-- sibling / grandchildは直接cancel不可
-- Authority決定で中間状態なく`cancelled`になる
-- cascadeで子孫Taskも`cancelled`になる
-- Agent Resource Cleanup失敗でTask状態が戻らない
-- 外部へ到達済みOutbound Transactionをrollbackしない
+- 直接 子はキャンセル可
+- sibling / grandchildは直接キャンセル不可
+- 責任者決定で中間状態なく`cancelled`になる
+- カスケードで子孫Taskも`cancelled`になる
+- Agentリソースのクリーンアップ失敗でTask状態が戻らない
+- 外部へ到達済み外向きトランザクションをロールバックしない
 
-### Ask / Escalation
+### 質問 / 上位判断依頼
 
-- Ask replyで`contract_patch`または`terminate=true`を拒否する
-- Escalationへ`response_kind: advice`を返す操作を拒否する
-- リクエスト Aggregate種別と`response_kind`の不一致を拒否する
-- Root EscalationをRoot Authority refへ配送し、親Taskを要求しない
+- 質問 replyで`contract_patch`または`terminate=true`を拒否する
+- 上位判断依頼へ`response_kind: advice`を返す操作を拒否する
+- リクエスト 集約種別と`response_kind`の不一致を拒否する
+- ルート 上位判断依頼をルート責任者 参照へ配送し、親Taskを要求しない
 
-## 4. Async tests
+## 4. 非同期 テスト
 
-| Case | 期待結果 |
+| ケース | 期待結果 |
 |---|---|
-| Toolが期限内完了 | `completed`をFunction Callへ返す |
+| ツールが期限内完了 | `completed`を関数 呼び出しへ返す |
 | 期限超過 | `accepted + async_id`、処理継続 |
-| 後日完了 | Mailboxへ`AsyncCompleted` |
+| 後日完了 | メールボックスへ`AsyncCompleted` |
 | イベント重複 | イベント_idで一回だけ適用 |
-| Harness再起動 | async tableから監視再開 |
-| cancel二重呼び出し | 冪等 |
-| `await_async`期限超過 | 元Operationを複製せずWait Groupの`async_id`を返す |
-| Task終端後の結果 | orphan policyに従い監査 |
-| stale contract result | Context バージョン差をAgentへ明示 |
+| ハーネス再起動 | 非同期 テーブルから監視再開 |
+| キャンセル二重呼び出し | 冪等 |
+| `await_async`期限超過 | 元操作を複製せず待機 グループの`async_id`を返す |
+| Task終端後の結果 | 孤立 ポリシーに従い監査 |
+| 古い 契約 結果 | コンテキスト バージョン差をAgentへ明示 |
 
-### Context Compaction
+### コンテキスト 圧縮
 
-- Compaction前後でTask status、Owner、Contract バージョンが変わらない
-- 旧`previous_response_id`を新Runへ引き継がない
-- Current Contract / State / Mailbox / Async Operationを正本から再読込する
-- Task Progressを設定Step周期でforced `update_progress`により更新する
-- Maintenance Responseを通常Step数へ含めない
-- Progress Refresh失敗時に直前バージョンを保持する
-- pending async、child、Artifact、Workspaceを各正本から再読込する
-- Progress未観測のAgent Run Eventsを再開Contextへ含める
-- token budget超過時も未解決EventとDecision／エラーを優先する
-- Reasoning、opaque compaction item、Secretを再開Contextへ入れない
-- Compaction中に届いたMailbox Eventを新Runが受け取る
-- stale Resume CursorからRunを開始しない
-- 未処理Function Callの結果を永続化するまでCompactionしない
-- Resume Cursor生成失敗時に旧Runを失わない
+- 圧縮前後でTask状態、オーナー、契約バージョンが変わらない
+- 旧`previous_response_id`を新実行へ引き継がない
+- 現在 契約 / 状態 / メールボックス / 非同期操作を正本から再読込する
+- Task進捗を設定ステップ周期で強制 `update_progress`により更新する
+- メンテナンス レスポンスを通常ステップ数へ含めない
+- 進捗 更新失敗時に直前バージョンを保持する
+- `pending` 非同期、子、成果物、Workspaceを各正本から再読込する
+- 進捗未観測のAgent実行 イベントを再開コンテキストへ含める
+- トークン 予算超過時も未解決イベントと判断／エラーを優先する
+- 推論、不透明 圧縮 項目、秘密情報を再開コンテキストへ入れない
+- 圧縮中に届いたメールボックス イベントを新実行が受け取る
+- 古い 再開 カーソルから実行を開始しない
+- 未処理関数 呼び出しの結果を永続化するまで圧縮しない
+- 再開 カーソル生成失敗時に旧実行を失わない
 
-## 5. Governance tests
+## 5. 統治 テスト
 
-### Sandbox escape
+### サンドボックス escape
 
-- direct ネットワーク接続を拒否
-- host filesystem mountを拒否
-- Secret environmentが存在しない
-- Credential Brokerだけが実Credentialを取得
-- Linux MVP Profileで全P0隔離テストを通す
-- P0未実装のOS/Profileを`available`として公開しない
+- 直接 ネットワーク接続を拒否
+- ホスト ファイルシステム マウントを拒否
+- 秘密情報 environmentが存在しない
+- 認証情報 ブローカーだけが実認証情報を取得
+- Linux MVP プロファイルで全P0隔離テストを通す
+- P0未実装のOS/プロファイルを`available`として公開しない
 - macOS / Windowsを未対応のままLinux-only MVPをリリースできる
 - P1/P2未実装をP0失敗として扱わない
-- P1 Capabilityを要求するTaskを未実装Profileへscheduleしない
-- `shared_readonly`対応を表明する各adapterでwriteを拒否する
+- P1 Capabilityを要求するTaskを未実装プロファイルへscheduleしない
+- `shared_readonly`対応を表明する各アダプターで書き込みを拒否する
 
 ### Privilege laundering
 
-1. Parentがネットワーク操作目的のChildをSpawn
-2. Child通信がblockされChallengeを生成
-3. Grant判断がParent Ownerへ行かないこと
-4. Task identityとdelegation chainが保持されること
-5. GrantがChild Taskだけへ束縛されること
+1. 親がネットワーク操作目的の子を生成
+2. 子通信が拒否され許可確認を生成
+3. 許可判断が親 オーナーへ行かないこと
+4. Task 識別情報と委譲 連鎖が保持されること
+5. 許可が子Taskだけへ束縛されること
 
-### CASB enforcement
+### CASB 強制
 
-- HTTPS Proxy / Firewall / DNS Proxyを迂回できない
-- Security PolicyをAgent/TaskではなくWorkspace ネットワーク identityから解決する
-- Owner交代やAgent Run再開でWorkspace Policy Bindingが変わらない
-- 同じAgentでもWorkspaceが異なれば別Policy Bindingを適用する
-- Workspace forkで一時GrantとAuthority approvalを継承しない
-- Credential BrokerがWorkspace Bindingからスコープを解決し、Owner交代で変化しない
-- Workspace Aのsentinel/approvalをWorkspace Bやfork先で使用できない
-- unknown destination、raw IP、DoH/DoT、QUICをP0で拒否する
-- CASB unavailable時にfail closedする
-- blockした通信を外部へforwardしない
-- Governance Outbox コミット後にCLIへblock レスポンスを返し、Control Inbox再送後もTask Mailboxを重複させない
-- 同じblock 再試行を同一Challengeへcoalesceする
-- Mailbox Event重複をイベント IDで排除する
-- canonical リクエスト ダイジェストへクエリ、Policy対象header、body、Credential スコープ、Policy/DNS バージョンを含める
+- HTTPS プロキシ / ファイアウォール / DNS プロキシを迂回できない
+- セキュリティ ポリシーをAgent/TaskではなくWorkspace ネットワーク 識別情報から解決する
+- オーナー交代やAgent実行再開でWorkspaceポリシー割り当てが変わらない
+- 同じAgentでもWorkspaceが異なれば別ポリシー割り当てを適用する
+- Workspace 分岐で一時許可と責任者 承認を継承しない
+- 認証情報 ブローカーがWorkspace 割り当てからスコープを解決し、オーナー交代で変化しない
+- Workspace Aのセンチネル/承認をWorkspace Bや分岐先で使用できない
+- unknown 宛先、生IP、DoH/DoT、QUICをP0で拒否する
+- CASB 利用不能時にフェイルクローズする
+- 拒否した通信を外部へ転送しない
+- 統治 送信キュー コミット後にCLIへ拒否 レスポンスを返し、制御 受信キュー再送後もTaskメールボックスを重複させない
+- 同じ拒否 再試行を同一許可確認へcoalesceする
+- メールボックス イベント重複をイベント IDで排除する
+- 正規 リクエスト ダイジェストへクエリ、ポリシー対象ヘッダー、本文、認証情報 スコープ、ポリシー/DNS バージョンを含める
 - CONNECT、Upgrade、WebSocket、ambiguous framing、検査前streaming送信を拒否する
-- redirectを新しいEgress Attemptとして評価する
-- private/link-local/loopback/metadata/Control Plane IPとDNS rebindingを拒否する
-- DNS TTL満了後の新IPを既存L4 Grantへ追加しない
-- 未知FQDNをupstream DNSへ送る前にblockしてFQDN-only Challengeを作る
-- P0 DNS ProxyがA/AAAA以外、過長label、高rate、高entropy クエリを拒否する
-- DNS クエリ名を使ったcovert exfiltrationを拒否し、TaskとPolicy バージョンを監査する
-- ICMP、raw socket、未対応IP プロトコル、IPv6 extension pathを拒否する
-- inline allow/blockでLLMを呼ばず、同じbindingとPolicy バージョンからRule判断を再現する
-- AttemptへWorkspace、Policy バージョン、matched Rule refs、reason codesを結び付ける
-- 未分類とRule conflictをdefault blockする
-- Rule EngineまたはPolicy Store障害時にblockする
-- compiled Rule cacheをWorkspace、canonical binding、Policy バージョン、TTLのスコープ外へ再利用しない
-- allow通信でもAttempt、Rule Decision、リクエスト capture、Outbound intentをコミットするまで外側接続を作らない
-- 監査ストア障害時に観測不能なforwardを行わない
-- DNS upstream クエリとL4 接続にもwrite-ahead監査を適用する
-- レスポンス captureをコミットするまでSandboxへレスポンスを返さない
-- forward途中crashを`incomplete` ManifestとしてreconcileしReview対象にする
-- 外部到達が不明なcrashを`outcome_unknown` Transactionとして、確定`failed`と区別してhigh-risk Reviewへ送る
+- リダイレクトを新しい外向き通信 試行として評価する
+- private/link-local/loopback/メタデータ/Control Plane IPとDNS rebindingを拒否する
+- DNS TTL満了後の新IPを既存L4 許可へ追加しない
+- 未知FQDNを上流 DNSへ送る前に拒否してFQDN-only 許可確認を作る
+- P0 DNS プロキシがA/AAAA以外、過長ラベル、高頻度、高entropy クエリを拒否する
+- DNS クエリ名を使ったcovert exfiltrationを拒否し、Taskとポリシーバージョンを監査する
+- ICMP、RAWソケット、未対応IP プロトコル、IPv6 拡張 パスを拒否する
+- インライン 許可/拒否でLLMを呼ばず、同じ割り当てとポリシーバージョンからルール判断を再現する
+- 試行へWorkspace、ポリシーバージョン、一致 ルール 参照、理由 コードを結び付ける
+- 未分類とルール 競合をデフォルト拒否する
+- ルールエンジンまたはポリシー ストア障害時に拒否する
+- compiled ルール cacheをWorkspace、正規 割り当て、ポリシーバージョン、TTLのスコープ外へ再利用しない
+- 許可通信でも試行、ルール 判断、リクエスト キャプチャ、外向き 意図をコミットするまで外側接続を作らない
+- 監査ストア障害時に観測不能な転送を行わない
+- DNS 上流 クエリとL4 接続にも先行書き込み監査を適用する
+- レスポンス キャプチャをコミットするまでサンドボックスへレスポンスを返さない
+- 転送途中クラッシュを`incomplete` マニフェストとして照合しレビュー対象にする
+- 外部到達が不明なクラッシュを`outcome_unknown` トランザクションとして、確定`failed`と区別して高リスク レビューへ送る
 
-### Grant ワークフロー
+### 許可 ワークフロー
 
-- Challengeなしの`request_grant`を拒否する
-- 要求元TaskがChallengeのWorkspaceを使用していなければ拒否する
-- temporary RuleをWorkspaceへ束縛し、別Workspaceから利用できない
-- Agent指定のdestination、TTL、Policy patch、Credential、idempotency keyを受け付けない
-- HTTPS GrantをTask、destination、method/path、body ダイジェストへ束縛する
-- L4 Grantをexact IP、port、TTL、接続 limitへ束縛する
-- Grant反映前に`PolicyGrantReady`を配送しない
-- block済み通信を自動再生しない
-- Task cancellationでGrantをrevokeする
-- 並行再試行でone-shot Grantを1回だけatomic reserveできる
-- reserveとOutbound Transaction intentの間にcrashしても二重forwardしない
-- 同じChallengeへの非終端Grant Requestを一件に制約する
-- Grant/Authority待ち中のTask cancellationでCore Action gateを先に閉じ、Governance revoke `ACK`後にAsyncCancelledへ一度だけ収束する
-- TTL満了・revoke後に新規接続と新規送信を拒否し、既存接続をgrace period後に終了する
-- Credential sentinelを外へ転送せず、スコープ不一致やredirect先へ実Credentialを注入しない
-- `auto_grant_eligible=false`のChallengeでAgentの`grant`判断を自動適用しない
-- production、data export、raw L4の必須AuthorityをLLM判断で迂回できない
-- Platform PolicyがAuthorityを選び、Policy Agent出力からAuthorityを受け付けない
-- Policy作成後も`ACK`まではGrant/Request/Asyncを未完了に保つ
-- Governance activation TransactionでGrant activeと結果Outboxを確定し、Control Inbox適用TransactionでRequest/Async `completed`とReady Eventを同時確定する
-- cancellationがpending Grantと未配送Ready Eventを無効化する
-- Ready DispatcherがTask active、Grant active、Policy バージョンを再検査する
-- Policy Grantからsource Grant Request/Decisionを一意に復元できる
-- Authority経由Grantがapprove済みAuthority Decisionなしでは作成できない
+- 許可確認なしの`request_grant`を拒否する
+- 要求元Taskが許可確認のWorkspaceを使用していなければ拒否する
+- 一時 ルールをWorkspaceへ束縛し、別Workspaceから利用できない
+- Agent指定の宛先、TTL、ポリシー パッチ、認証情報、冪等キーを受け付けない
+- HTTPS 許可をTask、宛先、method/パス、本文 ダイジェストへ束縛する
+- L4 許可を完全一致 IP、ポート、TTL、接続 上限へ束縛する
+- 許可反映前に`PolicyGrantReady`を配送しない
+- 拒否済み通信を自動再生しない
+- Task キャンセルで許可を失効する
+- 並行再試行でone-shot 許可を1回だけ原子的 予約できる
+- 予約と外向きトランザクション 意図の間にクラッシュしても二重転送しない
+- 同じ許可確認への非終端許可申請を一件に制約する
+- 許可/責任者待ち中のTask キャンセルでコア 操作ゲートを先に閉じ、統治 失効 `ACK`後にAsyncCancelledへ一度だけ収束する
+- TTL満了・失効後に新規接続と新規送信を拒否し、既存接続をgrace period後に終了する
+- 認証情報 センチネルを外へ転送せず、スコープ不一致やリダイレクト先へ実認証情報を注入しない
+- `auto_grant_eligible=false`の許可確認でAgentの`grant`判断を自動適用しない
+- production、データ export、未加工 L4の必須責任者をLLM判断で迂回できない
+- プラットフォーム ポリシーが責任者を選び、ポリシーAgent出力から責任者を受け付けない
+- ポリシー作成後も`ACK`までは許可/リクエスト/非同期を未完了に保つ
+- 統治 有効化 トランザクションで許可 `active`と結果送信キューを確定し、制御 受信キュー適用トランザクションでリクエスト/非同期 `completed`と準備完了 イベントを同時確定する
+- キャンセルが`pending` 許可と未配送準備完了 イベントを無効化する
+- 準備完了 DispatcherがTask `active`、許可 `active`、ポリシーバージョンを再検査する
+- 一時許可から起点 許可申請/判断を一意に復元できる
+- 責任者経由許可が承認済み責任者の判断なしでは作成できない
 
-### Authority Grant
+### 責任者 許可
 
-- Authority RequestへGrant Request、Challenge、binding ダイジェスト、Authority、期限を固定する
-- Authorityはexact スコープのapprove/denyだけを返し、条件付きスコープ拡張を受け付けない
-- Authority回答時にTask、Challenge、Policy/DNS freshnessを再検査する
-- Policy Agent技術障害をAuthorityへ迂回しない
-- Authority Decisionへ認証済みresponder principalとrationaleを一件だけ保存する
-- Authority期限切れでControl Decision、Governance deny、Control Async/Mailbox終端を冪等メッセージ chainとして収束させる
+- 責任者への依頼へ許可申請、許可確認、割り当て ダイジェスト、責任者、期限を固定する
+- 責任者は完全一致 スコープの承認/拒否だけを返し、条件付きスコープ拡張を受け付けない
+- 責任者回答時にTask、許可確認、ポリシー/DNS 鮮度を再検査する
+- ポリシーAgent技術障害を責任者へ迂回しない
+- 責任者の判断へ認証済み回答者 主体と根拠を一件だけ保存する
+- 責任者期限切れで制御 判断、統治 拒否、制御 非同期/メールボックス終端を冪等メッセージ 連鎖として収束させる
 - 期限後・重複回答が既存終端結果を変更しない
-- `cancel_async`がactivation前だけワークフロー全体をcancelし、activation後は`not_cancellable`を返す
-- `cancel_async`がpending Grantをrevokeし未配送Ready Eventを無効化する
-- Workspace freeze/archive/destroyが先にCore Action gateを閉じ、Governance `ACK`までcleanup完了にせず、GrantとReady Eventを無効化する
-- freezeとGrant activation/Authority回答の競合でBinding activeをlock下再検査する
+- `cancel_async`が有効化前だけワークフロー全体をキャンセルし、有効化後は`not_cancellable`を返す
+- `cancel_async`が`pending` 許可を失効し未配送準備完了 イベントを無効化する
+- Workspace 凍結/archive/destroyが先にコア 操作ゲートを閉じ、統治 `ACK`までクリーンアップ完了にせず、許可と準備完了 イベントを無効化する
+- 凍結と許可 有効化/責任者回答の競合で割り当て `active`をロック下再検査する
 
-### Policy Agent isolation
+### ポリシーAgent isolation
 
-- terminalなし
+- 終端なし
 - ネットワークなし
-- Credentialなし
-- Policy Store writeなし
-- sanitized ChallengeとTask Contextだけを入力する
-- `grant`/`deny`でquestionがnull、`require_authority`で非nullであることをvalidatorで強制する
-- Policy AgentのGrant出力からスコープを受け付けず、Policy ManagerがChallengeからexact スコープを導出する
+- 認証情報なし
+- ポリシー ストア 書き込みなし
+- 無害化済み 許可確認とTask コンテキストだけを入力する
+- `grant`/`deny`で質問がNULL、`require_authority`で非NULLであることを検証器で強制する
+- ポリシーAgentの許可出力からスコープを受け付けず、ポリシー マネージャーが許可確認から完全一致 スコープを導出する
 
-### Egress retrospective review
+### 外向き通信 retrospective レビュー
 
-- high-riskとanomalyを全件、低riskをバージョン付きrandom samplingで選定する
-- 固定watermarkと入力ダイジェストからEgress Reviewを再現できる
-- ダイジェストだけでなくPolicyに従うsanitized/encrypted captureをEvidenceとして参照できる
-- Capture Manifestがtotal bytes、captured/redacted ranges、chunk ダイジェスト、truncation、欠落理由、completion statusを持つ
-- paddingで攻撃ペイロードをcapture上限外へ追い出しても`partial`と欠落範囲を認識し、必要なら`insufficient_evidence`にする
-- raw CredentialがcaptureとReview Agent入力へ入らない
-- allow済み通信から`policy_bypass` Findingを作成できる
-- critical FindingがOperator通知とTask/Grant停止候補を生成する
-- FindingからCASB Rule/Policy Agent Profile/Eval/回帰テストのRevisionを追跡できる
-- Policy AgentがFindingからcandidate RuleとEvalを作り、Policy Managerだけがバージョン付きRuleへ反映する
-- Rule改定を対象Workspaceまたはglobal baseline スコープへ明示的に束縛する
-- Harness固定candidate ref/ダイジェストとbase バージョンだけをProposalへ確定し、Structured Outputにrefを自己申告させない
-- final Decision前にcandidate ref/ダイジェスト/base バージョン/fixed timeをRevision Jobへ原子的に保存し、crash/再試行で取り違えない
-- `update`/`require_authority`で固定candidateを必須、`no_change`でcandidateなしにする
-- Workspace スコープのProposalを別Workspaceやglobalへ拡張できない
-- Revision Authority RequestへProposal/ダイジェスト/スコープ/base バージョン/Authority/期限を固定する
-- Revision Authority Decisionへ認証済みresponderを一件だけ保存し、deny/expiry/late レスポンスを冪等終端する
-- Policy適用時にcurrent バージョンとbase バージョンをCASし、競合Proposalをstaleにする
-- target Policyごとにpending Revisionを一件だけ許可し、Bindingへpending revision/バージョンを予約する
-- new Policy バージョンをtarget lock下の単調sequenceで一意発番する
-- Revisionをpending activationで保存し、Rule Engine `ACK`前は旧バージョンをactiveのまま保つ
-- `ACK`後にpending revision ID一致を検査してRevision activeとWorkspace Binding current バージョンを原子的に切り替える
-- 配布失敗・cancel・タイムアウトで旧active バージョンを維持しpending予約を解放する
-- Rule配布失敗時に正本とEnforcement Pointのバージョンを分裂させない
-- FindingとPolicy Revision Jobをjoin/FKで固定し、別WorkspaceのFindingを混入させない
-- 新旧Policyを同じ過去trafficへreplayして見逃しと過剰blockを比較する
-- Audit Agent停止時にbacklog、coverage低下、review latencyを検知する
-- high-risk/anomalyのingest時にReview Jobとcapture pinを作り、終端までGCしない
-- low-risk samplingをcapture expiry前に確定し、選定captureをpinする
-- review deadline超過時にretention延長、容量制御、coverage gap記録とOperator通知をする
-- 一Review JobからFindingを一件だけatomic finalizeし、再試行で重複しない
-- random sample、anomaly、red-team replayを組み合わせ、同一LLMだけに依存しない
+- 高リスクと異常を全件、低リスクをバージョン付きランダム サンプリングで選定する
+- 固定ウォーターマークと入力ダイジェストから外向き通信 レビューを再現できる
+- ダイジェストだけでなくポリシーに従う無害化済み/暗号化済み キャプチャを証跡として参照できる
+- キャプチャ マニフェストが合計 バイト、captured/秘匿済み ranges、チャンク ダイジェスト、切り詰め、欠落理由、完了 状態を持つ
+- paddingで攻撃ペイロードをキャプチャ上限外へ追い出しても`partial`と欠落範囲を認識し、必要なら`insufficient_evidence`にする
+- 未加工 認証情報がキャプチャとレビュー Agent入力へ入らない
+- 許可済み通信から`policy_bypass` 検出事項を作成できる
+- critical 検出事項が運用者通知とTask/許可停止候補を生成する
+- 検出事項からCASB ルール/ポリシーAgent プロファイル/評価/回帰テストの改訂を追跡できる
+- ポリシーAgentが検出事項から候補 ルールと評価を作り、ポリシー マネージャーだけがバージョン付きルールへ反映する
+- ルール改定を対象Workspaceまたは全体 ベースライン スコープへ明示的に束縛する
+- ハーネス固定候補 参照/ダイジェストと基底 バージョンだけを提案へ確定し、構造化 出力に参照を自己申告させない
+- final 判断前に候補 参照/ダイジェスト/基底 バージョン/固定 時刻を改訂 ジョブへ原子的に保存し、クラッシュ/再試行で取り違えない
+- `update`/`require_authority`で固定候補を必須、`no_change`で候補なしにする
+- Workspace スコープの提案を別Workspaceや全体へ拡張できない
+- 改訂 責任者への依頼へ提案/ダイジェスト/スコープ/基底 バージョン/責任者/期限を固定する
+- 改訂 責任者の判断へ認証済み回答者を一件だけ保存し、拒否/期限切れ/遅延 レスポンスを冪等終端する
+- ポリシー適用時に現在 バージョンと基底 バージョンをCASし、競合提案を古いにする
+- 対象 ポリシーごとに`pending` 改訂を一件だけ許可し、割り当てへ`pending` 改訂/バージョンを予約する
+- 新規 ポリシーバージョンを対象 ロック下の単調シーケンスで一意発番する
+- 改訂を`pending` 有効化で保存し、ルールエンジン `ACK`前は旧バージョンを`active`のまま保つ
+- `ACK`後に`pending` 改訂 ID一致を検査して改訂 `active`とWorkspace 割り当て 現在 バージョンを原子的に切り替える
+- 配布失敗・キャンセル・タイムアウトで旧`active` バージョンを維持し`pending`予約を解放する
+- ルール配布失敗時に正本と強制 点のバージョンを分裂させない
+- 検出事項とポリシー 改訂 ジョブを結合/FKで固定し、別Workspaceの検出事項を混入させない
+- 新旧ポリシーを同じ過去通信量へ再実行して見逃しと過剰拒否を比較する
+- 監査Agent停止時に滞留、網羅率低下、レビュー レイテンシを検知する
+- 高リスク/異常の取り込み時にレビュー ジョブとキャプチャ ピン留めを作り、終端までGCしない
+- low-risk サンプリングをキャプチャ 期限切れ前に確定し、選定キャプチャをピン留めする
+- レビュー 期限超過時に保持延長、容量制御、網羅率 欠落記録と運用者通知をする
+- 一レビュー ジョブから検出事項を一件だけ原子的 finalizeし、再試行で重複しない
+- ランダム sample、異常、red-team 再実行を組み合わせ、同一LLMだけに依存しない
 
-## 6. Memory tests
+## 6. 記憶 テスト
 
-### Episode boundary
+### エピソード boundary
 
-- terminal commandごとにEpisodeを作らない
-- Task終端時に一Episode
-- `completed` / `cancelled`を保存し、`suspended`ではEpisodeを確定しない
-- EpisodeからEvidenceへ辿れる
+- 終端 コマンドごとにエピソードを作らない
+- Task終端時に一エピソード
+- `completed` / `cancelled`を保存し、`suspended`ではエピソードを確定しない
+- エピソードから証跡へ辿れる
 - observed / owner_asserted / compiler_inferredを区別
-- Episode AgentがSQLとkeyset paginationでEvidenceを複数Step調査できる
-- 調査中はRead-only Function Call、完了時はSchema準拠メッセージを返す
-- Toolsと`text.format`を同時指定し、HarnessがPhase切替しない
-- 未処理Function CallがあるメッセージをEpisodeとして確定しない
-- 存在しないsource refや不正なepistemic statusを拒否
-- Compilation Job失敗でTask終端状態が戻らない
-- Episode本文とsource EvidenceがSQLiteだけに保存され、個別ファイルを生成しない
-- Workspace スナップショット取込後にworktreeを削除してもEvidenceを読める
-- Evidence metadataとBLOB保存が同一Transactionでrollbackされる
-- SQLite backupからEvidence refとダイジェストを復元できる
-- `query_evidence`がSELECT以外、DDL、PRAGMA、ATTACH、extensionを拒否する
-- Compilation JobのTask_id外のrowへアクセスできない
-- クエリ タイムアウト、VM step、row、返却bytes、BLOB chunk上限が機能する
+- エピソード AgentがSQLとkeyset paginationで証跡を複数ステップ調査できる
+- 調査中は読み取り専用 関数 呼び出し、完了時はSchema準拠メッセージを返す
+- Toolsと`text.format`を同時指定し、ハーネスがフェーズ切替しない
+- 未処理関数 呼び出しがあるメッセージをエピソードとして確定しない
+- 存在しない起点 参照や不正なepistemic 状態を拒否
+- 編纂 ジョブ失敗でTask終端状態が戻らない
+- エピソード本文と起点 証跡がSQLiteだけに保存され、個別ファイルを生成しない
+- Workspace スナップショット取込後にワークツリーを削除しても証跡を読める
+- 証跡 メタデータとBLOB保存が同一トランザクションでロールバックされる
+- SQLite バックアップから証跡 参照とダイジェストを復元できる
+- `query_evidence`がSELECT以外、DDL、PRAGMA、ATTACH、拡張を拒否する
+- 編纂 ジョブのTask_id外の行へアクセスできない
+- クエリ タイムアウト、VM ステップ、行、返却バイト、BLOB チャンク上限が機能する
 
 ### Forced injection
 
 - Task startでWiki Agentが必ず呼ばれる
-- Work AgentにWiki filesystem accessがない
-- ContractとMemoryが別区画
-- past Objectiveを命令として混ぜない
-- context gapで追加MemoryがMailboxへ届く
+- Work AgentにWiki ファイルシステム アクセスがない
+- 契約と記憶が別区画
+- past 目的を命令として混ぜない
+- コンテキスト 欠落で追加記憶がメールボックスへ届く
 
-### Semantic Wiki
+### 意味 Wiki
 
-- frontmatterはkind/titleだけ
-- 段落単位にEpisode link
-- single Episodeから普遍則を作らない
+- フロントマターは種別/titleだけ
+- 段落単位にエピソード リンク
+- single エピソードから普遍則を作らない
 - 反例を削除しない
-- Concept / Schema / Script / Case Patternが混在しない
+- 概念 / Schema / スクリプト / ケース パターンが混在しない
 
 ## 7. 障害注入
 
 - Responses API タイムアウト
-- Background Response lost
-- Run Coordinator crash after tool start / before 出力 return
-- Mailbox delivery重複
+- バックグラウンド レスポンス lost
+- 実行コーディネーター クラッシュ after ツール start / before 出力 return
+- メールボックス 配送重複
 - Workspace スナップショット失敗
-- Reviewer unavailable
-- Policy Agent unavailable
-- Policy反映後・GrantReady配送前にPolicy Manager crash
-- HTTPS Proxy block後・Mailbox配送前にOutbox worker crash
-- Compaction中のMailbox Event到着
-- Resume Cursor作成後・新Run開始前のContract / Progress バージョン変更
-- 未完了Function Callがある状態でのCompaction要求
-- Resume Cursor参照切れまたは生成失敗
+- レビュアー 利用不能
+- ポリシーAgent 利用不能
+- ポリシー反映後・GrantReady配送前にポリシー マネージャー クラッシュ
+- HTTPS プロキシ 拒否後・メールボックス配送前に送信キュー ワーカー クラッシュ
+- 圧縮中のメールボックス イベント到着
+- 再開 カーソル作成後・新実行開始前の契約 / 進捗 バージョン変更
+- 未完了関数 呼び出しがある状態での圧縮要求
+- 再開 カーソル参照切れまたは生成失敗
 
-### Agent Run Record
+### Agent実行記録
 
-- Streaming中断時に未完成deltaを正本化しない
-- 同じレスポンス ID / 出力 item ID / call IDの再配送を重複適用しない
-- Tool dispatch intent コミット後のcrashから再開できる
-- SecretをFunction argumentsとエラー detailからredactする
-- Progress Maintenance Stepを通常Step countへ加算しない
-- 短期Run log削除後もEpisodeの主要主張を長期Evidenceから検証できる
-- Wiki コミット conflict
+- ストリーミング中断時に未完成差分を正本化しない
+- 同じレスポンス ID / 出力 項目 ID / 呼び出し IDの再配送を重複適用しない
+- ツール 配送 意図 コミット後のクラッシュから再開できる
+- 秘密情報を関数 引数とエラー detailからredactする
+- 進捗 メンテナンス ステップを通常ステップ 回数へ加算しない
+- 短期実行 ログ削除後もエピソードの主要主張を長期証跡から検証できる
+- Wiki コミット 競合
 
-各障害でTask、Grant Request、Mailbox Eventが二重適用されず、Continuationから再開できることを確認する。
+各障害でTask、許可申請、メールボックス イベントが二重適用されず、継続情報から再開できることを確認する。
 
 ## 8. Observability
 
 ### Metrics
 
-- active Tasks by status
-- owner utilization
-- Task latency / wait latency
-- async タイムアウト promotion rate
-- reviewer reject / insufficient evidence rate
-- egress allow / block rate
-- grant / deny / authority rate
-- duplicate mailbox delivery rate
-- episode compile lag
-- memory context hit / gap rate
+- `active` Tasks by 状態
+- オーナー utilization
+- Task レイテンシ / 待機 レイテンシ
+- 非同期 タイムアウト promotion 比率
+- レビュアー 拒否 / 不十分 証跡 比率
+- 外向き通信 許可 / 拒否 比率
+- 許可 / 拒否 / 責任者 比率
+- duplicate メールボックス 配送 比率
+- エピソード compile lag
+- 記憶コンテキスト hit / 欠落 比率
 
 ### Traces
 
-Work Agent traceはRoot Taskから子Task、Response、async operation、Egress Challenge、Grantへ伝播する。組み込みAgentではprovider Response IDやcall IDを永続traceへ含めず、機能固有の`review_id`、`challenge_id`、`grant_id`と入力ダイジェストを使う。
+Work Agent トレースはルートTaskから子Task、レスポンス、非同期操作、外向き通信の許可確認、許可へ伝播する。組み込みAgentではプロバイダー レスポンス IDや呼び出し IDを永続トレースへ含めず、機能固有の`review_id`、`challenge_id`、`grant_id`と入力ダイジェストを使う。
 
 ```text
 root_task_id
@@ -446,34 +446,34 @@ built_in_operation
   input_digest
 ```
 
-### Audit
+### 監査
 
-LLM自然言語だけでなく、Contract バージョン、canonical リクエスト ダイジェスト、Challenge binding ダイジェスト、Policy バージョン、Artifact ダイジェストを保存する。
+LLM自然言語だけでなく、契約バージョン、正規 リクエスト ダイジェスト、許可確認 割り当て ダイジェスト、ポリシーバージョン、成果物 ダイジェストを保存する。
 
-## 9. Security invariants as code
+## 9. セキュリティ invariants as コード
 
-次はPromptだけでなくRuntimeで強制する。
+次はPromptだけでなくランタイムで強制する。
 
-- owner active Task unique
-- child cancellation direct relation
-- no direct ネットワーク from Sandbox
+- オーナー `active` Task 一意
+- 子 キャンセル 直接 関係
+- no 直接 ネットワーク from サンドボックス
 - no credentials in Work Agent
-- Built-in Agent tool allowlist
-- 再試行 リクエスト binding == immutable Challenge binding == Policy Grant binding
-- Grant use reservationとOutbound Transaction intentのatomic コミット
-- `completed` requires accepted review
-- Episode only after terminal state
+- Built-in Agent ツール allowlist
+- 再試行 リクエスト 割り当て == 不変 許可確認 割り当て == 一時許可 割り当て
+- 許可 使用 reservationと外向きトランザクション 意図の原子的 コミット
+- `completed` requires accepted レビュー
+- エピソード only after 終端 状態
 
 ## 10. 初期構成の妥協点
 
 MVPでは次を単純化できる。
 
-- L3/L2/L1を同じモデルでProfileだけ変更
-- Task Mailboxを`control.db`のSQLite tableで実装
-- Workspaceをcontainer volume + Git ブランチで実装
-- Semantic WikiをGit リポジトリで実装
-- Policy Agentを単一の一時API sessionで実装
-- ReviewerをOwner Agent Runから分離した単一の一時API sessionで実装
-- Plane間transportをUnix domain socket + JSONに限定し、Brokerを導入しない
+- L3/L2/L1を同じモデルでプロファイルだけ変更
+- Taskメールボックスを`control.db`のSQLite テーブルで実装
+- Workspaceをコンテナー ボリューム + Git ブランチで実装
+- 意味 WikiをGit リポジトリで実装
+- ポリシーAgentを単一の一時API セッションで実装
+- レビュアーをオーナーAgent 実行から分離した単一の一時API セッションで実装
+- Plane間転送方式をUnixドメインソケット + JSONに限定し、ブローカーを導入しない
 
-ただし作業階層と統治階層、Owner排他、Completion Review、Egress Control Planeの強制境界は省略しない。
+ただし作業階層と統治階層、オーナー排他、完了レビュー、外向き通信Control Planeの強制境界は省略しない。
