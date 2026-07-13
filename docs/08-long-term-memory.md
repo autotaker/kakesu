@@ -449,7 +449,7 @@ report_context_gap({
 
 ハーネスがWiki Agentへ再問い合わせし、結果をメールボックスへ返す。返却コンテキストには、元のTask契約バージョンと記憶 バージョンを付ける。
 
-## 14. Wiki メンテナンス Flow
+## 14. Wiki メンテナンス フロー
 
 ```mermaid
 sequenceDiagram

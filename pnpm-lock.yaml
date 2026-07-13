@@ -8,6 +8,12 @@ importers:
 
   .:
     devDependencies:
+      ajv:
+        specifier: ^8
+        version: 8.20.0
+      ajv-formats:
+        specifier: ^3
+        version: 3.0.1(ajv@8.20.0)
       textlint:
         specifier: ^15.7.1
         version: 15.7.1

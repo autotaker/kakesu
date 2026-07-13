@@ -6,9 +6,12 @@
   },
   "scripts": {
     "lint:docs": "node scripts/lint-docs.mjs",
-    "test:terminology": "node scripts/test-kakesu-glossary.mjs"
+    "test:terminology": "node scripts/test-kakesu-glossary.mjs",
+    "test:process": "node --test scripts/task/development-process.test.mjs"
   },
   "devDependencies": {
+    "ajv": "^8",
+    "ajv-formats": "^3",
     "textlint": "^15.7.1",
     "textlint-rule-preset-ja-technical-writing": "^12.0.2",
     "yaml": "^2.8.1"

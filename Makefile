@@ -6,13 +6,15 @@ CARGO ?= cargo
 UV ?= uv
 NODE ?= node
 PNPM ?= pnpm
+WORK_ROOT ?= $(abspath ../agent-harness-work)
+WIKI_CONTEXT_TARGET ?= task
 GO_ENV := GOCACHE=$(CURDIR)/.build/go-cache
 UV_ENV := UV_CACHE_DIR=$(CURDIR)/.build/uv-cache
 
 .PHONY: build build-core build-memory build-governance node-deps
-.PHONY: test test-core test-memory test-governance test-tabletop test-docs
+.PHONY: test test-core test-memory test-governance test-tabletop test-docs test-process
 .PHONY: lint lint-core lint-memory lint-governance lint-docs
-.PHONY: check clean
+.PHONY: check clean work-init work-agent task-create task-check work-check backlog-view worktree-create worktree-remove wiki-index wiki-context wiki-ingest
 
 build: build-core build-memory build-governance
 
@@ -27,7 +29,7 @@ build-memory:
 build-governance:
 	cd governance && $(CARGO) build --locked
 
-test: test-core test-memory test-governance test-tabletop test-docs
+test: test-core test-memory test-governance test-tabletop test-docs test-process
 
 test-core:
 	cd core && $(GO_ENV) $(GO) test ./...
@@ -49,6 +51,9 @@ node_modules/.modules.yaml: package.json pnpm-lock.yaml
 
 test-docs: node-deps
 	$(PNPM) test:terminology
+
+test-process: node-deps
+	$(PNPM) test:process
 
 lint: lint-core lint-memory lint-governance lint-docs
 
@@ -72,6 +77,51 @@ lint-docs: node-deps
 check: build test lint
 	$(NODE) scripts/build-tabletop-viewer-data.mjs
 	git diff --check
+
+work-init: node-deps
+	$(NODE) scripts/task/init-work.mjs --work-root "$(WORK_ROOT)"
+
+work-agent: node-deps
+	@test -n "$(TASK)" || (echo "TASK is required" >&2; exit 1)
+	@test -n "$(ACTION)" || (echo "ACTION is required" >&2; exit 1)
+	$(NODE) scripts/task/run-work-agent.mjs --work-root "$(WORK_ROOT)" --task "$(TASK)" --action "$(ACTION)" $(if $(PROFILE),--profile "$(PROFILE)",)
+
+task-create: node-deps
+	@test -n "$(ID)" || (echo "ID is required" >&2; exit 1)
+	@test -n "$(SLUG)" || (echo "SLUG is required" >&2; exit 1)
+	@test -n "$(TITLE)" || (echo "TITLE is required" >&2; exit 1)
+	@test -n "$(EPIC)" || (echo "EPIC is required" >&2; exit 1)
+	$(NODE) scripts/task/create-task.mjs --work-root "$(WORK_ROOT)" --id "$(ID)" --slug "$(SLUG)" --title "$(TITLE)" --epic "$(EPIC)" --type "$(or $(TYPE),feature)" --priority "$(or $(PRIORITY),P2)"
+
+task-check: node-deps
+	@test -n "$(TASK)" || (echo "TASK is required" >&2; exit 1)
+	$(NODE) scripts/task/check-task.mjs --work-root "$(WORK_ROOT)" --task "$(TASK)"
+
+work-check: node-deps
+	$(NODE) scripts/task/validate-work.mjs --work-root "$(WORK_ROOT)"
+
+backlog-view: node-deps work-check
+	$(NODE) scripts/task/build-backlog-viewer.mjs --work-root "$(WORK_ROOT)"
+
+worktree-create: node-deps
+	@test -n "$(TASK)" || (echo "TASK is required" >&2; exit 1)
+	$(NODE) scripts/task/worktree.mjs --work-root "$(WORK_ROOT)" --task "$(TASK)" --action create
+
+worktree-remove: node-deps
+	@test -n "$(TASK)" || (echo "TASK is required" >&2; exit 1)
+	$(NODE) scripts/task/worktree.mjs --work-root "$(WORK_ROOT)" --task "$(TASK)" --action remove
+
+wiki-index: node-deps
+	$(NODE) scripts/task/wiki-index.mjs --work-root "$(WORK_ROOT)"
+
+wiki-context: node-deps
+	@test -n "$(TASK)" || (echo "TASK is required" >&2; exit 1)
+	@test "$(WIKI_CONTEXT_TARGET)" = "task" -o "$(WIKI_CONTEXT_TARGET)" = "plan" || (echo "WIKI_CONTEXT_TARGET must be task or plan" >&2; exit 1)
+	$(NODE) scripts/task/run-wiki-agent.mjs --work-root "$(WORK_ROOT)" --task "$(TASK)" --action "context-$(WIKI_CONTEXT_TARGET)"
+
+wiki-ingest: node-deps
+	@test -n "$(TASK)" || (echo "TASK is required" >&2; exit 1)
+	$(NODE) scripts/task/run-wiki-agent.mjs --work-root "$(WORK_ROOT)" --task "$(TASK)" --action ingest
 
 clean:
 	rm -rf .build memory/dist memory/.venv governance/target
