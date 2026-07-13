@@ -32,9 +32,9 @@ const targetByAction = {
 const target = path.posix.join(task.task_dir, targetByAction[action]);
 resolveInside(root, target, "Wiki Agent target");
 const promptByAction = {
-  "context-task": `Review ${target} and the local Wiki. Update only the Related Context section of TASK.md with applicable Semantic Wiki pages and Decisions, including reasons for not applying important conflicting Decisions. Follow AGENTS.md and commit directly to main. Do not bypass Git hooks.`,
-  "context-plan": `Review ${target}, TASK.md, and the local Wiki. Update only the Related Wiki and Decision section of PLAN.md with applicable knowledge, conflicts, and open points. Follow AGENTS.md and commit directly to main. Do not bypass Git hooks.`,
-  ingest: `Ingest ${target}. Maintain only the Wiki paths allowed by wiki/AGENTS.md, create an idempotent ingestion receipt from the HANDOVER digest, regenerate wiki/index.json, and commit directly to main. Do not modify Task evidence or backlog.yaml. Do not bypass Git hooks.`,
+  "context-task": `You are already inside the locked Wiki Agent wrapper; do not invoke wiki-context, wiki-ingest, run-work-agent, or another Agent. Review ${target} and the local Wiki. Directly update only the Related Context section of TASK.md with applicable Semantic Wiki pages and Decisions, including reasons for not applying important conflicting Decisions. Follow AGENTS.md and commit directly to main. Do not bypass Git hooks.`,
+  "context-plan": `You are already inside the locked Wiki Agent wrapper; do not invoke wiki-context, wiki-ingest, run-work-agent, or another Agent. Review ${target}, TASK.md, and the local Wiki. Directly update only the Related Wiki and Decision section of PLAN.md with applicable knowledge, conflicts, and open points. Follow AGENTS.md and commit directly to main. Do not bypass Git hooks.`,
+  ingest: `You are already inside the locked Wiki Agent wrapper; do not invoke wiki-context, wiki-ingest, run-work-agent, or another Agent. Ingest ${target} by directly editing only the Wiki paths allowed by wiki/AGENTS.md. Create an idempotent ingestion receipt from the HANDOVER digest, run wiki-index and work-check without re-entering the Agent launcher, and commit directly to main. Do not modify Task evidence or backlog.yaml. Do not bypass Git hooks.`,
 };
 const command = [
   ...(args.profile ? ["-p", args.profile] : []),
