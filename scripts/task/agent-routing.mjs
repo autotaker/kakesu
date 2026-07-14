@@ -2,7 +2,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { parseArgs, parseFrontmatter, writeFileAtomic, workRoot } from "./lib.mjs";
+import { git, parseArgs, parseFrontmatter, writeFileAtomic, workRoot } from "./lib.mjs";
 
 const MODULE_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 
@@ -186,6 +186,15 @@ export function validateChildOutcome({ childExit, beforeHead, afterHead, stagedF
   const forbidden = changedFiles.filter((file) => !matches(file));
   if (forbidden.length) throw new Error(`WORK_SCOPE_VIOLATION:${forbidden.join(",")}`);
   return changedFiles;
+}
+
+export function rollbackWorkRepository(root, beforeHead) {
+  if (!beforeHead) throw new Error("WORK_ROLLBACK_HEAD_MISSING");
+  git(root, ["reset", "--hard", beforeHead]);
+  git(root, ["clean", "-ffd"]);
+  if (git(root, ["rev-parse", "HEAD"]) !== beforeHead) throw new Error("WORK_ROLLBACK_HEAD_MISMATCH");
+  const status = git(root, ["status", "--porcelain"]);
+  if (status) throw new Error(`WORK_ROLLBACK_DIRTY:${status.replaceAll("\n", ",")}`);
 }
 
 export function buildLaunchEvidence({ route, cwd, allowedPaths, childResult = null, commit = null, error = null, legacy = false }) {

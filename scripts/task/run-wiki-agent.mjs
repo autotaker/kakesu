@@ -12,7 +12,7 @@ import {
   taskById,
   workRoot,
 } from "./lib.mjs";
-import { buildLaunchEvidence } from "./agent-routing.mjs";
+import { buildLaunchEvidence, rollbackWorkRepository } from "./agent-routing.mjs";
 
 const args = parseArgs(process.argv.slice(2));
 const action = args.action;
@@ -89,9 +89,16 @@ if (args.dry_run === "true") {
       emit({ childResult, commit });
     }
   } catch (error) {
-    if (beforeHead && git(root, ["rev-parse", "HEAD"]) === beforeHead) git(root, ["reset", "--mixed", beforeHead]);
-    emit({ childResult, commit: null, error: error.message });
-    throw error;
+    let failure = error;
+    if (beforeHead) {
+      try {
+        rollbackWorkRepository(root, beforeHead);
+      } catch (rollbackError) {
+        failure = new Error(`${error.message};WORK_ROLLBACK_FAILED:${rollbackError.message}`);
+      }
+    }
+    emit({ childResult, commit: null, error: failure.message });
+    throw failure;
   } finally {
     release();
   }

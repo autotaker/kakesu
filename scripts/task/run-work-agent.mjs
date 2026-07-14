@@ -10,7 +10,7 @@ import {
   taskById,
   workRoot,
 } from "./lib.mjs";
-import { buildLaunchEvidence, codexCommand, resolveFixedRoute, validateChildOutcome } from "./agent-routing.mjs";
+import { buildLaunchEvidence, codexCommand, resolveFixedRoute, rollbackWorkRepository, validateChildOutcome } from "./agent-routing.mjs";
 
 const args = parseArgs(process.argv.slice(2));
 assertTaskId(args.task);
@@ -105,11 +105,16 @@ if (args.dry_run === "true") {
     if (changedFiles(root).length) throw new Error("WORK_PARENT_LEFT_DIRTY");
     emitEvidence({ childResult, commit });
   } catch (error) {
-    if (beforeHead && git(root, ["rev-parse", "HEAD"]) === beforeHead) {
-      git(root, ["reset", "--mixed", beforeHead]);
+    let failure = error;
+    if (beforeHead) {
+      try {
+        rollbackWorkRepository(root, beforeHead);
+      } catch (rollbackError) {
+        failure = new Error(`${error.message};WORK_ROLLBACK_FAILED:${rollbackError.message}`);
+      }
     }
-    emitEvidence({ childResult, commit: null, error: error.message });
-    throw error;
+    emitEvidence({ childResult, commit: null, error: failure.message });
+    throw failure;
   } finally {
     release();
   }
