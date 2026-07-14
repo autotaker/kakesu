@@ -7,6 +7,7 @@ import { spawnSync } from "node:child_process";
 import { checkTask } from "./check-task.mjs";
 import { acquireWorkRepoLock, dateInTimezone, estimatePoints, git, replaceTemplate, resolveInside } from "./lib.mjs";
 import { rollbackWorkRepository, validateDevSelection } from "./agent-routing.mjs";
+import { runWorkConfigSync } from "./run-work-config-sync.mjs";
 
 test("estimatePoints uses implementation file and line scores", () => {
   assert.equal(estimatePoints(2, 80), 1);
@@ -87,6 +88,7 @@ test("launchers close child stdin and reserve commits for the lock-owning parent
   const workLauncher = fs.readFileSync(path.resolve(import.meta.dirname, "run-work-agent.mjs"), "utf8");
   const wikiLauncher = fs.readFileSync(path.resolve(import.meta.dirname, "run-wiki-agent.mjs"), "utf8");
   const explorerLauncher = fs.readFileSync(path.resolve(import.meta.dirname, "run-explorer-agent.mjs"), "utf8");
+  const configSyncLauncher = fs.readFileSync(path.resolve(import.meta.dirname, "run-work-config-sync.mjs"), "utf8");
   const hook = fs.readFileSync(path.resolve(import.meta.dirname, "work-pre-commit.mjs"), "utf8");
   for (const launcher of [workLauncher, wikiLauncher]) {
     assert.match(launcher, /stdio:\s*\["ignore",\s*"pipe",\s*"pipe"\]/);
@@ -99,8 +101,164 @@ test("launchers close child stdin and reserve commits for the lock-owning parent
   assert.match(explorerLauncher, /stdio:\s*\["ignore",\s*"pipe",\s*"pipe"\]/);
   assert.match(workLauncher, /run-explorer-agent\.mjs/);
   assert.match(workLauncher, /Do not use natural-language or custom-agent delegation for Explorer/);
+  assert.match(configSyncLauncher, /acquireWorkRepoLock\(root\)/);
+  assert.match(configSyncLauncher, /WORK_PARENT_COMMIT:\s*"1"/);
+  assert.match(configSyncLauncher, /WORK_ACTION:\s*"work-config-sync"/);
+  assert.match(configSyncLauncher, /syncWorkAdapter\(\{ productRoot, adapterRoot: root, check: true \}\)/);
+  assert.match(configSyncLauncher, /rollbackWorkRepository\(root, beforeHead\)/);
+  assert.doesNotMatch(configSyncLauncher, /--no-verify|spawnSync\("codex"/);
   assert.match(hook, /WORK_PARENT_COMMIT/);
   assert.match(hook, /lock-owning launcher parent/);
+});
+
+function createConfigSyncFixture({ hookExit = 0, committedDrift = false } = {}) {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "work-config-sync-"));
+  git(root, ["init", "-b", "main"]);
+  git(root, ["config", "user.name", "fixture"]);
+  git(root, ["config", "user.email", "fixture@example.invalid"]);
+  fs.mkdirSync(path.join(root, ".githooks"));
+  fs.writeFileSync(path.join(root, ".gitignore"), ".locks/\nhook.log\n");
+  fs.writeFileSync(path.join(root, "baseline.txt"), "baseline\n");
+  fs.writeFileSync(path.join(root, ".githooks", "pre-commit"), `#!/bin/sh
+set -eu
+test "\${WORK_REPO_LOCK_HELD:-}" = "1"
+test "\${WORK_PARENT_COMMIT:-}" = "1"
+test "\${WORK_ACTION:-}" = "work-config-sync"
+test "\${WORK_ALLOWED_PATHS:-}" = '[".codex/config.toml"]'
+test -d .locks/work-repository.lock
+test "$(git diff --cached --name-only)" = ".codex/config.toml"
+printf 'invoked\\n' >> hook.log
+exit ${hookExit}
+`, { mode: 0o755 });
+  const baselineFiles = [".gitignore", ".githooks/pre-commit", "baseline.txt"];
+  if (committedDrift) {
+    fs.mkdirSync(path.join(root, ".codex"));
+    fs.writeFileSync(path.join(root, ".codex", "config.toml"), "# committed drift\n");
+    baselineFiles.push(".codex/config.toml");
+  }
+  git(root, ["add", ...baselineFiles]);
+  git(root, ["commit", "-m", "baseline"]);
+  git(root, ["config", "core.hooksPath", ".githooks"]);
+  return root;
+}
+
+test("work config sync owns lock, hook, commit, post-check, and concise evidence", () => {
+  const root = createConfigSyncFixture();
+  const beforeHead = git(root, ["rev-parse", "HEAD"]);
+  const evidence = [];
+  let validations = 0;
+  try {
+    const result = runWorkConfigSync({
+      adapterRoot: root,
+      validateWork() {
+        validations += 1;
+        assert.equal(fs.existsSync(path.join(root, ".locks", "work-repository.lock")), true);
+      },
+      emit: (entry) => evidence.push(entry),
+    });
+    assert.equal(result.changed, true);
+    assert.equal(result.owner, "lock-owning-parent");
+    assert.match(result.digest, /^[a-f0-9]{64}$/);
+    assert.match(result.commit, /^[a-f0-9]{40}$/);
+    assert.notEqual(result.commit, beforeHead);
+    assert.equal(validations, 2);
+    assert.equal(git(root, ["show", "-s", "--format=%s", "HEAD"]), "governance: sync work adapter");
+    assert.equal(git(root, ["show", "--format=", "--name-only", "HEAD"]), ".codex/config.toml");
+    assert.equal(fs.readFileSync(path.join(root, "hook.log"), "utf8"), "invoked\n");
+    assert.equal(git(root, ["status", "--porcelain"]), "");
+    assert.equal(fs.existsSync(path.join(root, ".locks", "work-repository.lock")), false);
+    assert.equal(evidence.length, 1);
+    assert.ok(JSON.stringify(evidence[0]).length < 1000);
+
+    const committedHead = git(root, ["rev-parse", "HEAD"]);
+    const noChange = runWorkConfigSync({ adapterRoot: root, validateWork() {}, emit: (entry) => evidence.push(entry) });
+    assert.equal(noChange.changed, false);
+    assert.equal(noChange.commit, null);
+    assert.equal(git(root, ["rev-parse", "HEAD"]), committedHead);
+    const checked = runWorkConfigSync({ adapterRoot: root, mode: "check", validateWork() {}, emit: (entry) => evidence.push(entry) });
+    assert.equal(checked.mode, "check");
+    assert.equal(checked.changed, false);
+    assert.equal(checked.commit, null);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("work config sync rolls back hook and post-check failures", async (t) => {
+  await t.test("hook failure", () => {
+    const root = createConfigSyncFixture({ hookExit: 7 });
+    const beforeHead = git(root, ["rev-parse", "HEAD"]);
+    const evidence = [];
+    try {
+      assert.throws(() => runWorkConfigSync({ adapterRoot: root, validateWork() {}, emit: (entry) => evidence.push(entry) }));
+      assert.equal(git(root, ["rev-parse", "HEAD"]), beforeHead);
+      assert.equal(git(root, ["status", "--porcelain"]), "");
+      assert.equal(fs.existsSync(path.join(root, ".codex", "config.toml")), false);
+      assert.equal(fs.existsSync(path.join(root, ".locks", "work-repository.lock")), false);
+      assert.equal(evidence.length, 1);
+      assert.equal(evidence[0].commit, null);
+      assert.notEqual(evidence[0].error, null);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  await t.test("post-check failure after commit", () => {
+    const root = createConfigSyncFixture();
+    const beforeHead = git(root, ["rev-parse", "HEAD"]);
+    const evidence = [];
+    let validations = 0;
+    try {
+      assert.throws(() => runWorkConfigSync({
+        adapterRoot: root,
+        validateWork() {
+          validations += 1;
+          assert.equal(fs.existsSync(path.join(root, ".locks", "work-repository.lock")), true);
+          if (validations === 2) throw new Error("POST_CHECK_FAILED");
+        },
+        emit: (entry) => evidence.push(entry),
+      }), /POST_CHECK_FAILED/);
+      assert.equal(validations, 2);
+      assert.equal(git(root, ["rev-parse", "HEAD"]), beforeHead);
+      assert.equal(git(root, ["status", "--porcelain"]), "");
+      assert.equal(fs.existsSync(path.join(root, ".codex", "config.toml")), false);
+      assert.equal(fs.existsSync(path.join(root, ".locks", "work-repository.lock")), false);
+      assert.equal(evidence.length, 1);
+      assert.equal(evidence[0].commit, null);
+      assert.match(evidence[0].error, /POST_CHECK_FAILED/);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+});
+
+test("work config check detects committed drift while holding the common lock", () => {
+  const root = createConfigSyncFixture({ committedDrift: true });
+  const beforeHead = git(root, ["rev-parse", "HEAD"]);
+  const evidence = [];
+  try {
+    assert.throws(() => runWorkConfigSync({
+      adapterRoot: root,
+      mode: "check",
+      validateWork() {
+        assert.fail("repository validation must not mask adapter drift");
+      },
+      emit: (entry) => {
+        assert.equal(fs.existsSync(path.join(root, ".locks", "work-repository.lock")), true);
+        evidence.push(entry);
+      },
+    }), /ROUTING_ADAPTER_DRIFT/);
+    assert.equal(git(root, ["rev-parse", "HEAD"]), beforeHead);
+    assert.equal(git(root, ["status", "--porcelain"]), "");
+    assert.equal(fs.readFileSync(path.join(root, ".codex", "config.toml"), "utf8"), "# committed drift\n");
+    assert.equal(fs.existsSync(path.join(root, ".locks", "work-repository.lock")), false);
+    assert.equal(evidence.length, 1);
+    assert.equal(evidence[0].mode, "check");
+    assert.equal(evidence[0].commit, null);
+    assert.match(evidence[0].error, /ROUTING_ADAPTER_DRIFT/);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
 });
 
 function createRollbackFixture() {

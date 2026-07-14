@@ -94,7 +94,7 @@ explorer-agent: node-deps
 	$(NODE) scripts/task/run-explorer-agent.mjs --root "$(if $(EXPLORER_ROOT),$$EXPLORER_ROOT,$(CURDIR))" --question "$$QUESTION" $(if $(DRY_RUN),--dry-run "$$DRY_RUN",)
 
 work-config-sync: node-deps
-	$(NODE) scripts/task/agent-routing.mjs --work-root "$(WORK_ROOT)" --mode "$(if $(CHECK),check,sync)"
+	$(NODE) scripts/task/run-work-config-sync.mjs --work-root "$(WORK_ROOT)" --mode "$(if $(CHECK),check,sync)"
 
 task-create: node-deps
 	@test -n "$(ID)" || (echo "ID is required" >&2; exit 1)

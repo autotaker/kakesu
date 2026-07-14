@@ -67,7 +67,7 @@ make work-agent TASK=TASK-0001 ACTION=qa-result
 
 固定ロールへ`PROFILE`、`MODEL`、`EFFORT`を渡す場合、正規値と同一でなければ起動前に失敗する。Wiki Agentは固定ロールを経由しない文書化済みlegacy経路であり、既定で`gpt-5.6-terra` / `medium`を使う。Wiki経路だけは`WIKI_PROFILE`、`WIKI_MODEL`、`WIKI_EFFORT`で上書きできる。グローバル設定を書き換えない。
 
-運用リポジトリの`.codex/config.toml`はmain Agentが生成するアダプターである。製品側を`main`へマージした後、QA前に`make work-config-sync`を実行し、共通ロック下の`ACTION=governance`で別コミットする。`make work-config-sync CHECK=1`は正規 ダイジェストを含む完全一致を検査する。
+運用リポジトリの`.codex/config.toml`はmain Agentが生成するアダプターである。製品側を`main`へマージした後、QA前に`make work-config-sync`を実行する。この専用ランチャー親はロール子Agentを起動せず、共通ロックを取得して`.codex/config.toml`だけを決定的に生成・ステージし、共有pre-commitフックを通したgovernance コミットと完全一致の事後検査まで所有する。失敗時は開始前の`HEAD`へロールバックし、コミットを残さない。汎用の`ACTION=governance`はSchema、フック、Wiki保守規約などをmain Agentが変更する既存用途に限り、その挙動と許可範囲を維持する。`make work-config-sync CHECK=1`は共通ロック下で正規 ダイジェストを含む完全一致を検査し、書き込みやコミットを行わない。
 
 ## 兼任規則
 

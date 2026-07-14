@@ -23,4 +23,4 @@ agent-harness-work/  バックログ、Task証跡、Wiki、Decision
 
 運用リポジトリは独立したGitリポジトリとし、`main`一本で運用する。製品リポジトリのトピックブランチとワークツリーは運用リポジトリの`worktrees/`に置くが、運用リポジトリ自身のGit管理対象にはしない。
 
-cloneまたは初期作成後に`make work-init`を一度実行し、共有`.githooks/pre-commit`を有効にする。運用リポジトリへ書くAgentは`make work-agent`または役割別の専用コマンドから起動する。ランチャーが共通ロックを実行全体で保持し、フックがSchema、フェーズゲート、action別変更範囲をコミット前に検証する。
+cloneまたは初期作成後に`make work-init`を一度実行し、共有`.githooks/pre-commit`を有効にする。運用リポジトリへ書くAgentは`make work-agent`または役割別の専用コマンドから起動する。ランチャーが共通ロックを実行全体で保持し、フックがSchema、フェーズゲート、action別変更範囲をコミット前に検証する。生成アダプターの`make work-config-sync`はAgentを起動しない専用の親所有経路であり、同じロックとフックを使って生成、コミット、事後検査を一続きで行う。

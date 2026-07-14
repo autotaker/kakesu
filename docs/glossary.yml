@@ -6784,7 +6784,7 @@ extraction_notes:
 - 新しい用語を追加したときは、docs本文と正式用語のlintポリシーを同じ変更で更新する。
 extraction_inventory:
   source: 日本語を含む**/*.md
-  raw_token_count: 11132
+  raw_token_count: 11149
   unique_token_count: 2625
   classification: all_extracted_termsの各レコードにcategoryを付ける。
 lint:
@@ -7075,10 +7075,10 @@ all_extracted_terms:
   abbreviations: []
   variants: []
   description: 本文から抽出したコード識別子。本文ではバッククォートで囲む。
-  count: 7
+  count: 8
   prose_count: 0
-  code_count: 7
-  source_count: 3
+  code_count: 8
+  source_count: 4
 - token: Action
   category: japanese_translation
   formal_name: Action
@@ -7340,8 +7340,8 @@ all_extracted_terms:
   abbreviations: []
   variants: []
   description: KakesuのSchemaと設計で同じ対象を指す、限定された正式ドメイン名。
-  count: 621
-  prose_count: 545
+  count: 625
+  prose_count: 549
   code_count: 76
   source_count: 36
 - token: agent
@@ -11352,10 +11352,10 @@ all_extracted_terms:
   abbreviations: []
   variants: []
   description: 本文から抽出したコード識別子。本文ではバッククォートで囲む。
-  count: 2
+  count: 4
   prose_count: 0
-  code_count: 2
-  source_count: 1
+  code_count: 4
+  source_count: 2
 - token: coding/README.md
   category: identifier
   formal_name: coding/README.md
@@ -18218,9 +18218,9 @@ all_extracted_terms:
   abbreviations: []
   variants: []
   description: 本文から抽出した一般技術語。自然な日本語の訳語を優先する。
-  count: 7
-  prose_count: 1
-  code_count: 6
+  count: 9
+  prose_count: 2
+  code_count: 7
   source_count: 3
 - token: governance-authority-decision.schema.json
   category: identifier
@@ -18821,10 +18821,10 @@ all_extracted_terms:
   abbreviations: []
   variants: []
   description: 本文から抽出したコード識別子。本文ではバッククォートで囲む。
-  count: 1
+  count: 3
   prose_count: 0
-  code_count: 1
-  source_count: 1
+  code_count: 3
+  source_count: 3
 - token: heartbeat
   category: japanese_translation
   formal_name: heartbeat
@@ -21553,8 +21553,8 @@ all_extracted_terms:
   abbreviations: []
   variants: []
   description: 製品リポジトリと運用リポジトリの既定ブランチ名。
-  count: 52
-  prose_count: 34
+  count: 53
+  prose_count: 35
   code_count: 18
   source_count: 11
 - token: main-agent
@@ -21626,9 +21626,9 @@ all_extracted_terms:
   - gh
   - make
   description: CLIで実行するコマンド。本文ではバッククォートで囲む。
-  count: 32
+  count: 33
   prose_count: 0
-  code_count: 32
+  code_count: 33
   source_count: 11
 - token: 'make_check:'
   category: identifier
@@ -25688,8 +25688,8 @@ all_extracted_terms:
   abbreviations: []
   variants: []
   description: 本文から抽出した一般技術語。自然な日本語の訳語を優先する。
-  count: 1
-  prose_count: 1
+  count: 2
+  prose_count: 2
   code_count: 0
   source_count: 1
 - token: predecessor/successor
@@ -29394,8 +29394,8 @@ all_extracted_terms:
   variants:
   - JSON schema
   description: Plane間メッセージの検証契約。
-  count: 134
-  prose_count: 132
+  count: 135
+  prose_count: 133
   code_count: 2
   source_count: 32
 - token: schema
@@ -35360,8 +35360,8 @@ all_extracted_terms:
   abbreviations: []
   variants: []
   description: Kakesuの設計文書で正式名称として使うドメイン用語または標準技術用語。
-  count: 111
-  prose_count: 83
+  count: 112
+  prose_count: 84
   code_count: 28
   source_count: 24
 - token: wiki-agent-runner
@@ -35593,10 +35593,10 @@ all_extracted_terms:
   abbreviations: []
   variants: []
   description: 本文から抽出したコード識別子。本文ではバッククォートで囲む。
-  count: 3
+  count: 4
   prose_count: 0
-  code_count: 3
-  source_count: 2
+  code_count: 4
+  source_count: 3
 - token: work-init
   category: identifier
   formal_name: work-init
