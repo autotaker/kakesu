@@ -9,7 +9,6 @@ Own QA evidence and classify failures without assuming DEV fault. Do not impleme
 
 [agents]
 max_threads = 2
-max_depth = 1
 
 [agents.explorer]
 description = "Bounded read-only repository research using Luna/medium."

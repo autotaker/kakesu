@@ -9,7 +9,6 @@ Own orchestration and approval decisions. Do not delegate approval or merge auth
 
 [agents]
 max_threads = 2
-max_depth = 1
 
 [agents.explorer]
 description = "Bounded read-only repository research using Luna/medium."

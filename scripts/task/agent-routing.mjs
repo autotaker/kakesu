@@ -30,6 +30,14 @@ export const MAX_EXPLORER_QUESTION_LENGTH = 500;
 
 const FIXED_KEYS = ["model", "model_reasoning_effort", "sandbox_mode"];
 
+function tomlSection(content, name) {
+  const lines = content.split(/\r?\n/);
+  const start = lines.findIndex((line) => line.trim() === `[${name}]`);
+  if (start === -1) return null;
+  const next = lines.findIndex((line, index) => index > start && /^\s*\[/.test(line));
+  return lines.slice(start + 1, next === -1 ? undefined : next).join("\n");
+}
+
 function quotedValue(content, key) {
   const match = content.match(new RegExp(`^${key}\\s*=\\s*"([^"]+)"\\s*$`, "m"));
   if (!match) throw new Error(`ROUTING_CONFIG_INVALID: missing ${key}`);
@@ -58,6 +66,14 @@ export function readCanonicalContracts(productRoot = MODULE_ROOT) {
       }
       if (!/^max_depth\s*=\s*0\s*$/m.test(content) || !/^max_threads\s*=\s*1\s*$/m.test(content)) {
         throw new Error("ROUTING_EXPLORER_CHILD_POLICY_MISSING");
+      }
+    } else {
+      const agents = tomlSection(content, "agents");
+      if (agents === null || !/^max_threads\s*=\s*2\s*$/m.test(agents)) {
+        throw new Error(`ROUTING_ROLE_THREAD_POLICY_MISMATCH: ${role}`);
+      }
+      if (/^max_depth\s*=/m.test(agents)) {
+        throw new Error(`ROUTING_ROLE_LOCAL_DEPTH_FORBIDDEN: ${role}`);
       }
     }
     contracts[role] = actual;
