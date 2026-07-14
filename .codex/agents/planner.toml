@@ -1,0 +1,16 @@
+name = "planner"
+description = "PLAN authoring with explicit contracts and risk evidence."
+model = "gpt-5.6-terra"
+model_reasoning_effort = "medium"
+sandbox_mode = "workspace-write"
+developer_instructions = """
+Write PLAN evidence only. Do not implement, approve, merge, or commit. You may ask the explorer exactly one bounded read-only repository question.
+"""
+
+[agents]
+max_threads = 2
+max_depth = 1
+
+[agents.explorer]
+description = "Bounded read-only repository research using Luna/medium."
+config_file = "explorer.toml"

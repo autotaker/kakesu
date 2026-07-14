@@ -1,0 +1,35 @@
+model = "gpt-5.6-sol"
+model_reasoning_effort = "high"
+sandbox_mode = "workspace-write"
+
+[agents]
+max_threads = 2
+max_depth = 2
+
+[agents.main]
+description = "Root orchestration and approval using Sol/high."
+config_file = "agents/main.toml"
+
+[agents.planner]
+description = "PLAN authoring using Terra/medium."
+config_file = "agents/planner.toml"
+
+[agents.qa]
+description = "QA planning and execution using Terra/medium."
+config_file = "agents/qa.toml"
+
+[agents.reviewer]
+description = "Independent review using Terra/medium."
+config_file = "agents/reviewer.toml"
+
+[agents.dev-luna]
+description = "Low-risk DEV implementation using Luna/xhigh."
+config_file = "agents/dev-luna.toml"
+
+[agents.dev-sol]
+description = "High or unknown-risk DEV implementation using Sol/high."
+config_file = "agents/dev-sol.toml"
+
+[agents.explorer]
+description = "Bounded read-only repository research using Luna/medium."
+config_file = "agents/explorer.toml"

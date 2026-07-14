@@ -10,6 +10,7 @@ import {
   taskById,
   workRoot,
 } from "./lib.mjs";
+import { buildLaunchEvidence, codexCommand, resolveFixedRoute, validateChildOutcome } from "./agent-routing.mjs";
 
 const args = parseArgs(process.argv.slice(2));
 assertTaskId(args.task);
@@ -28,58 +29,87 @@ const allowedByAction = {
   "qa-result": inTask("QA_RESULT.md"),
   handover: inTask("HANDOVER.md"),
   "main-transition": ["backlog.yaml", ...inTask("TASK.md", "PLAN.md", "QA_PLAN.md", "QA_RESULT.md", "HANDOVER.md")],
-  governance: ["schemas/**", "wiki/SCHEMA.md", "wiki/AGENTS.md", ".githooks/pre-commit", "AGENTS.md", "README.md", "project.yaml"],
+  governance: ["schemas/**", "wiki/SCHEMA.md", "wiki/AGENTS.md", ".githooks/pre-commit", ".codex/**", "AGENTS.md", "README.md", "project.yaml"],
 };
 const allowed = allowedByAction[action];
-const matchesAllowed = (file) => allowed.some((rule) => rule.endsWith("/**") ? file.startsWith(rule.slice(0, -2)) : file === rule);
-const prompt = `Act as the ${action} writer for ${task.id}. Read AGENTS.md, ${task.task_dir}/TASK.md, relevant evidence, and the local Wiki. Update only: ${allowed.join(", ")}. Complete the action's evidence and commit directly to work repository main. Do not bypass Git hooks. Do not change Wiki content or Schema.`;
-const command = [
-  ...(args.profile ? ["-p", args.profile] : []),
-  ...(args.model ? ["-m", args.model] : []),
-  "exec",
-  "-C",
-  root,
-  "--sandbox",
-  "workspace-write",
-  prompt,
-];
+const route = resolveFixedRoute({
+  action,
+  planFile: path.join(root, task.task_dir, "PLAN.md"),
+  args,
+});
+const prompt = `Act as the ${route.role} Agent for ${task.id}. Read AGENTS.md, ${task.task_dir}/TASK.md, approved PLAN/QA evidence, and relevant local Wiki. Update only: ${allowed.join(", ")}. Do not stage or commit, invoke another role Agent, change Wiki content or Schema outside the allowlist, or write to .git. The launcher parent owns scope validation and commit. You may delegate at most one bounded read-only question to explorer.`;
+const command = codexCommand(route, root, prompt);
+
+function changedFiles(repository) {
+  const tracked = git(repository, ["diff", "--name-only"]).split("\n").filter(Boolean);
+  const staged = git(repository, ["diff", "--cached", "--name-only"]).split("\n").filter(Boolean);
+  const untracked = git(repository, ["ls-files", "--others", "--exclude-standard"]).split("\n").filter(Boolean);
+  return [...new Set([...tracked, ...staged, ...untracked])];
+}
+
+function validateWork() {
+  const result = spawnSync(process.execPath, [path.join(REPO_ROOT, "scripts", "task", "validate-work.mjs"), "--work-root", root], {
+    cwd: REPO_ROOT,
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  if (result.status !== 0) throw new Error("WORK_VALIDATION_FAILED");
+}
+
+function emitEvidence(fields) {
+  process.stdout.write(`${JSON.stringify(buildLaunchEvidence({ route, cwd: root, allowedPaths: allowed, ...fields }))}\n`);
+}
 
 if (args.dry_run === "true") {
-  process.stdout.write(`${JSON.stringify({ command: ["codex", ...command], allowed }, null, 2)}\n`);
+  emitEvidence({ childResult: null, commit: null });
 } else {
   const release = acquireWorkRepoLock(root);
+  let childResult = null;
+  let commit = null;
+  let beforeHead = null;
   try {
     if (git(root, ["config", "--get", "core.hooksPath"]) !== ".githooks") {
-      throw new Error("Work repository must configure core.hooksPath=.githooks");
+      throw new Error("WORK_HOOKS_PATH_INVALID");
     }
-    const beforeHead = git(root, ["rev-parse", "HEAD"]);
+    beforeHead = git(root, ["rev-parse", "HEAD"]);
     const result = spawnSync("codex", command, {
       cwd: root,
-      stdio: "inherit",
-      env: {
-        ...process.env,
-        WORK_REPO_LOCK_HELD: "1",
-        WORK_ACTION: action,
-        WORK_ALLOWED_PATHS: JSON.stringify(allowed),
-      },
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+      env: { ...process.env, WORK_REPO_LOCK_HELD: "1" },
     });
     if (result.error) throw result.error;
-    if (result.status !== 0) throw new Error(`Work Agent failed with exit code ${result.status ?? 1}`);
-    if (git(root, ["branch", "--show-current"]) !== "main") throw new Error("Work Agent changed the work repository branch");
-    const status = git(root, ["status", "--porcelain"]);
-    if (status) throw new Error(`Work Agent left uncommitted changes:\n${status}`);
-    const afterHead = git(root, ["rev-parse", "HEAD"]);
-    if (beforeHead === afterHead) throw new Error(`Work Agent created no commit for ${action}`);
-    const changed = git(root, ["diff", "--name-only", `${beforeHead}..${afterHead}`]).split("\n").filter(Boolean);
-    const forbidden = changed.filter((file) => !matchesAllowed(file));
-    if (forbidden.length) throw new Error(`Work Agent committed files outside ${action}: ${forbidden.join(", ")}`);
-    const validation = spawnSync(
-      process.execPath,
-      [path.join(REPO_ROOT, "scripts", "task", "validate-work.mjs"), "--work-root", root],
-      { cwd: REPO_ROOT, encoding: "utf8" },
-    );
-    if (validation.status !== 0) throw new Error(validation.stderr || "Work repository validation failed");
-    process.stdout.write(validation.stdout);
+    childResult = { exit_code: result.status ?? 1 };
+    if (git(root, ["branch", "--show-current"]) !== "main") throw new Error("WORK_BRANCH_CHANGED");
+    const stagedByChild = git(root, ["diff", "--cached", "--name-only"]).split("\n").filter(Boolean);
+    const changed = validateChildOutcome({
+      childExit: result.status ?? 1,
+      beforeHead,
+      afterHead: git(root, ["rev-parse", "HEAD"]),
+      stagedFiles: stagedByChild,
+      changedFiles: changedFiles(root),
+      allowedPaths: allowed,
+    });
+    git(root, ["add", "--", ...changed]);
+    validateWork();
+    const commitEnv = {
+      ...process.env,
+      WORK_REPO_LOCK_HELD: "1",
+      WORK_PARENT_COMMIT: "1",
+      WORK_ACTION: action,
+      WORK_ALLOWED_PATHS: JSON.stringify(allowed),
+    };
+    git(root, ["commit", "-m", `${action}: update ${task.id}`], { env: commitEnv });
+    commit = git(root, ["rev-parse", "HEAD"]);
+    validateWork();
+    if (changedFiles(root).length) throw new Error("WORK_PARENT_LEFT_DIRTY");
+    emitEvidence({ childResult, commit });
+  } catch (error) {
+    if (beforeHead && git(root, ["rev-parse", "HEAD"]) === beforeHead) {
+      git(root, ["reset", "--mixed", beforeHead]);
+    }
+    emitEvidence({ childResult, commit: null, error: error.message });
+    throw error;
   } finally {
     release();
   }

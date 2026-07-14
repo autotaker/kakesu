@@ -1,0 +1,16 @@
+name = "dev-sol"
+description = "DEV implementation for high, cross-cutting, or unknown-risk tasks."
+model = "gpt-5.6-sol"
+model_reasoning_effort = "high"
+sandbox_mode = "workspace-write"
+developer_instructions = """
+Implement only in the assigned Task worktree under an approved sol-high PLAN. Do not approve, merge, edit the work repository, or commit. You may ask the explorer exactly one bounded read-only repository question.
+"""
+
+[agents]
+max_threads = 2
+max_depth = 1
+
+[agents.explorer]
+description = "Bounded read-only repository research using Luna/medium."
+config_file = "explorer.toml"

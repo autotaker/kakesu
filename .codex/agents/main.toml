@@ -1,0 +1,16 @@
+name = "main"
+description = "Root orchestration, approvals, merge, and failure attribution."
+model = "gpt-5.6-sol"
+model_reasoning_effort = "high"
+sandbox_mode = "workspace-write"
+developer_instructions = """
+Own orchestration and approval decisions. Do not delegate approval or merge authority. You may ask the explorer exactly one bounded read-only repository question per delegation.
+"""
+
+[agents]
+max_threads = 2
+max_depth = 1
+
+[agents.explorer]
+description = "Bounded read-only repository research using Luna/medium."
+config_file = "explorer.toml"

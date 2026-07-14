@@ -5,6 +5,7 @@ import path from "node:path";
 import test from "node:test";
 import { checkTask } from "./check-task.mjs";
 import { acquireWorkRepoLock, dateInTimezone, estimatePoints, replaceTemplate, resolveInside } from "./lib.mjs";
+import { validateDevSelection } from "./agent-routing.mjs";
 
 test("estimatePoints uses implementation file and line scores", () => {
   assert.equal(estimatePoints(2, 80), 1);
@@ -73,4 +74,23 @@ test("work repository lock rejects active owners and recovers stale owners", () 
 
 test("dateInTimezone respects the project timezone", () => {
   assert.match(dateInTimezone("Pacific/Guam"), /^\d{4}-\d{2}-\d{2}$/);
+});
+
+test("DEV profile evidence rejects unknown, missing, and risky Luna selections", () => {
+  assert.throws(() => validateDevSelection({ approved_dev_profile: "other", approved_dev_profile_reason: "x", approved_dev_profile_risk_signals: [] }), /DEV_PROFILE_UNKNOWN/);
+  assert.throws(() => validateDevSelection({ approved_dev_profile: "sol-high", approved_dev_profile_risk_signals: ["security"] }), /REASON_MISSING/);
+  assert.throws(() => validateDevSelection({ approved_dev_profile: "luna-xhigh", approved_dev_profile_reason: "x", approved_dev_profile_risk_signals: ["migration"] }), /LUNA_HAS_RISK/);
+});
+
+test("launchers close child stdin and reserve commits for the lock-owning parent", () => {
+  const workLauncher = fs.readFileSync(path.resolve(import.meta.dirname, "run-work-agent.mjs"), "utf8");
+  const wikiLauncher = fs.readFileSync(path.resolve(import.meta.dirname, "run-wiki-agent.mjs"), "utf8");
+  const hook = fs.readFileSync(path.resolve(import.meta.dirname, "work-pre-commit.mjs"), "utf8");
+  for (const launcher of [workLauncher, wikiLauncher]) {
+    assert.match(launcher, /stdio:\s*\["ignore",\s*"pipe",\s*"pipe"\]/);
+    assert.match(launcher, /WORK_PARENT_COMMIT:\s*"1"/);
+    assert.match(launcher, /WORK_CHILD_(?:COMMIT_FORBIDDEN|STAGE_FORBIDDEN)|validateChildOutcome/);
+  }
+  assert.match(hook, /WORK_PARENT_COMMIT/);
+  assert.match(hook, /lock-owning launcher parent/);
 });
