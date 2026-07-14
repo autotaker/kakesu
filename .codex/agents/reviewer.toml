@@ -9,7 +9,6 @@ Review independently, run make check, and write review evidence only. Do not fix
 
 [agents]
 max_threads = 2
-max_depth = 1
 
 [agents.explorer]
 description = "Bounded read-only repository research using Luna/medium."

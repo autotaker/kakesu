@@ -9,7 +9,6 @@ Implement only in the assigned Task worktree under an approved sol-high PLAN. Do
 
 [agents]
 max_threads = 2
-max_depth = 1
 
 [agents.explorer]
 description = "Bounded read-only repository research using Luna/medium."

@@ -20,12 +20,119 @@ import {
 import { buildExplorerInvocation, parseExplorerArgs, runExplorer } from "./run-explorer-agent.mjs";
 
 const productRoot = path.resolve(import.meta.dirname, "../..");
+const normalRoles = ["main", "planner", "qa", "reviewer", "dev-luna", "dev-sol"];
+
+function canonicalFixture() {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "routing-canonical-"));
+  fs.cpSync(path.join(productRoot, ".codex"), path.join(root, ".codex"), { recursive: true });
+  return root;
+}
+
+function section(content, name) {
+  const lines = content.split(/\r?\n/);
+  const start = lines.findIndex((line) => line.trim() === `[${name}]`);
+  assert.notEqual(start, -1, `missing [${name}]`);
+  const next = lines.findIndex((line, index) => index > start && /^\s*\[/.test(line));
+  return lines.slice(start + 1, next === -1 ? undefined : next).join("\n");
+}
+
+function replaceCanonical(root, relativePath, expected, replacement) {
+  const file = path.join(root, relativePath);
+  const content = fs.readFileSync(file, "utf8");
+  assert.match(content, expected);
+  fs.writeFileSync(file, content.replace(expected, replacement));
+}
+
+function assertCanonicalDriftFailsClosed(mutate, expectedError) {
+  const root = canonicalFixture();
+  const adapterRoot = fs.mkdtempSync(path.join(os.tmpdir(), "routing-drift-adapter-"));
+  try {
+    syncWorkAdapter({ productRoot: root, adapterRoot });
+    const target = path.join(adapterRoot, ".codex", "config.toml");
+    const adapterBeforeDrift = fs.readFileSync(target, "utf8");
+    mutate(root);
+    assert.throws(() => readCanonicalContracts(root), expectedError);
+    assert.throws(() => canonicalDigest(root), expectedError);
+    assert.throws(() => renderWorkAdapter(root, adapterRoot), expectedError);
+    assert.throws(() => syncWorkAdapter({ productRoot: root, adapterRoot, check: true }), expectedError);
+    assert.equal(fs.readFileSync(target, "utf8"), adapterBeforeDrift);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+    fs.rmSync(adapterRoot, { recursive: true, force: true });
+  }
+}
 
 test("role routing matches the canonical model and effort contracts", () => {
   assert.deepEqual(readCanonicalContracts(productRoot), ROLE_CONTRACTS);
   assert.deepEqual(ROLE_CONTRACTS.main, { profile: "sol-high", model: "gpt-5.6-sol", effort: "high", sandbox: "workspace-write" });
   for (const role of ["planner", "qa", "reviewer"]) assert.equal(ROLE_CONTRACTS[role].model, "gpt-5.6-terra");
   assert.deepEqual(ROLE_CONTRACTS.explorer, { profile: "luna-medium", model: "gpt-5.6-luna", effort: "medium", sandbox: "read-only" });
+});
+
+test("normal roles use project depth and retain local thread and Explorer registry contracts", () => {
+  for (const role of normalRoles) {
+    const content = fs.readFileSync(path.join(productRoot, ".codex", "agents", `${role}.toml`), "utf8");
+    const agents = section(content, "agents");
+    assert.doesNotMatch(agents, /^max_depth\s*=/m, `${role} must not define agent-local max_depth`);
+    assert.match(agents, /^max_threads\s*=\s*2\s*$/m);
+    assert.match(content, /^\[agents\.explorer\]\s*$/m);
+    assert.match(content, /^config_file\s*=\s*"explorer\.toml"\s*$/m);
+  }
+  const projectConfig = fs.readFileSync(path.join(productRoot, ".codex", "config.toml"), "utf8");
+  assert.match(projectConfig, /^max_depth\s*=\s*2\s*$/m);
+  assert.match(projectConfig, /^max_threads\s*=\s*2\s*$/m);
+  const explorer = fs.readFileSync(path.join(productRoot, ".codex", "agents", "explorer.toml"), "utf8");
+  assert.match(explorer, /^max_depth\s*=\s*0\s*$/m);
+  assert.match(explorer, /^max_threads\s*=\s*1\s*$/m);
+});
+
+test("normal role local depth reintroduction fails closed before adapter sync", () => {
+  normalRoles.forEach((role, index) => {
+    assertCanonicalDriftFailsClosed((root) => {
+      replaceCanonical(
+        root,
+        path.join(".codex", "agents", `${role}.toml`),
+        /^max_threads\s*=\s*2\s*$/m,
+        `max_threads = 2\nmax_depth = ${index - 1}`,
+      );
+    }, new RegExp(`ROUTING_ROLE_LOCAL_DEPTH_FORBIDDEN: ${role}`));
+  });
+});
+
+test("Explorer and project depth policies fail closed before adapter sync", () => {
+  const cases = [
+    {
+      mutate(root) {
+        replaceCanonical(root, path.join(".codex", "agents", "explorer.toml"), /^max_depth\s*=\s*0\s*\n/m, "");
+      },
+      error: /ROUTING_EXPLORER_CHILD_POLICY_MISSING/,
+    },
+    {
+      mutate(root) {
+        replaceCanonical(root, path.join(".codex", "agents", "explorer.toml"), /^max_depth\s*=\s*0\s*$/m, "max_depth = 1");
+      },
+      error: /ROUTING_EXPLORER_CHILD_POLICY_MISSING/,
+    },
+    {
+      mutate(root) {
+        replaceCanonical(root, path.join(".codex", "agents", "explorer.toml"), /^max_threads\s*=\s*1\s*$/m, "max_threads = 2");
+      },
+      error: /ROUTING_EXPLORER_CHILD_POLICY_MISSING/,
+    },
+    {
+      mutate(root) {
+        replaceCanonical(root, path.join(".codex", "config.toml"), /^max_depth\s*=\s*2\s*$/m, "max_depth = 3");
+      },
+      error: /ROUTING_DEPTH_POLICY_MISMATCH/,
+    },
+    {
+      mutate(root) {
+        replaceCanonical(root, path.join(".codex", "config.toml"), /^max_threads\s*=\s*2\s*$/m, "max_threads = 3");
+      },
+      error: /ROUTING_DEPTH_POLICY_MISMATCH/,
+    },
+  ];
+  for (const { mutate, error } of cases) assertCanonicalDriftFailsClosed(mutate, error);
 });
 
 test("fixed role overrides fail closed and redundant canonical values pass", () => {
@@ -109,7 +216,8 @@ test("work adapter generation is deterministic and detects drift", () => {
     const target = path.join(adapterRoot, ".codex", "config.toml");
     fs.appendFileSync(target, "# drift\n");
     assert.throws(() => syncWorkAdapter({ productRoot, adapterRoot, check: true }), /ROUTING_ADAPTER_DRIFT/);
-    assert.match(renderWorkAdapter(productRoot, adapterRoot), /max_depth = 2/);
+    assert.match(renderWorkAdapter(productRoot, adapterRoot), /^max_depth = 2$/m);
+    assert.match(renderWorkAdapter(productRoot, adapterRoot), /^max_threads = 2$/m);
   } finally {
     fs.rmSync(adapterRoot, { recursive: true, force: true });
   }
