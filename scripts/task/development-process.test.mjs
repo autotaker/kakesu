@@ -86,6 +86,7 @@ test("DEV profile evidence rejects unknown, missing, and risky Luna selections",
 test("launchers close child stdin and reserve commits for the lock-owning parent", () => {
   const workLauncher = fs.readFileSync(path.resolve(import.meta.dirname, "run-work-agent.mjs"), "utf8");
   const wikiLauncher = fs.readFileSync(path.resolve(import.meta.dirname, "run-wiki-agent.mjs"), "utf8");
+  const explorerLauncher = fs.readFileSync(path.resolve(import.meta.dirname, "run-explorer-agent.mjs"), "utf8");
   const hook = fs.readFileSync(path.resolve(import.meta.dirname, "work-pre-commit.mjs"), "utf8");
   for (const launcher of [workLauncher, wikiLauncher]) {
     assert.match(launcher, /stdio:\s*\["ignore",\s*"pipe",\s*"pipe"\]/);
@@ -94,6 +95,10 @@ test("launchers close child stdin and reserve commits for the lock-owning parent
     assert.match(launcher, /rollbackWorkRepository\(root, beforeHead\)/);
     assert.match(launcher, /commit:\s*null/);
   }
+  assert.match(explorerLauncher, /spawn\("codex", invocation\.command/);
+  assert.match(explorerLauncher, /stdio:\s*\["ignore",\s*"pipe",\s*"pipe"\]/);
+  assert.match(workLauncher, /run-explorer-agent\.mjs/);
+  assert.match(workLauncher, /Do not use natural-language or custom-agent delegation for Explorer/);
   assert.match(hook, /WORK_PARENT_COMMIT/);
   assert.match(hook, /lock-owning launcher parent/);
 });

@@ -26,6 +26,8 @@ export const ACTION_ROLES = Object.freeze({
   governance: "main",
 });
 
+export const MAX_EXPLORER_QUESTION_LENGTH = 500;
+
 const FIXED_KEYS = ["model", "model_reasoning_effort", "sandbox_mode"];
 
 function quotedValue(content, key) {
@@ -164,6 +166,16 @@ export function resolveFixedRoute({ action, planFile, args = {}, productRoot = M
   return { role, ...contract };
 }
 
+export function validateExplorerQuestion(question) {
+  if (typeof question !== "string" || !question.trim()) {
+    throw new Error("ROUTING_BOUNDED_QUESTION_REQUIRED");
+  }
+  if (question !== question.trim() || /[\r\n]/.test(question) || question.length > MAX_EXPLORER_QUESTION_LENGTH) {
+    throw new Error("ROUTING_BOUNDED_QUESTION_INVALID");
+  }
+  return question;
+}
+
 export function validateDelegation({ chain, questions = [], threads = 1 }) {
   if (!Array.isArray(chain) || chain.length < 2 || chain[0] !== "root" || chain.at(-1) !== "explorer") {
     throw new Error("ROUTING_DELEGATION_INVALID");
@@ -171,9 +183,10 @@ export function validateDelegation({ chain, questions = [], threads = 1 }) {
   if (chain.length > 3) throw new Error("ROUTING_MAX_DEPTH_EXCEEDED");
   if (chain.slice(0, -1).includes("explorer")) throw new Error("ROUTING_EXPLORER_SPAWN_FORBIDDEN");
   if (threads > 2) throw new Error("ROUTING_MAX_THREADS_EXCEEDED");
-  if (questions.length !== 1 || typeof questions[0] !== "string" || !questions[0].trim()) {
+  if (questions.length !== 1) {
     throw new Error("ROUTING_BOUNDED_QUESTION_REQUIRED");
   }
+  validateExplorerQuestion(questions[0]);
   return true;
 }
 

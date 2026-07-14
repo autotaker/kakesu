@@ -17,7 +17,7 @@ UV_ENV := UV_CACHE_DIR=$(CURDIR)/.build/uv-cache
 .PHONY: build build-core build-memory build-governance node-deps
 .PHONY: test test-core test-memory test-governance test-tabletop test-docs test-process
 .PHONY: lint lint-core lint-memory lint-governance lint-docs
-.PHONY: check clean work-init work-agent work-config-sync task-create task-check work-check backlog-view worktree-create worktree-remove wiki-index wiki-context wiki-ingest
+.PHONY: check clean work-init work-agent explorer-agent work-config-sync task-create task-check work-check backlog-view worktree-create worktree-remove wiki-index wiki-context wiki-ingest
 
 build: build-core build-memory build-governance
 
@@ -88,6 +88,10 @@ work-agent: node-deps
 	@test -n "$(TASK)" || (echo "TASK is required" >&2; exit 1)
 	@test -n "$(ACTION)" || (echo "ACTION is required" >&2; exit 1)
 	$(NODE) scripts/task/run-work-agent.mjs --work-root "$(WORK_ROOT)" --task "$(TASK)" --action "$(ACTION)" $(if $(PROFILE),--profile "$(PROFILE)",) $(if $(MODEL),--model "$(MODEL)",) $(if $(EFFORT),--effort "$(EFFORT)",)
+
+explorer-agent: node-deps
+	@test -n "$$QUESTION" || (echo "QUESTION is required" >&2; exit 1)
+	$(NODE) scripts/task/run-explorer-agent.mjs --root "$(if $(EXPLORER_ROOT),$$EXPLORER_ROOT,$(CURDIR))" --question "$$QUESTION" $(if $(DRY_RUN),--dry-run "$$DRY_RUN",)
 
 work-config-sync: node-deps
 	$(NODE) scripts/task/agent-routing.mjs --work-root "$(WORK_ROOT)" --mode "$(if $(CHECK),check,sync)"

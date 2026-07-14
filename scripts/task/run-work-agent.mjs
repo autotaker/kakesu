@@ -37,7 +37,8 @@ const route = resolveFixedRoute({
   planFile: path.join(root, task.task_dir, "PLAN.md"),
   args,
 });
-const prompt = `Act as the ${route.role} Agent for ${task.id}. Read AGENTS.md, ${task.task_dir}/TASK.md, approved PLAN/QA evidence, and relevant local Wiki. Update only: ${allowed.join(", ")}. Do not stage or commit, invoke another role Agent, change Wiki content or Schema outside the allowlist, or write to .git. The launcher parent owns scope validation and commit. You may delegate at most one bounded read-only question to explorer.`;
+const explorerLauncher = path.join(REPO_ROOT, "scripts", "task", "run-explorer-agent.mjs");
+const prompt = `Act as the ${route.role} Agent for ${task.id}. Read AGENTS.md, ${task.task_dir}/TASK.md, approved PLAN/QA evidence, and relevant local Wiki. Update only: ${allowed.join(", ")}. Do not stage or commit, invoke another role Agent, change Wiki content or Schema outside the allowlist, or write to .git. The launcher parent owns scope validation and commit. For at most one bounded read-only repository question, invoke node ${JSON.stringify(explorerLauncher)} --root ${JSON.stringify(root)} --question "<question>". Do not use natural-language or custom-agent delegation for Explorer.`;
 const command = codexCommand(route, root, prompt);
 
 function changedFiles(repository) {

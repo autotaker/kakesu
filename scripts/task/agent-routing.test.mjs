@@ -5,6 +5,7 @@ import path from "node:path";
 import test from "node:test";
 import {
   ROLE_CONTRACTS,
+  MAX_EXPLORER_QUESTION_LENGTH,
   assertFixedOverrides,
   buildLaunchEvidence,
   canonicalDigest,
@@ -12,9 +13,11 @@ import {
   renderWorkAdapter,
   syncWorkAdapter,
   validateDelegation,
+  validateExplorerQuestion,
   validateDevSelection,
   validateChildOutcome,
 } from "./agent-routing.mjs";
+import { buildExplorerInvocation, parseExplorerArgs, runExplorer } from "./run-explorer-agent.mjs";
 
 const productRoot = path.resolve(import.meta.dirname, "../..");
 
@@ -50,6 +53,49 @@ test("explorer delegation accepts only depth two, two threads, and one question"
   assert.throws(() => validateDelegation({ chain: ["root", "explorer", "explorer"], questions: ["x"] }), /EXPLORER_SPAWN/);
   assert.throws(() => validateDelegation({ chain: ["root", "explorer"], questions: ["x", "y"] }), /BOUNDED_QUESTION/);
   assert.throws(() => validateDelegation({ chain: ["root", "explorer"], questions: ["x"], threads: 3 }), /MAX_THREADS/);
+  assert.throws(() => validateExplorerQuestion("first line\nsecond line"), /BOUNDED_QUESTION_INVALID/);
+  assert.throws(() => validateExplorerQuestion("x".repeat(MAX_EXPLORER_QUESTION_LENGTH + 1)), /BOUNDED_QUESTION_INVALID/);
+});
+
+test("Explorer launcher requires one question and invokes the fixed CLI contract with closed stdin", () => {
+  assert.throws(() => parseExplorerArgs(["--root", productRoot]), /BOUNDED_QUESTION_REQUIRED/);
+  assert.throws(() => parseExplorerArgs(["--question", "one", "--question", "two"]), /BOUNDED_QUESTION_REQUIRED/);
+
+  const question = "Which file owns the routing contract?";
+  let observed;
+  const launched = runExplorer({
+    repository: productRoot,
+    question,
+    spawn(command, args, options) {
+      observed = { command, args, options };
+      return { status: 0, stdout: "evidence summary\n", stderr: "" };
+    },
+  });
+  assert.equal(observed.command, "codex");
+  assert.deepEqual(observed.args.slice(0, 9), [
+    "exec", "-C", productRoot, "--sandbox", "read-only", "-m", "gpt-5.6-luna", "-c", 'model_reasoning_effort="medium"',
+  ]);
+  assert.equal(observed.args.length, 10);
+  assert.match(observed.args[9], new RegExp(JSON.stringify(question).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  assert.equal(observed.options.cwd, productRoot);
+  assert.deepEqual(observed.options.stdio, ["ignore", "pipe", "pipe"]);
+  assert.deepEqual(launched.evidence, {
+    event: "agent_launch",
+    route: "fixed-role",
+    role: "explorer",
+    profile: "luna-medium",
+    model: "gpt-5.6-luna",
+    effort: "medium",
+    cwd: productRoot,
+    sandbox: "read-only",
+    write_scope: "none",
+    allowed_paths: [],
+    stdin: "closed",
+    child_result: { exit_code: 0 },
+    commit: null,
+    error: null,
+  });
+  assert.deepEqual(buildExplorerInvocation({ repository: productRoot, question }).command, observed.args);
 });
 
 test("work adapter generation is deterministic and detects drift", () => {
