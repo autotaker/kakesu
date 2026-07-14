@@ -2,7 +2,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { git, parseArgs, parseFrontmatter, writeFileAtomic, workRoot } from "./lib.mjs";
+import { git, parseFrontmatter, writeFileAtomic } from "./lib.mjs";
 
 const MODULE_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 
@@ -249,12 +249,4 @@ export function assertRoleFilesHaveOnlyKnownContractKeys(productRoot = MODULE_RO
     const content = fs.readFileSync(path.join(productRoot, ".codex", "agents", `${role}.toml`), "utf8");
     for (const key of FIXED_KEYS) quotedValue(content, key);
   }
-}
-
-const isMain = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
-if (isMain) {
-  const args = parseArgs(process.argv.slice(2));
-  const adapterRoot = workRoot(args.work_root);
-  const result = syncWorkAdapter({ adapterRoot, check: args.mode === "check" });
-  process.stdout.write(`${JSON.stringify({ event: "work_config_sync", ...result })}\n`);
 }
