@@ -1,0 +1,4 @@
+interface:
+  display_name: "Efficient Task Delivery"
+  short_description: "Preserve gates while reducing delivery overhead"
+  default_prompt: "Use $run-efficient-task-delivery to run a gated Task with efficient handoffs."
