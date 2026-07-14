@@ -9,7 +9,7 @@ Use this workflow as the main Agent. Keep the required gates and ownership bound
 
 ## Establish the execution boundary
 
-1. Read every applicable `AGENTS.md`, then read the Task, approved `PLAN.md`, approved `QA_PLAN.md`, and only the Wiki/Decision references required by those files.
+1. For a new Task, first read the Task, every applicable `AGENTS.md`, and the required Wiki/Decision references. Have the Planner and QA Agent create `PLAN.md` and `QA_PLAN.md`, and do not start DEV until the main Agent approves both. On continuation, read the approved `PLAN.md` and `QA_PLAN.md` before resuming.
 2. Record the Task branch/worktree, approved DEV profile, role split, allowed files, acceptance checks, and completion evidence. Refuse scope expansion until the main Agent records a new approval.
 3. Preflight known permission, lock, dependency, and generated-output requirements. Classify a predictable failure before retrying it; do not spend turns repeating a permission or dependency failure.
 
@@ -24,7 +24,7 @@ Use this workflow as the main Agent. Keep the required gates and ownership bound
 ## Bound context and verification
 
 1. Ask for concise summaries, bounded command output, and exact failure excerpts. Poll for state changes with adaptive waits; do not repeat unchanged full output or use a fixed 60-second poll by habit.
-2. Let the changing Agent run focused checks first. Let Reviewer and QA perform their independent checks. Run the planned complete repository check once as the final quality gate; do not duplicate it at every handoff.
+2. Let the changing Agent run focused checks first. In each required gate, run the complete verification planned for that gate once and avoid purposeless duplicates within the same gate. Let Reviewer and QA perform their independent checks; never omit the Reviewer's `make check` or the QA `make check` required by the approved `QA_PLAN.md`.
 3. Preserve evidence for each gate. On failure, classify it as implementation, QA-plan, requirement, environment, or regression evidence before assigning blame or retrying.
 
 ## Review a delay
