@@ -12,9 +12,26 @@
 6. main Agentだけが`main`へ`--no-ff`でマージする。
 7. マージ後QAのFAILは実装不具合と決めつけず、[QAガイドライン](docs/development/qa.md)に従って原因を分類する。
 8. 配下に別の`AGENTS.md`がある場合は、その追加手順も守る。
-9. 運用リポジトリへ証跡を書くAgentは`make work-agent TASK=TASK-NNNN ACTION=<action>`から起動し、共通ロックを実行全体で保持する。直接並行編集しない。
+9. 子Agentの標準起動は内部`agents.spawn_agent`とし、`agent_type`欠落、内部`Spawn Agent`利用不能、または`model/effort`不一致を停止・証跡化した後に限り、親が`make work-agent TASK=TASK-NNNN ACTION=<action>`を`fallback`として使う。運用リポジトリへ証跡を書く場合は親が共通ロックを実行全体で保持し、直接並行編集しない。
 10. 子Agentはステージ、コミット、マージ、`.git`書き込みを行わない。運用リポジトリのコミットは、子成功後に共通ロックを保持するランチャー親がスコープ、フック、検証を通して作成する。
 11. ロールとモデルは`.codex`の正規 契約に従う。mainは`Sol/high`、PLAN/QA/REVIEWは`Terra/medium`に固定し、DEVは承認済みPLANの`luna-xhigh`または`sol-high`を使う。各ロールの`Explorer`は`Luna/medium/read-only`で一件の限定質問だけを扱う。
+
+## 子Agentの標準起動
+
+子Agentは内部の`agents.spawn_agent`を標準経路として起動する。`task_name`は追跡用の一意な識別子であり、ロールを選択する値ではない。ロール選択は`agent_type`で行い、呼出元と異なるロールを指定する場合は必ず`fork_turns="none"`を渡す。
+
+```text
+agents.spawn_agent(
+  task_name="task_0003_dev_docs",
+  agent_type="dev-luna",
+  fork_turns="none",
+  message="承認済みPLANの範囲で指定文書だけを更新する"
+)
+```
+
+起動後は、選択したロールの契約と実際の`model/effort`を照合する。不一致なら子の成果を採用せず停止し、requested/observed値とランタイム条件を証跡化してから`fallback`可否を判断する。`agent_type`または内部`Spawn Agent`が利用できない場合も、親は原因を記録してから判断する。`fallback`を選べるのはこれらの場合だけであり、親が`make work-agent`（`Explorer`は一問専用の`make explorer-agent`）を使う。ロール対応、順次ゲート、`Explorer`の制約、サンドボックス観測限界は[Agent責務](docs/development/agent-roles.md)を正本とする。
+
+`role` TOMLの`sandbox_mode`は意図する契約であり、ランタイムで観測できた値だけを証跡に記録する。実効サンドボックスをTOMLの宣言だけで保証済みとは扱わない。子の`stage`、`commit`、`merge`、`.git`書込みは禁止し、共通ロック、スコープ検査、`hook`、`stage`、`commit`、事後検査は親（またはmain）が所有する。
 
 ## 共通検査
 
