@@ -13,6 +13,7 @@ import {
   taskById,
   workRoot,
 } from "./lib.mjs";
+import { validateDevSelection } from "./agent-routing.mjs";
 
 export function checkTask(root, backlog, taskId) {
   const errors = [];
@@ -62,6 +63,17 @@ export function checkTask(root, backlog, taskId) {
       } catch (error) {
         errors.push(`${taskId}: ${error.message}`);
       }
+      if (!task.bootstrap_exception) {
+        try {
+          const selectedProfile = validateDevSelection(plan);
+          const expectedAgentMarker = selectedProfile === "luna-xhigh" ? "luna-xhigh" : "sol-high";
+          if (!String(task.assignees?.dev ?? "").includes(expectedAgentMarker)) {
+            errors.push(`${taskId}: assignees.dev must match approved DEV profile ${selectedProfile}`);
+          }
+        } catch (error) {
+          errors.push(`${taskId}: ${error.message}`);
+        }
+      }
       const assignees = task.assignees ?? {};
       for (const role of ["main", "planner", "dev", "reviewer", "qa"]) {
         if (!assignees[role]) errors.push(`${taskId}: DEV gate requires assignees.${role}`);
@@ -91,7 +103,16 @@ export function checkTask(root, backlog, taskId) {
               const assignedWorktree = resolveInside(root, task.worktree, `${taskId} worktree`);
               git(repository, ["show-ref", "--verify", `refs/heads/${task.branch}`]);
               const records = git(repository, ["worktree", "list", "--porcelain"]);
-              const registered = records.split("\n\n").some((record) => record.includes(`worktree ${assignedWorktree}\n`) && record.includes(`branch refs/heads/${task.branch}`));
+              const assignedRealpath = fs.realpathSync(assignedWorktree);
+              const registered = records.split("\n\n").some((record) => {
+                const worktreeLine = record.split("\n").find((line) => line.startsWith("worktree "));
+                if (!worktreeLine || !record.includes(`branch refs/heads/${task.branch}`)) return false;
+                try {
+                  return fs.realpathSync(worktreeLine.slice("worktree ".length)) === assignedRealpath;
+                } catch {
+                  return false;
+                }
+              });
               if (!fs.existsSync(assignedWorktree) || !registered) throw new Error("missing registered worktree");
             } catch {
               errors.push(`${taskId}: assigned branch and worktree must exist in the product repository`);

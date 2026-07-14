@@ -16,6 +16,9 @@ if (unstaged.length || untracked.length) {
   throw new Error(`Commit requires a complete staging set; unstaged=${unstaged.join(",") || "none"}; untracked=${untracked.join(",") || "none"}`);
 }
 if (workAction) {
+  if (process.env.WORK_REPO_LOCK_HELD !== "1" || process.env.WORK_PARENT_COMMIT !== "1") {
+    throw new Error(`Work evidence commits must be created by the lock-owning launcher parent for ${workAction}`);
+  }
   if (!Array.isArray(workAllowed) || !workAllowed.length) throw new Error(`Missing allowed paths for ${workAction}`);
   const matchesAllowed = (file) => workAllowed.some((rule) => rule.endsWith("/**") ? file.startsWith(rule.slice(0, -2)) : file === rule);
   const forbidden = staged.filter((file) => !matchesAllowed(file));
@@ -23,6 +26,9 @@ if (workAction) {
 }
 
 if (action) {
+  if (process.env.WORK_REPO_LOCK_HELD !== "1" || process.env.WORK_PARENT_COMMIT !== "1") {
+    throw new Error(`Wiki commits must be created by the lock-owning launcher parent for ${action}`);
+  }
   const allowed = action === "ingest"
     ? (file) => /^wiki\/(semantic|decisions|ingestions)\//.test(file) || file === "wiki/index.json"
     : (file) => file === target;

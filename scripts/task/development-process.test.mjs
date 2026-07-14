@@ -3,8 +3,10 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
+import { spawnSync } from "node:child_process";
 import { checkTask } from "./check-task.mjs";
-import { acquireWorkRepoLock, dateInTimezone, estimatePoints, replaceTemplate, resolveInside } from "./lib.mjs";
+import { acquireWorkRepoLock, dateInTimezone, estimatePoints, git, replaceTemplate, resolveInside } from "./lib.mjs";
+import { rollbackWorkRepository, validateDevSelection } from "./agent-routing.mjs";
 
 test("estimatePoints uses implementation file and line scores", () => {
   assert.equal(estimatePoints(2, 80), 1);
@@ -73,4 +75,99 @@ test("work repository lock rejects active owners and recovers stale owners", () 
 
 test("dateInTimezone respects the project timezone", () => {
   assert.match(dateInTimezone("Pacific/Guam"), /^\d{4}-\d{2}-\d{2}$/);
+});
+
+test("DEV profile evidence rejects unknown, missing, and risky Luna selections", () => {
+  assert.throws(() => validateDevSelection({ approved_dev_profile: "other", approved_dev_profile_reason: "x", approved_dev_profile_risk_signals: [] }), /DEV_PROFILE_UNKNOWN/);
+  assert.throws(() => validateDevSelection({ approved_dev_profile: "sol-high", approved_dev_profile_risk_signals: ["security"] }), /REASON_MISSING/);
+  assert.throws(() => validateDevSelection({ approved_dev_profile: "luna-xhigh", approved_dev_profile_reason: "x", approved_dev_profile_risk_signals: ["migration"] }), /LUNA_HAS_RISK/);
+});
+
+test("launchers close child stdin and reserve commits for the lock-owning parent", () => {
+  const workLauncher = fs.readFileSync(path.resolve(import.meta.dirname, "run-work-agent.mjs"), "utf8");
+  const wikiLauncher = fs.readFileSync(path.resolve(import.meta.dirname, "run-wiki-agent.mjs"), "utf8");
+  const explorerLauncher = fs.readFileSync(path.resolve(import.meta.dirname, "run-explorer-agent.mjs"), "utf8");
+  const hook = fs.readFileSync(path.resolve(import.meta.dirname, "work-pre-commit.mjs"), "utf8");
+  for (const launcher of [workLauncher, wikiLauncher]) {
+    assert.match(launcher, /stdio:\s*\["ignore",\s*"pipe",\s*"pipe"\]/);
+    assert.match(launcher, /WORK_PARENT_COMMIT:\s*"1"/);
+    assert.match(launcher, /WORK_CHILD_(?:COMMIT_FORBIDDEN|STAGE_FORBIDDEN)|validateChildOutcome/);
+    assert.match(launcher, /rollbackWorkRepository\(root, beforeHead\)/);
+    assert.match(launcher, /commit:\s*null/);
+  }
+  assert.match(explorerLauncher, /spawn\("codex", invocation\.command/);
+  assert.match(explorerLauncher, /stdio:\s*\["ignore",\s*"pipe",\s*"pipe"\]/);
+  assert.match(workLauncher, /run-explorer-agent\.mjs/);
+  assert.match(workLauncher, /Do not use natural-language or custom-agent delegation for Explorer/);
+  assert.match(hook, /WORK_PARENT_COMMIT/);
+  assert.match(hook, /lock-owning launcher parent/);
+});
+
+function createRollbackFixture() {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "work-rollback-"));
+  git(root, ["init", "-b", "main"]);
+  git(root, ["config", "user.name", "fixture"]);
+  git(root, ["config", "user.email", "fixture@example.invalid"]);
+  fs.writeFileSync(path.join(root, ".gitignore"), ".locks/\nignored-cache\n");
+  fs.writeFileSync(path.join(root, "ignored-cache"), "preserve\n");
+  fs.writeFileSync(path.join(root, "tracked.txt"), "clean\n");
+  git(root, ["add", ".gitignore", "tracked.txt"]);
+  git(root, ["commit", "-m", "baseline"]);
+  return root;
+}
+
+test("failure rollback restores HEAD, index, worktree, untracked files, and lock", async (t) => {
+  const scenarios = {
+    "child nonzero": (root) => {
+      const result = spawnSync(process.execPath, ["-e", "require('fs').writeFileSync('tracked.txt','child failure\\n');require('fs').writeFileSync('child.tmp','x');process.exit(7)"], { cwd: root });
+      assert.equal(result.status, 7);
+    },
+    "scope violation": (root) => {
+      spawnSync(process.execPath, ["-e", "require('fs').writeFileSync('tracked.txt','scope\\n');require('fs').writeFileSync('forbidden.txt','x')"], { cwd: root });
+    },
+    "child stage attempt": (root) => {
+      fs.writeFileSync(path.join(root, "tracked.txt"), "staged\n");
+      git(root, ["add", "tracked.txt"]);
+    },
+    "child commit attempt": (root) => {
+      fs.writeFileSync(path.join(root, "tracked.txt"), "committed\n");
+      git(root, ["add", "tracked.txt"]);
+      git(root, ["commit", "-m", "forbidden child commit"]);
+    },
+    "hook failure": (root) => {
+      fs.mkdirSync(path.join(root, ".githooks"));
+      fs.writeFileSync(path.join(root, ".githooks", "pre-commit"), "#!/bin/sh\nexit 1\n", { mode: 0o755 });
+      fs.writeFileSync(path.join(root, "tracked.txt"), "hook failure\n");
+      git(root, ["add", "tracked.txt"]);
+      const result = spawnSync("git", ["-c", "core.hooksPath=.githooks", "commit", "-m", "must fail"], { cwd: root });
+      assert.notEqual(result.status, 0);
+    },
+    "validation failure": (root) => {
+      fs.writeFileSync(path.join(root, "tracked.txt"), "invalid\n");
+      fs.writeFileSync(path.join(root, "validation.tmp"), "invalid\n");
+      git(root, ["add", "tracked.txt"]);
+    },
+  };
+
+  for (const [name, mutate] of Object.entries(scenarios)) {
+    await t.test(name, () => {
+      const root = createRollbackFixture();
+      const beforeHead = git(root, ["rev-parse", "HEAD"]);
+      const release = acquireWorkRepoLock(root);
+      try {
+        mutate(root);
+        rollbackWorkRepository(root, beforeHead);
+        assert.equal(git(root, ["rev-parse", "HEAD"]), beforeHead);
+        assert.equal(git(root, ["diff", "--cached", "--name-only"]), "");
+        assert.equal(git(root, ["status", "--porcelain"]), "");
+        assert.equal(fs.readFileSync(path.join(root, "ignored-cache"), "utf8"), "preserve\n");
+      } finally {
+        release();
+      }
+      const releaseAgain = acquireWorkRepoLock(root);
+      releaseAgain();
+      assert.equal(fs.existsSync(path.join(root, ".locks", "work-repository.lock")), false);
+      fs.rmSync(root, { recursive: true, force: true });
+    });
+  }
 });
