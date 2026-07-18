@@ -1,0 +1,20 @@
+{
+  "message_id": "message-0001",
+  "message_type": "PlaneError",
+  "from_component": "core-runtime",
+  "to_component": "memory-service",
+  "correlation_id": "correlation-0001",
+  "causation_message_id": null,
+  "occurred_at": "2026-07-18T12:00:00+09:00",
+  "payload_schema": {
+    "schema_id": "urn:kakesu:common:error:draft-v0:r1",
+    "schema_revision": 1,
+    "schema_digest": "sha256:5f5d3aee6fbdcb4325604d71c6ac1b09926070c8f335f481570c15b904e33c32"
+  },
+  "payload": {
+    "code": "example_error",
+    "message": "Example cross-plane error",
+    "retryable": false,
+    "details_ref": null
+  }
+}

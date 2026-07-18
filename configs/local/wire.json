@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "schema_catalog_root": "schemas/draft-v0",
+  "components": {
+    "core-runtime": { "uds_endpoint": "run/core-runtime.sock" },
+    "memory-service": { "uds_endpoint": "run/memory-service.sock" },
+    "governance-service": { "uds_endpoint": "run/governance-service.sock" }
+  }
+}
