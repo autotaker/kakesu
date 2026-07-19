@@ -10,14 +10,20 @@ import (
 )
 
 const (
-	schemaVersion = 1
-	migrationSQL  = `
+	schemaVersion = 2
+	migrationV1   = `
 CREATE TABLE tasks (task_id TEXT PRIMARY KEY, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);
 CREATE TABLE task_owners (task_id TEXT PRIMARY KEY REFERENCES tasks(task_id) ON DELETE CASCADE, owner_agent_id TEXT NOT NULL);
 CREATE TABLE task_workspaces (task_id TEXT PRIMARY KEY REFERENCES tasks(task_id) ON DELETE CASCADE, workspace_ref TEXT NOT NULL);
 CREATE TABLE task_contracts (task_id TEXT PRIMARY KEY REFERENCES tasks(task_id) ON DELETE CASCADE, version INTEGER NOT NULL CHECK (version = 1), schema_id TEXT NOT NULL, schema_revision TEXT NOT NULL, schema_digest TEXT NOT NULL, payload BLOB NOT NULL);
 CREATE TABLE task_progress (task_id TEXT PRIMARY KEY REFERENCES tasks(task_id) ON DELETE CASCADE, version INTEGER NOT NULL CHECK (version = 0));
 CREATE TABLE task_events (task_id TEXT NOT NULL REFERENCES tasks(task_id) ON DELETE CASCADE, sequence INTEGER NOT NULL, event_type TEXT NOT NULL, PRIMARY KEY (task_id, sequence));`
+	migrationV2 = `
+ALTER TABLE tasks ADD COLUMN state TEXT NOT NULL DEFAULT 'ready' CHECK (state IN ('ready','running','waiting','suspended','reviewing_completion','completed','cancelled'));
+ALTER TABLE task_owners ADD COLUMN released_at TEXT;
+ALTER TABLE task_events ADD COLUMN payload BLOB NOT NULL DEFAULT '{}';
+CREATE UNIQUE INDEX one_active_task_per_agent ON task_owners(owner_agent_id) WHERE released_at IS NULL;`
+	migrationSQL = migrationV1 + migrationV2
 )
 
 var requiredPragmas = []string{
@@ -61,6 +67,7 @@ type CreateTaskInput struct {
 type TaskEvent struct {
 	Sequence int
 	Type     string
+	Payload  []byte
 }
 
 type CreationReadModel struct {
@@ -75,9 +82,10 @@ type CreationReadModel struct {
 }
 
 type Store struct {
-	db           *sql.DB
-	beforeCommit func(*sql.Tx) error
-	afterCommit  func()
+	db            *sql.DB
+	beforeCommit  func(*sql.Tx) error
+	afterCommit   func()
+	lifecycleHook func(*sql.Tx, string) error
 }
 
 func OpenStore(path string) (*Store, error) {
@@ -135,6 +143,13 @@ func (s *Store) migrate(migration string) error {
 		if _, err := tx.Exec(`INSERT INTO schema_version(version) VALUES (?)`, schemaVersion); err != nil {
 			return &StorageError{Operation: "record migration", Err: err}
 		}
+	case count == 1 && minimum == 1 && maximum == 1:
+		if _, err := tx.Exec(migrationV2); err != nil {
+			return &StorageError{Operation: "migration v2", Err: err}
+		}
+		if _, err := tx.Exec(`UPDATE schema_version SET version = ?`, schemaVersion); err != nil {
+			return &StorageError{Operation: "record migration v2", Err: err}
+		}
 	case count != 1 || minimum != schemaVersion || maximum != schemaVersion:
 		return &StorageError{Operation: "schema version", Err: fmt.Errorf("unsupported version set count=%d min=%d max=%d", count, minimum, maximum)}
 	}
@@ -186,8 +201,11 @@ func (s *Store) CreateTask(ctx context.Context, input CreateTaskInput) (Creation
 
 func classifyCreateError(taskID string, err error) error {
 	var sqliteErr *sqlite.Error
-	if errors.As(err, &sqliteErr) && sqliteErr.Code()&0xff == 19 {
-		return &ConflictError{TaskID: taskID, Err: err}
+	if errors.As(err, &sqliteErr) {
+		switch sqliteErr.Code() & 0xff {
+		case 5, 6, 19: // SQLITE_BUSY, SQLITE_LOCKED, SQLITE_CONSTRAINT
+			return &ConflictError{TaskID: taskID, Err: err}
+		}
 	}
 	return &StorageError{Operation: "create", Err: err}
 }
@@ -215,14 +233,14 @@ func readCreation(ctx context.Context, reader creationReader, taskID string) (Cr
 	if err != nil {
 		return CreationReadModel{}, &StorageError{Operation: "read creation", Err: err}
 	}
-	rows, err := reader.QueryContext(ctx, `SELECT sequence, event_type FROM task_events WHERE task_id = ? ORDER BY sequence`, taskID)
+	rows, err := reader.QueryContext(ctx, `SELECT sequence, event_type, payload FROM task_events WHERE task_id = ? ORDER BY sequence`, taskID)
 	if err != nil {
 		return CreationReadModel{}, &StorageError{Operation: "read events", Err: err}
 	}
 	defer rows.Close()
 	for rows.Next() {
 		var event TaskEvent
-		if err := rows.Scan(&event.Sequence, &event.Type); err != nil {
+		if err := rows.Scan(&event.Sequence, &event.Type, &event.Payload); err != nil {
 			return CreationReadModel{}, &StorageError{Operation: "scan events", Err: err}
 		}
 		model.Events = append(model.Events, event)

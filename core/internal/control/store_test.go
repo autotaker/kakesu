@@ -83,6 +83,94 @@ func TestStoreMigrationPragmasAndReopen(t *testing.T) {
 	}
 }
 
+func TestStoreMigratesV1AndEnforcesActiveOwnerUniqueness(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "control.db")
+	db, err := sql.Open("sqlite", path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(migrationV1 + `
+CREATE TABLE schema_version (version INTEGER NOT NULL);
+INSERT INTO schema_version(version) VALUES (1);
+INSERT INTO tasks(task_id) VALUES ('TASK-existing');
+INSERT INTO task_events(task_id, sequence, event_type) VALUES ('TASK-existing', 1, 'TaskCreated');`); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	store := openTestStore(t, path)
+	var version int
+	if err := store.db.QueryRow(`SELECT version FROM schema_version`).Scan(&version); err != nil || version != schemaVersion {
+		t.Fatalf("version = %d, err = %v", version, err)
+	}
+	var migratedPayload []byte
+	if err := store.db.QueryRow(`SELECT payload FROM task_events WHERE task_id = 'TASK-existing'`).Scan(&migratedPayload); err != nil || string(migratedPayload) != `{}` {
+		t.Fatalf("migrated creation payload = %q, err = %v", migratedPayload, err)
+	}
+	first := testInput()
+	if _, err := store.CreateTask(context.Background(), first); err != nil {
+		t.Fatal(err)
+	}
+	second := testInput()
+	second.TaskID = "TASK-1001"
+	_, err = store.CreateTask(context.Background(), second)
+	var conflict *ConflictError
+	if !errors.As(err, &conflict) {
+		t.Fatalf("second active task = %T %v, want ConflictError", err, err)
+	}
+}
+
+func TestStoreV2MigrationRejectsDuplicateActiveOwnersAtomically(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "control.db")
+	db, err := sql.Open("sqlite", path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fixture := migrationV1 + `
+CREATE TABLE schema_version (version INTEGER NOT NULL);
+INSERT INTO schema_version(version) VALUES (1);
+INSERT INTO tasks(task_id) VALUES ('TASK-old-a'), ('TASK-old-b');
+INSERT INTO task_owners(task_id, owner_agent_id) VALUES ('TASK-old-a', 'agent-duplicate'), ('TASK-old-b', 'agent-duplicate');`
+	if _, err := db.Exec(fixture); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = OpenStore(path)
+	var storageErr *StorageError
+	if !errors.As(err, &storageErr) {
+		t.Fatalf("OpenStore = %T %v, want StorageError", err, err)
+	}
+	db, err = sql.Open("sqlite", path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	var version, stateColumns, releasedColumns, payloadColumns, indexes int
+	if err := db.QueryRow(`SELECT version FROM schema_version`).Scan(&version); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.QueryRow(`SELECT COUNT(*) FROM pragma_table_info('tasks') WHERE name = 'state'`).Scan(&stateColumns); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.QueryRow(`SELECT COUNT(*) FROM pragma_table_info('task_owners') WHERE name = 'released_at'`).Scan(&releasedColumns); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.QueryRow(`SELECT COUNT(*) FROM pragma_table_info('task_events') WHERE name = 'payload'`).Scan(&payloadColumns); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.QueryRow(`SELECT COUNT(*) FROM sqlite_master WHERE type = 'index' AND name = 'one_active_task_per_agent'`).Scan(&indexes); err != nil {
+		t.Fatal(err)
+	}
+	if version != 1 || stateColumns != 0 || releasedColumns != 0 || payloadColumns != 0 || indexes != 0 {
+		t.Fatalf("partial migration: version=%d state=%d released=%d payload=%d indexes=%d", version, stateColumns, releasedColumns, payloadColumns, indexes)
+	}
+}
+
 func TestCreateTaskIsAtomicAndTyped(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "control.db")
 	store := openTestStore(t, path)
@@ -122,7 +210,7 @@ func TestCreateTaskIsAtomicAndTyped(t *testing.T) {
 	if !reflect.DeepEqual(model.Contract, input.Contract) {
 		t.Fatalf("contract = %#v, want %#v", model.Contract, input.Contract)
 	}
-	wantEvents := []TaskEvent{{Sequence: 1, Type: "TaskCreated"}, {Sequence: 2, Type: "OwnerAssigned"}}
+	wantEvents := []TaskEvent{{Sequence: 1, Type: "TaskCreated", Payload: []byte(`{}`)}, {Sequence: 2, Type: "OwnerAssigned", Payload: []byte(`{}`)}}
 	if !reflect.DeepEqual(model.Events, wantEvents) {
 		t.Fatalf("events = %#v, want %#v", model.Events, wantEvents)
 	}
