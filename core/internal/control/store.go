@@ -21,6 +21,7 @@ CREATE TABLE task_events (task_id TEXT NOT NULL REFERENCES tasks(task_id) ON DEL
 	migrationV2 = `
 ALTER TABLE tasks ADD COLUMN state TEXT NOT NULL DEFAULT 'ready' CHECK (state IN ('ready','running','waiting','suspended','reviewing_completion','completed','cancelled'));
 ALTER TABLE task_owners ADD COLUMN released_at TEXT;
+ALTER TABLE task_events ADD COLUMN payload BLOB NOT NULL DEFAULT '{}';
 CREATE UNIQUE INDEX one_active_task_per_agent ON task_owners(owner_agent_id) WHERE released_at IS NULL;`
 	migrationSQL = migrationV1 + migrationV2
 )
@@ -66,6 +67,7 @@ type CreateTaskInput struct {
 type TaskEvent struct {
 	Sequence int
 	Type     string
+	Payload  []byte
 }
 
 type CreationReadModel struct {
@@ -231,14 +233,14 @@ func readCreation(ctx context.Context, reader creationReader, taskID string) (Cr
 	if err != nil {
 		return CreationReadModel{}, &StorageError{Operation: "read creation", Err: err}
 	}
-	rows, err := reader.QueryContext(ctx, `SELECT sequence, event_type FROM task_events WHERE task_id = ? ORDER BY sequence`, taskID)
+	rows, err := reader.QueryContext(ctx, `SELECT sequence, event_type, payload FROM task_events WHERE task_id = ? ORDER BY sequence`, taskID)
 	if err != nil {
 		return CreationReadModel{}, &StorageError{Operation: "read events", Err: err}
 	}
 	defer rows.Close()
 	for rows.Next() {
 		var event TaskEvent
-		if err := rows.Scan(&event.Sequence, &event.Type); err != nil {
+		if err := rows.Scan(&event.Sequence, &event.Type, &event.Payload); err != nil {
 			return CreationReadModel{}, &StorageError{Operation: "scan events", Err: err}
 		}
 		model.Events = append(model.Events, event)

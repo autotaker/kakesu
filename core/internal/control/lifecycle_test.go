@@ -23,6 +23,19 @@ func lifecycleInput(taskID, owner string) CreateTaskInput {
 	return input
 }
 
+func transitionInput(taskID string, current, target TaskState) TransitionInput {
+	payload := []byte(`{"audit_ref":"test"}`)
+	switch allowedTransitions[current][target] {
+	case "TaskStarted", "TaskResumed":
+		payload = []byte(`{"run_id":"run-test"}`)
+	case "TaskCompleted":
+		payload = []byte(`{"outcome_ref":"artifact://test/outcome"}`)
+	case "TaskCancelled":
+		payload = []byte(`{"reason":"test cancellation"}`)
+	}
+	return TransitionInput{TaskID: taskID, Expected: current, Target: target, Payload: payload}
+}
+
 func seedState(t *testing.T, store *Store, taskID string, state TaskState) {
 	t.Helper()
 	if _, err := store.db.Exec(`UPDATE tasks SET state = ? WHERE task_id = ?`, state, taskID); err != nil {
@@ -51,7 +64,7 @@ func TestLifecycleAllStatePairs(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				got, err := store.TransitionTask(context.Background(), TransitionInput{TaskID: input.TaskID, Expected: current, Target: target})
+				got, err := store.TransitionTask(context.Background(), transitionInput(input.TaskID, current, target))
 				eventType, isAllowed := allowedTransitions[current][target]
 				if !isAllowed {
 					var transitionErr *TransitionError
@@ -98,19 +111,19 @@ func TestLifecycleExpectedCurrentMismatchAndInvalidEdge(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = store.TransitionTask(context.Background(), TransitionInput{TaskID: input.TaskID, Expected: StateRunning, Target: StateWaiting})
+	_, err = store.TransitionTask(context.Background(), transitionInput(input.TaskID, StateRunning, StateWaiting))
 	var conflict *ConflictError
 	if !errors.As(err, &conflict) {
 		t.Fatalf("mismatch = %T %v, want ConflictError", err, err)
 	}
-	_, err = store.TransitionTask(context.Background(), TransitionInput{TaskID: input.TaskID, Expected: StateReady, Target: StateWaiting})
+	_, err = store.TransitionTask(context.Background(), transitionInput(input.TaskID, StateReady, StateWaiting))
 	var transitionErr *TransitionError
 	if !errors.As(err, &transitionErr) {
 		t.Fatalf("invalid edge = %T %v, want TransitionError", err, err)
 	}
-	_, err = store.TransitionTask(context.Background(), TransitionInput{TaskID: input.TaskID, Expected: StateRunning, Target: StateRunning})
-	if !errors.As(err, &transitionErr) {
-		t.Fatalf("invalid edge with mismatch = %T %v, want TransitionError", err, err)
+	_, err = store.TransitionTask(context.Background(), transitionInput(input.TaskID, StateRunning, StateRunning))
+	if !errors.As(err, &conflict) {
+		t.Fatalf("invalid edge with mismatch = %T %v, want ConflictError", err, err)
 	}
 	after, err := store.ReadLifecycle(context.Background(), input.TaskID)
 	if err != nil || !reflect.DeepEqual(after, before) {
@@ -127,7 +140,7 @@ func TestLifecycleOwnerRetainedInNonterminalStates(t *testing.T) {
 				t.Fatal(err)
 			}
 			seedState(t, store, first.TaskID, StateRunning)
-			if _, err := store.TransitionTask(context.Background(), TransitionInput{TaskID: first.TaskID, Expected: StateRunning, Target: target}); err != nil {
+			if _, err := store.TransitionTask(context.Background(), transitionInput(first.TaskID, StateRunning, target)); err != nil {
 				t.Fatal(err)
 			}
 			_, err := store.CreateTask(context.Background(), lifecycleInput("TASK-second", "agent-shared"))
@@ -157,7 +170,7 @@ func TestLifecycleTerminalReleaseAllowsOwnerReuse(t *testing.T) {
 				t.Fatal(err)
 			}
 			seedState(t, store, test.taskID, test.current)
-			model, err := store.TransitionTask(context.Background(), TransitionInput{TaskID: test.taskID, Expected: test.current, Target: test.target})
+			model, err := store.TransitionTask(context.Background(), transitionInput(test.taskID, test.current, test.target))
 			if err != nil || model.OwnerActive {
 				t.Fatalf("terminal transition = %#v, err=%v", model, err)
 			}
@@ -167,6 +180,72 @@ func TestLifecycleTerminalReleaseAllowsOwnerReuse(t *testing.T) {
 			afterReuse, err := store.ReadLifecycle(context.Background(), test.taskID)
 			if err != nil || !reflect.DeepEqual(afterReuse, model) {
 				t.Fatalf("old terminal task changed after reuse: err=%v before=%#v after=%#v", err, model, afterReuse)
+			}
+		})
+	}
+}
+
+func TestLifecyclePersistsRepresentativePayloadsAcrossReopen(t *testing.T) {
+	for _, test := range []struct {
+		name, taskID    string
+		current, target TaskState
+		payload         []byte
+	}{
+		{"started", "TASK-payload-started", StateReady, StateRunning, []byte(`{"run_id":"run-42"}`)},
+		{"completed", "TASK-payload-completed", StateReviewingCompletion, StateCompleted, []byte(`{"outcome_ref":"artifact://task/outcome"}`)},
+		{"cancelled", "TASK-payload-cancelled", StateRunning, StateCancelled, []byte(`{"reason":"operator request"}`)},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "control.db")
+			store := openTestStore(t, path)
+			if _, err := store.CreateTask(context.Background(), lifecycleInput(test.taskID, "agent-payload")); err != nil {
+				t.Fatal(err)
+			}
+			seedState(t, store, test.taskID, test.current)
+			request := TransitionInput{TaskID: test.taskID, Expected: test.current, Target: test.target, Payload: test.payload}
+			model, err := store.TransitionTask(context.Background(), request)
+			if err != nil || !reflect.DeepEqual(model.Events[len(model.Events)-1].Payload, test.payload) {
+				t.Fatalf("transition payload = %q, err=%v", model.Events[len(model.Events)-1].Payload, err)
+			}
+			if err := store.Close(); err != nil {
+				t.Fatal(err)
+			}
+			store, err = OpenStore(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			reopened, err := store.ReadLifecycle(context.Background(), test.taskID)
+			if err != nil || !reflect.DeepEqual(reopened, model) {
+				t.Fatalf("reopened = %#v, want %#v, err=%v", reopened, model, err)
+			}
+		})
+	}
+}
+
+func TestLifecycleRejectsEmptyOrInvalidPayloadWithoutMutation(t *testing.T) {
+	store := openTestStore(t, filepath.Join(t.TempDir(), "control.db"))
+	input := lifecycleInput("TASK-bad-payload", "agent-bad-payload")
+	if _, err := store.CreateTask(context.Background(), input); err != nil {
+		t.Fatal(err)
+	}
+	before, err := store.ReadLifecycle(context.Background(), input.TaskID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for name, payload := range map[string][]byte{
+		"empty": nil, "malformed": []byte(`{"run_id":`), "scalar": []byte(`"run-1"`),
+		"missing required": []byte(`{}`), "empty required": []byte(`{"run_id":""}`),
+	} {
+		t.Run(name, func(t *testing.T) {
+			request := TransitionInput{TaskID: input.TaskID, Expected: StateReady, Target: StateRunning, Payload: payload}
+			_, err := store.TransitionTask(context.Background(), request)
+			var payloadErr *EventPayloadError
+			if !errors.As(err, &payloadErr) {
+				t.Fatalf("error = %T %v, want EventPayloadError", err, err)
+			}
+			after, err := store.ReadLifecycle(context.Background(), input.TaskID)
+			if err != nil || !reflect.DeepEqual(after, before) {
+				t.Fatalf("invalid payload mutated task: err=%v before=%#v after=%#v", err, before, after)
 			}
 		})
 	}
@@ -198,7 +277,7 @@ func TestLifecycleTerminalTransitionRollbackAtEveryStage(t *testing.T) {
 					_, err := tx.Exec(`INSERT INTO missing_lifecycle_table(value) VALUES (1)`)
 					return err
 				}
-				_, err = store.TransitionTask(context.Background(), TransitionInput{TaskID: input.TaskID, Expected: test.current, Target: test.target})
+				_, err = store.TransitionTask(context.Background(), transitionInput(input.TaskID, test.current, test.target))
 				var storageErr *StorageError
 				if !errors.As(err, &storageErr) {
 					t.Fatalf("forced failure = %T %v, want StorageError", err, err)
@@ -218,7 +297,7 @@ func TestLifecycleTerminalTransitionRollbackAtEveryStage(t *testing.T) {
 				if err != nil || !reflect.DeepEqual(afterReopen, before) {
 					t.Fatalf("reopen mismatch: err=%v before=%#v after=%#v", err, before, afterReopen)
 				}
-				succeeded, err := store.TransitionTask(context.Background(), TransitionInput{TaskID: input.TaskID, Expected: test.current, Target: test.target})
+				succeeded, err := store.TransitionTask(context.Background(), transitionInput(input.TaskID, test.current, test.target))
 				if err != nil || succeeded.State != test.target || succeeded.OwnerActive || len(succeeded.Events) != len(before.Events)+1 {
 					t.Fatalf("retry without hook = %#v, err=%v", succeeded, err)
 				}

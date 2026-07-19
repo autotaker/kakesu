@@ -3,6 +3,7 @@ package control
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 )
 
@@ -39,7 +40,18 @@ type TransitionInput struct {
 	TaskID   string
 	Expected TaskState
 	Target   TaskState
+	Payload  []byte
 }
+
+type EventPayloadError struct {
+	EventType string
+	Err       error
+}
+
+func (e *EventPayloadError) Error() string {
+	return fmt.Sprintf("control event %q payload: %v", e.EventType, e.Err)
+}
+func (e *EventPayloadError) Unwrap() error { return e.Err }
 
 type LifecycleReadModel struct {
 	TaskID          string
@@ -51,10 +63,6 @@ type LifecycleReadModel struct {
 }
 
 func (s *Store) TransitionTask(ctx context.Context, input TransitionInput) (LifecycleReadModel, error) {
-	eventType, ok := allowedTransitions[input.Expected][input.Target]
-	if !ok {
-		return LifecycleReadModel{}, &TransitionError{Current: input.Expected, Target: input.Target}
-	}
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return LifecycleReadModel{}, &StorageError{Operation: "begin transition", Err: err}
@@ -66,6 +74,13 @@ func (s *Store) TransitionTask(ctx context.Context, input TransitionInput) (Life
 	}
 	if current != input.Expected {
 		return LifecycleReadModel{}, &ConflictError{TaskID: input.TaskID, Err: fmt.Errorf("expected state %q, found %q", input.Expected, current)}
+	}
+	eventType, ok := allowedTransitions[input.Expected][input.Target]
+	if !ok {
+		return LifecycleReadModel{}, &TransitionError{Current: input.Expected, Target: input.Target}
+	}
+	if err := validateEventPayload(eventType, input.Payload); err != nil {
+		return LifecycleReadModel{}, err
 	}
 	result, err := tx.ExecContext(ctx, `UPDATE tasks SET state = ? WHERE task_id = ? AND state = ?`, input.Target, input.TaskID, input.Expected)
 	if err != nil {
@@ -80,8 +95,8 @@ func (s *Store) TransitionTask(ctx context.Context, input TransitionInput) (Life
 	if err := s.runLifecycleHook(tx, "state"); err != nil {
 		return LifecycleReadModel{}, err
 	}
-	if _, err := tx.ExecContext(ctx, `INSERT INTO task_events(task_id, sequence, event_type)
-		SELECT ?, COALESCE(MAX(sequence), 0) + 1, ? FROM task_events WHERE task_id = ?`, input.TaskID, eventType, input.TaskID); err != nil {
+	if _, err := tx.ExecContext(ctx, `INSERT INTO task_events(task_id, sequence, event_type, payload)
+		SELECT ?, COALESCE(MAX(sequence), 0) + 1, ?, ? FROM task_events WHERE task_id = ?`, input.TaskID, eventType, input.Payload, input.TaskID); err != nil {
 		return LifecycleReadModel{}, classifyTransitionError(input.TaskID, "append task event", err)
 	}
 	if err := s.runLifecycleHook(tx, "event"); err != nil {
@@ -145,14 +160,14 @@ func readLifecycle(ctx context.Context, reader creationReader, taskID string) (L
 		return LifecycleReadModel{}, &StorageError{Operation: "read lifecycle", Err: err}
 	}
 	model.OwnerActive = !releasedAt.Valid
-	rows, err := reader.QueryContext(ctx, `SELECT sequence, event_type FROM task_events WHERE task_id = ? ORDER BY sequence`, taskID)
+	rows, err := reader.QueryContext(ctx, `SELECT sequence, event_type, payload FROM task_events WHERE task_id = ? ORDER BY sequence`, taskID)
 	if err != nil {
 		return LifecycleReadModel{}, &StorageError{Operation: "read lifecycle events", Err: err}
 	}
 	defer rows.Close()
 	for rows.Next() {
 		var event TaskEvent
-		if err := rows.Scan(&event.Sequence, &event.Type); err != nil {
+		if err := rows.Scan(&event.Sequence, &event.Type, &event.Payload); err != nil {
 			return LifecycleReadModel{}, &StorageError{Operation: "scan lifecycle events", Err: err}
 		}
 		model.Events = append(model.Events, event)
@@ -161,4 +176,23 @@ func readLifecycle(ctx context.Context, reader creationReader, taskID string) (L
 		return LifecycleReadModel{}, &StorageError{Operation: "read lifecycle events", Err: err}
 	}
 	return model, nil
+}
+
+func validateEventPayload(eventType string, payload []byte) error {
+	var fields map[string]json.RawMessage
+	if len(payload) == 0 || json.Unmarshal(payload, &fields) != nil || fields == nil {
+		return &EventPayloadError{EventType: eventType, Err: fmt.Errorf("must be a JSON object")}
+	}
+	required := map[string]string{
+		"TaskStarted": "run_id", "TaskResumed": "run_id",
+		"TaskCompleted": "outcome_ref", "TaskCancelled": "reason",
+	}[eventType]
+	if required == "" {
+		return nil
+	}
+	var value string
+	if json.Unmarshal(fields[required], &value) != nil || value == "" {
+		return &EventPayloadError{EventType: eventType, Err: fmt.Errorf("%s must be a non-empty string", required)}
+	}
+	return nil
 }
