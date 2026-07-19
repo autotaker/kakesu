@@ -1,5 +1,6 @@
 ---
 task_id: "{{TASK_ID}}"
+change_class: ""
 status: draft
 qa_agent: ""
 approved_by: ""

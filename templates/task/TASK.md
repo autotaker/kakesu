@@ -17,6 +17,8 @@ created_at: "{{DATE}}"
 
 ## スコープ
 
+<!-- backlog.yamlのchange_classをproductまたはsafety_contractに固定する。fieldがない既存Taskだけproductとして扱う。 -->
+
 ### 対象
 
 - TODO
@@ -24,6 +26,7 @@ created_at: "{{DATE}}"
 ### 対象外
 
 - TODO
+<!-- safety_contractの場合: 製品コード、test、runtime/build設定、Schema、製品依存、生成製品入力/成果物、外部観測可能な挙動を変更しない。 -->
 
 ## 受け入れ条件
 

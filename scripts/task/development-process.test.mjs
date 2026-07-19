@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { checkTask } from "./check-task.mjs";
 import { acquireWorkRepoLock, dateInTimezone, estimatePoints, git, replaceTemplate, resolveInside } from "./lib.mjs";
 import { rollbackWorkRepository, validateDevSelection } from "./agent-routing.mjs";
@@ -28,6 +29,268 @@ test("resolveInside rejects absolute and traversing paths", () => {
   assert.equal(resolveInside("/tmp/work", "tasks/TASK-0001-a"), "/tmp/work/tasks/TASK-0001-a");
   assert.throws(() => resolveInside("/tmp/work", "../escape"), /escapes/);
   assert.throws(() => resolveInside("/tmp/work", "/tmp/escape"), /relative path/);
+});
+
+function writeTaskEvidence(taskDir, filename, metadata, body = "") {
+  const yaml = Object.entries(metadata).map(([key, value]) => `${key}: ${JSON.stringify(value)}`).join("\n");
+  fs.writeFileSync(path.join(taskDir, filename), `---\n${yaml}\n---\n${body}`);
+}
+
+const SAFETY_CHECK_KEYS = ["process_tests", "contract_scope", "docs_lint", "make_check"];
+
+function safetyCheckDigest(candidateTree, mergeTree, checks) {
+  const normalized = [
+    `candidate_tree=${candidateTree}`,
+    `merge_tree=${mergeTree}`,
+    ...SAFETY_CHECK_KEYS.map((key) => `${key}=${checks[key]}`),
+  ].join("\n");
+  return createHash("sha256").update(`${normalized}\n`).digest("hex");
+}
+
+function createDoneTaskFixture({ taskId = "TASK-0090", changeClass, productPath = false, renameSpoof = false, copySpoof = false, nonNoFf = false, legacyTask0024 = false } = {}) {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "task-done-gate-"));
+  const repository = path.join(root, "product");
+  const taskDir = path.join(root, "tasks", `${taskId}-fixture`);
+  fs.mkdirSync(repository, { recursive: true });
+  fs.mkdirSync(taskDir, { recursive: true });
+  git(repository, ["init", "-b", "main"]);
+  git(repository, ["config", "user.name", "fixture"]);
+  git(repository, ["config", "user.email", "fixture@example.invalid"]);
+  fs.writeFileSync(path.join(repository, "README.md"), "baseline\n");
+  if (renameSpoof || copySpoof) {
+    fs.mkdirSync(path.join(repository, "docs", "development"), { recursive: true });
+    fs.writeFileSync(path.join(repository, "docs", "development", "old.md"), "rename me\n");
+  }
+  git(repository, ["add", "."]);
+  git(repository, ["commit", "-m", "baseline"]);
+  git(repository, ["checkout", "-b", "task"]);
+  if (renameSpoof) {
+    git(repository, ["mv", "docs/development/old.md", "docs/development/new.md"]);
+  } else if (copySpoof) {
+    fs.copyFileSync(path.join(repository, "docs", "development", "old.md"), path.join(repository, "docs", "development", "copy.md"));
+    git(repository, ["add", "docs/development/copy.md"]);
+  } else {
+    const changedPath = productPath ? "scripts/product.mjs" : "docs/development/contract.md";
+    fs.mkdirSync(path.dirname(path.join(repository, changedPath)), { recursive: true });
+    fs.writeFileSync(path.join(repository, changedPath), "changed\n");
+    git(repository, ["add", changedPath]);
+  }
+  git(repository, ["commit", "-m", "candidate"]);
+  const candidateCommit = git(repository, ["rev-parse", "HEAD"]);
+  const candidateTree = git(repository, ["rev-parse", "HEAD^{tree}"]);
+  git(repository, ["checkout", "main"]);
+  git(repository, nonNoFf ? ["merge", "--ff-only", "task"] : ["merge", "--no-ff", "-m", "merge", "task"]);
+  const mergedCommit = git(repository, ["rev-parse", "HEAD"]);
+  const mergeTree = git(repository, ["rev-parse", "HEAD^{tree}"]);
+  fs.writeFileSync(path.join(root, "project.yaml"), "repository_path: product\ndefault_branch: main\n");
+
+  const exclusion = legacyTask0024
+    ? "### 対象外\n\n- 製品コード、製品test、runtime/build設定、製品Schema、製品依存、製品挙動。\n"
+    : "### 対象外\n\n- 製品コード、test、runtime/build設定、Schema、製品依存、生成製品入力/成果物、外部観測可能な挙動を変更しない。\n";
+  writeTaskEvidence(taskDir, "TASK.md", { task_id: taskId }, exclusion);
+  const planMetadata = {
+    task_id: taskId,
+    change_class: changeClass ?? "product",
+    status: "approved",
+    planner_agent: "planner",
+    approved_by: "main",
+    approved_at: "2026-07-20T00:00:00Z",
+    approved_dev_profile: "sol-high",
+    approved_dev_profile_reason: "fixture",
+    approved_dev_profile_risk_signals: ["cross_cutting"],
+    planned_implementation_files: 1,
+    planned_implementation_lines: 1,
+    estimate_points: 1,
+    planning_reviewed_by: "reviewer",
+    planning_review_decision: "pass",
+    planning_reviewed_at: "2026-07-20T00:00:00Z",
+    classification_approved_by: "main",
+    classification_approved_at: "2026-07-20T00:00:00Z",
+    classification_approval_reason: "fixture classification",
+  };
+  writeTaskEvidence(taskDir, "PLAN.md", planMetadata);
+  const qaPlanMetadata = {
+    task_id: taskId,
+    change_class: changeClass ?? "product",
+    status: "approved",
+    qa_agent: "qa",
+    approved_by: "main",
+    approved_at: "2026-07-20T00:00:00Z",
+    implementation_reviewed_at: "2026-07-20T00:00:00Z",
+    expectation_changed: false,
+  };
+  writeTaskEvidence(taskDir, "QA_PLAN.md", qaPlanMetadata);
+  const reviewMetadata = {
+    task_id: taskId,
+    reviewer_agent: "reviewer",
+    reviewed_commit: candidateCommit,
+    decision: "pass",
+    make_check: "pass",
+  };
+  writeTaskEvidence(taskDir, "REVIEW_RESULT.md", reviewMetadata);
+  const qaResultMetadata = {
+    task_id: taskId,
+    qa_agent: "qa",
+    tested_commit: mergedCommit,
+    tested_at: "2026-07-20T00:00:00Z",
+    decision: "pass",
+  };
+  writeTaskEvidence(taskDir, "QA_RESULT.md", qaResultMetadata);
+  const safetyChecks = Object.fromEntries(SAFETY_CHECK_KEYS.map((key) => [key, "pass"]));
+  const handoverMetadata = {
+    task_id: taskId,
+    status: "complete",
+    completed_at: "2026-07-20T00:00:00Z",
+    safety_checks: safetyChecks,
+    safety_checked_at: "2026-07-20T00:00:00Z",
+    safety_check_digest: safetyCheckDigest(candidateTree, mergeTree, safetyChecks),
+    safety_candidate_tree: candidateTree,
+    safety_merge_tree: mergeTree,
+  };
+  writeTaskEvidence(taskDir, "HANDOVER.md", handoverMetadata);
+  fs.mkdirSync(path.join(root, "wiki", "ingestions"), { recursive: true });
+  fs.writeFileSync(path.join(root, "wiki", "ingestions", `${taskId}.json`), "{}\n");
+  const task = {
+    id: taskId,
+    status: "done",
+    estimate_points: 1,
+    task_dir: path.relative(root, taskDir),
+    merged_commit: mergedCommit,
+    assignees: { main: "main", planner: "planner", dev: "dev-sol-high", reviewer: "reviewer", qa: "qa" },
+  };
+  if (changeClass !== undefined) task.change_class = changeClass;
+  return { root, taskDir, backlog: { tasks: [task] }, taskId, planMetadata, qaPlanMetadata, reviewMetadata, qaResultMetadata, handoverMetadata };
+}
+
+test("product Done gates remain required and missing change_class stays product", () => {
+  const fixture = createDoneTaskFixture();
+  try {
+    assert.deepEqual(checkTask(fixture.root, fixture.backlog, fixture.taskId), []);
+    fs.rmSync(path.join(fixture.root, "wiki", "ingestions", `${fixture.taskId}.json`));
+    assert.ok(checkTask(fixture.root, fixture.backlog, fixture.taskId).some((error) => error.includes("Wiki ingestion receipt")));
+    fs.mkdirSync(path.join(fixture.root, "wiki", "ingestions"), { recursive: true });
+    fs.writeFileSync(path.join(fixture.root, "wiki", "ingestions", `${fixture.taskId}.json`), "{}\n");
+    writeTaskEvidence(fixture.taskDir, "REVIEW_RESULT.md", { ...fixture.reviewMetadata, decision: "pending" });
+    assert.ok(checkTask(fixture.root, fixture.backlog, fixture.taskId).some((error) => error.includes("review PASS")));
+    fixture.backlog.tasks[0].change_class = "unknown";
+    assert.ok(checkTask(fixture.root, fixture.backlog, fixture.taskId).some((error) => error.includes("change_class")));
+  } finally {
+    fs.rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test("product Done rejects each representative QA, HANDOVER, and commit omission", async (t) => {
+  const mutations = {
+    "QA decision": (fixture) => { fixture.qaResultMetadata.decision = "pending"; },
+    "QA identity": (fixture) => { fixture.qaResultMetadata.qa_agent = "other"; },
+    "QA tested commit missing": (fixture) => { delete fixture.qaResultMetadata.tested_commit; },
+    "HANDOVER status": (fixture) => { fixture.handoverMetadata.status = "draft"; },
+    "HANDOVER completed_at": (fixture) => { delete fixture.handoverMetadata.completed_at; },
+    "merged commit missing": (fixture) => { delete fixture.backlog.tasks[0].merged_commit; },
+    "reviewed commit invalid": (fixture) => { fixture.reviewMetadata.reviewed_commit = "0".repeat(40); },
+    "tested commit invalid": (fixture) => { fixture.qaResultMetadata.tested_commit = "0".repeat(40); },
+  };
+  for (const [name, mutate] of Object.entries(mutations)) {
+    await t.test(name, () => {
+      const fixture = createDoneTaskFixture();
+      try {
+        mutate(fixture);
+        writeTaskEvidence(fixture.taskDir, "REVIEW_RESULT.md", fixture.reviewMetadata);
+        writeTaskEvidence(fixture.taskDir, "QA_RESULT.md", fixture.qaResultMetadata);
+        writeTaskEvidence(fixture.taskDir, "HANDOVER.md", fixture.handoverMetadata);
+        assert.notDeepEqual(checkTask(fixture.root, fixture.backlog, fixture.taskId), []);
+      } finally {
+        fs.rmSync(fixture.root, { recursive: true, force: true });
+      }
+    });
+  }
+});
+
+test("safety_contract Done accepts TASK-0024 evidence without product PASS artifacts", () => {
+  const fixture = createDoneTaskFixture({ taskId: "TASK-0024", changeClass: "safety_contract", legacyTask0024: true });
+  try {
+    fs.rmSync(path.join(fixture.root, "wiki"), { recursive: true, force: true });
+    writeTaskEvidence(fixture.taskDir, "REVIEW_RESULT.md", { task_id: fixture.taskId, decision: "pending" });
+    writeTaskEvidence(fixture.taskDir, "QA_RESULT.md", { task_id: fixture.taskId, decision: "pending" });
+    assert.deepEqual(checkTask(fixture.root, fixture.backlog, fixture.taskId), []);
+    const plan = path.join(fixture.taskDir, "PLAN.md");
+    fs.writeFileSync(plan, fs.readFileSync(plan, "utf8").replace('planning_review_decision: "pass"', 'planning_review_decision: "pending"'));
+    assert.ok(checkTask(fixture.root, fixture.backlog, fixture.taskId).some((error) => error.includes("planning review PASS")));
+  } finally {
+    fs.rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test("safety_contract rejects product-path classification spoofing", () => {
+  const fixture = createDoneTaskFixture({ changeClass: "safety_contract", productPath: true });
+  try {
+    const errors = checkTask(fixture.root, fixture.backlog, fixture.taskId);
+    assert.ok(errors.some((error) => error.includes("product or unapproved path")));
+  } finally {
+    fs.rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test("safety_contract rejects rename, copy, and non-no-ff spoofing", async (t) => {
+  for (const [name, options, expected] of [
+    ["rename", { renameSpoof: true }, "product or unapproved path"],
+    ["copy", { copySpoof: true }, "product or unapproved path"],
+    ["non-no-ff", { nonNoFf: true }, "two-parent no-ff"],
+  ]) {
+    await t.test(name, () => {
+      const fixture = createDoneTaskFixture({ changeClass: "safety_contract", ...options });
+      try {
+        assert.ok(checkTask(fixture.root, fixture.backlog, fixture.taskId).some((error) => error.includes(expected)));
+      } finally {
+        fs.rmSync(fixture.root, { recursive: true, force: true });
+      }
+    });
+  }
+});
+
+test("safety_contract rejects missing or inconsistent planning evidence", async (t) => {
+  const mutations = {
+    "reviewer mismatch": (fixture) => { fixture.planMetadata.planning_reviewed_by = "other"; },
+    "PLAN class mismatch": (fixture) => { fixture.planMetadata.change_class = "product"; },
+    "QA PLAN class mismatch": (fixture) => { fixture.qaPlanMetadata.change_class = "product"; },
+    "classification reason missing": (fixture) => { delete fixture.planMetadata.classification_approval_reason; },
+    "approval timestamp inconsistent": (fixture) => { fixture.planMetadata.classification_approved_at = "2026-07-19T00:00:00Z"; },
+  };
+  for (const [name, mutate] of Object.entries(mutations)) {
+    await t.test(name, () => {
+      const fixture = createDoneTaskFixture({ changeClass: "safety_contract" });
+      try {
+        mutate(fixture);
+        writeTaskEvidence(fixture.taskDir, "PLAN.md", fixture.planMetadata);
+        writeTaskEvidence(fixture.taskDir, "QA_PLAN.md", fixture.qaPlanMetadata);
+        assert.notDeepEqual(checkTask(fixture.root, fixture.backlog, fixture.taskId), []);
+      } finally {
+        fs.rmSync(fixture.root, { recursive: true, force: true });
+      }
+    });
+  }
+});
+
+test("safety_contract rejects incomplete checks, digest mismatch, and tree mismatch", async (t) => {
+  const mutations = {
+    "missing exact check": (fixture) => { delete fixture.handoverMetadata.safety_checks.docs_lint; },
+    "unexpected check": (fixture) => { fixture.handoverMetadata.safety_checks.extra = "pass"; },
+    "failed check": (fixture) => { fixture.handoverMetadata.safety_checks.make_check = "pending"; },
+    "digest mismatch": (fixture) => { fixture.handoverMetadata.safety_check_digest = "0".repeat(64); },
+    "tree mismatch": (fixture) => { fixture.handoverMetadata.safety_candidate_tree = "0".repeat(40); },
+  };
+  for (const [name, mutate] of Object.entries(mutations)) {
+    await t.test(name, () => {
+      const fixture = createDoneTaskFixture({ changeClass: "safety_contract" });
+      try {
+        mutate(fixture);
+        writeTaskEvidence(fixture.taskDir, "HANDOVER.md", fixture.handoverMetadata);
+        assert.notDeepEqual(checkTask(fixture.root, fixture.backlog, fixture.taskId), []);
+      } finally {
+        fs.rmSync(fixture.root, { recursive: true, force: true });
+      }
+    });
+  }
 });
 
 test("DEV gate rejects missing role separation and worktree assignment", () => {

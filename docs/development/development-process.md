@@ -21,6 +21,8 @@ merge確認 → review/qa candidate/treeの不一致または環境依存確認
 
 `status`は`backlog | plan | dev | qa | blocked | done | cancelled`だけを使用する。`blocked`では`resume_status`に復帰先を記録し、復帰先フェーズの承認、担当分離、ブランチ、ワークツリー、コミット証拠などの不変条件を維持する。ブロック理由が不変条件そのものの欠落である場合は、欠落を許容せず、復帰先を前フェーズへ戻して記録する。
 
+`backlog.yaml`の`change_class`は`product | safety_contract`だけを使用する。フィールドがない既存Taskは`product`として扱い、未知値はfail-closedする。`safety_contract`は製品成果物を変更しないTaskだけに指定し、Task契約の対象外宣言、独立計画レビュー、Main承認、実際のmerge差分を照合する。分類を変更する場合はTask、PLAN、QA_PLANを再承認し、理由と時刻を記録する。
+
 ## 2. Task起票
 
 main AgentまたはTask起票担当は次を行う。
@@ -81,7 +83,9 @@ FAILは`implementation_defect | qa_plan_defect | requirement_gap | environment_i
 - QA計画または試験手順の誤り: QAへ戻して再試験する。
 - TaskまたはPLANの曖昧さ: PLANへ戻して合意し直す。
 
-PASSまたはバグ化によって元Taskを閉じられる場合、`QA_RESULT.md`と`HANDOVER.md`を完成させる。Wiki AgentがHANDOVERを取り込んでダイジェスト付きreceiptを直接コミットした後、main Agentが`status: done`をコミットし、ワークツリーとトピックブランチを削除する。
+製品変更をPASSまたはバグ化によって閉じられる場合、`QA_RESULT.md`と`HANDOVER.md`を完成させる。Wiki AgentがHANDOVERを取り込んでダイジェスト付きreceiptを直接コミットした後、main Agentが`status: done`をコミットし、ワークツリーとトピックブランチを削除する。
+
+安全契約変更の完了判定は、承認済みPLANとTASK-first QA PLAN、独立計画レビューのPASS、Mainの分類承認、対象検査のPASS、no-ff merge、第2親の案 treeとmerge treeの一致、許可された統制文書差分を要求する。PLANとQA PLANの`change_class`は`safety_contract`とし、`planning_reviewed_by`は担当レビュアーに一致させる。`PLAN.md`には`planning_review_decision`、`planning_reviewed_at`、`classification_approved_by`、`classification_approved_at`、空でない`classification_approval_reason`も記録し、計画レビュー、PLAN、QA PLAN、分類承認の時刻順を維持する。`HANDOVER.md`の`safety_checks`は`process_tests`、`contract_scope`、`docs_lint`、`make_check`だけを持ち、すべて`pass`とする。`safety_check_digest`は`safety_candidate_tree`、`safety_merge_tree`、上記順の検査名と結果を`key=value`の改行区切りで正規化し、末尾改行を含めてSHA-256を計算する。名前変更またはコピーを含む差分は安全契約経路で拒否する。製品用のREVIEW/QA PASS、製品用の完了HANDOVER、Wiki取込記録は作成しない。
 
 ## 6. ブートストラップ例外
 
