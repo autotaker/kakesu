@@ -1,5 +1,6 @@
 ---
 task_id: "{{TASK_ID}}"
+change_class: ""
 status: draft
 planner_agent: ""
 approved_by: ""
@@ -9,6 +10,7 @@ planning_review_decision: "pending"
 planning_reviewed_at: ""
 classification_approved_by: ""
 classification_approved_at: ""
+classification_approval_reason: ""
 planned_implementation_files: 0
 planned_implementation_lines: 0
 estimate_points: 1

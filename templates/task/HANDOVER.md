@@ -2,7 +2,11 @@
 task_id: "{{TASK_ID}}"
 status: draft
 completed_at: ""
-safety_checks: {}
+safety_checks:
+  process_tests: pending
+  contract_scope: pending
+  docs_lint: pending
+  make_check: pending
 safety_checked_at: ""
 safety_check_digest: ""
 safety_candidate_tree: ""
@@ -34,7 +38,7 @@ safety_merge_tree: ""
 
 - TODO
 
-安全契約変更では`safety_checks`の各検査を`pass`として記録し、実行結果のSHA-256、第2親の案 tree、merge treeをフロントマターへ記録する。製品用のREVIEW/QA PASS、製品用の完了HANDOVER、Wiki取込記録を代用証跡として作成しない。
+安全契約変更では`safety_checks`を`process_tests`、`contract_scope`、`docs_lint`、`make_check`の4項目だけとし、すべて`pass`を記録する。`safety_check_digest`は案 tree、merge tree、上記順の検査名と結果を`key=value`の改行区切りで正規化し、末尾改行を含めたSHA-256とする。第2親の案 treeとmerge treeもフロントマターへ記録する。製品用のREVIEW/QA PASS、製品用の完了HANDOVER、Wiki取込記録を代用証跡として作成しない。
 
 ## 判断
 
