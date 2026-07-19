@@ -160,14 +160,14 @@ func readLifecycle(ctx context.Context, reader creationReader, taskID string) (L
 		return LifecycleReadModel{}, &StorageError{Operation: "read lifecycle", Err: err}
 	}
 	model.OwnerActive = !releasedAt.Valid
-	rows, err := reader.QueryContext(ctx, `SELECT sequence, event_type, payload FROM task_events WHERE task_id = ? ORDER BY sequence`, taskID)
+	rows, err := reader.QueryContext(ctx, `SELECT sequence, event_type, payload, schema_id, schema_revision, schema_digest FROM task_events WHERE task_id = ? ORDER BY sequence`, taskID)
 	if err != nil {
 		return LifecycleReadModel{}, &StorageError{Operation: "read lifecycle events", Err: err}
 	}
 	defer rows.Close()
 	for rows.Next() {
 		var event TaskEvent
-		if err := rows.Scan(&event.Sequence, &event.Type, &event.Payload); err != nil {
+		if err := rows.Scan(&event.Sequence, &event.Type, &event.Payload, &event.Schema.ID, &event.Schema.Revision, &event.Schema.Digest); err != nil {
 			return LifecycleReadModel{}, &StorageError{Operation: "scan lifecycle events", Err: err}
 		}
 		model.Events = append(model.Events, event)

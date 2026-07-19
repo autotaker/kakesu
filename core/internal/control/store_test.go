@@ -17,7 +17,7 @@ func testInput() CreateTaskInput {
 		Contract: ContractSnapshot{
 			SchemaID:       "task-contract",
 			SchemaRevision: "1",
-			SchemaDigest:   "sha256:fixture",
+			SchemaDigest:   "sha256:1111111111111111111111111111111111111111111111111111111111111111",
 			JSON:           []byte(`{"goal":"durable"}`),
 		},
 	}
@@ -210,7 +210,8 @@ func TestCreateTaskIsAtomicAndTyped(t *testing.T) {
 	if !reflect.DeepEqual(model.Contract, input.Contract) {
 		t.Fatalf("contract = %#v, want %#v", model.Contract, input.Contract)
 	}
-	wantEvents := []TaskEvent{{Sequence: 1, Type: "TaskCreated", Payload: []byte(`{}`)}, {Sequence: 2, Type: "OwnerAssigned", Payload: []byte(`{}`)}}
+	legacyEventSchema := SchemaReference{ID: "urn:kakesu:control:task-event:legacy", Revision: "1", Digest: "sha256:0000000000000000000000000000000000000000000000000000000000000000"}
+	wantEvents := []TaskEvent{{Sequence: 1, Type: "TaskCreated", Payload: []byte(`{}`), Schema: legacyEventSchema}, {Sequence: 2, Type: "OwnerAssigned", Payload: []byte(`{}`), Schema: legacyEventSchema}}
 	if !reflect.DeepEqual(model.Events, wantEvents) {
 		t.Fatalf("events = %#v, want %#v", model.Events, wantEvents)
 	}
@@ -316,7 +317,7 @@ func TestOpenStoreFailsClosedOnInitializationFailure(t *testing.T) {
 
 func assertTableCounts(t *testing.T, db *sql.DB, expected int) {
 	t.Helper()
-	for _, table := range []string{"tasks", "task_owners", "task_workspaces", "task_contracts", "task_progress"} {
+	for _, table := range []string{"tasks", "task_owners", "task_workspaces", "task_contracts", "task_progress", "task_contract_history", "task_progress_history"} {
 		var count int
 		if err := db.QueryRow(`SELECT COUNT(*) FROM ` + table).Scan(&count); err != nil {
 			t.Fatalf("count %s: %v", table, err)
