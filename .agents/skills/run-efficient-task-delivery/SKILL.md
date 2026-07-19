@@ -11,7 +11,7 @@ Repository `AGENTS.md` and development contracts take precedence. Do not use thi
 
 ## Classify the work before choosing gates
 
-Use the full product path when any product code, test, runtime or build configuration, schema, dependency, generated input, or externally observable behavior changes. Preserve the repository's complete PLAN, QA_PLAN, DEV, independent REVIEW, and postmerge QA gates.
+Use the full product path when any product code, test, runtime or build configuration, schema, dependency, generated input, or externally observable behavior changes. Preserve the repository's complete PLAN, QA_PLAN, DEV, same-candidate independent REVIEW/QA, and postmerge environment-dependent confirmation gates.
 
 Use the safety-contract path when no product artifact changes, but the work changes a security or authority boundary, threat model, acceptance condition, feature scope, dependency, resource cap, shedding order, or mandatory development control. Require a TASK and PLAN, an independent TASK-first QA_PLAN, and an independent planning review. Do not create DEV, REVIEW, or QA evidence that claims a product implementation passed when no product implementation exists.
 
@@ -41,11 +41,17 @@ Target five to ten minutes as a non-binding diagnostic. Exceeding it is a reason
 
 ## Run the full product gates in order
 
-1. Keep `PLAN → DEV → REVIEW → QA` sequential. Keep DEV, Reviewer, and QA on independent Agents.
+1. Keep `PLAN → DEV` as the implementation gate. After DEV fixes `candidate_commit` and `candidate_tree`, start Reviewer and QA independently and in parallel from that same candidate; neither PASS is the other's start condition.
 2. Start one child at a time with native `agents.spawn_agent`. Treat `task_name` as a tracking identifier and `agent_type` as the role selector; never infer one from the other.
 3. When the selected role differs from the caller, pass `fork_turns="none"`. Observe the requested and effective model, reasoning effort, and permission/runtime conditions. If `agent_type` is missing, native spawn is unavailable, or model/effort differs, stop, record requested/observed values and runtime evidence, and let the main Agent decide whether the existing, narrowly scoped fallback is allowed. Do not make CLI or `make work-agent` fallback the normal path.
 4. Give each child one owned responsibility and a completion contract: changed paths, prohibited operations, local checks, next-gate prerequisites, and a short evidence summary. Require children to avoid stage, commit, merge, and `.git` writes.
 5. Keep the main Agent responsible for shared locks, scope and hook checks, staging, commits, post-checks, merge, and QA-failure classification. Only the main Agent approves and merges to `main`.
+
+### Risk-based QA and candidate evidence
+
+Before DEV, QA assigns every case exactly one `qa_execution_mode`: `evidence-review`, `focused-rerun`, or `live-e2e`, with a rationale and fail-closed condition. `evidence-review` independently audits candidate-bound DEV evidence rather than accepting self-approval; the audit includes case ID, `candidate_commit`, `candidate_tree`, command/test, environment or fixture, cache condition, exit, artifact digest, unexecuted reason, negative detection, and test weakening. `focused-rerun` is allowed for a high-risk case only when hermetic, deterministic, and bounded fixtures fully reproduce the acceptance truth. Cases depending on real OS privilege/auth (including sudo/PAM), install/deploy/generated-config placement, external services or side effects, real restart/rollback/cleanup, or environment-specific integration require `live-e2e`. Unknown environment or unsafe cleanup remains blocked and cannot PASS through another mode.
+
+If a review fix changes the candidate, Main alone chooses `qa_carry_forward`, focused rerun, or full rerun. Carry-forward requires every closed condition: the old QA PASS is bound to the old commit/tree; the complete old/new diff and digest are recorded; every changed path and byte is limited to non-executable typo, whitespace, comment, link, or evidence metadata with no product, runtime, test, schema, config, dependency, generated-artifact, public/safety-contract, acceptance, or QA_PLAN semantic change; the affected QA case set is empty; and an independent Reviewer confirms no behavior, test, safety, or contract impact plus `make check` PASS on the new candidate. Every exclusion must be false: QA FAIL; acceptance or QA_PLAN change; auth, secrets, sudo/PAM, IPC/Schema/config/dependency, concurrency/lifecycle/persistence/error/fail-closed impact; test deletion/weakening; unknown impact; or evidence-to-candidate/tree mismatch. A non-empty affected-case set requires rerunning those cases; unbounded impact requires a full rerun. Main records old/new commit/tree, complete diff/digest, the empty affected-case set, Reviewer/check evidence, and reason. After merge Main compares `merge_tree` with the approved candidate tree; only when equal and no environment-dependent case exists may duplicate full confirmation be omitted. Environment-dependent cases retain case-level post-merge confirmation. Existing Task evidence and Lap30 event Schema/JSONL remain valid and are not rewritten.
 
 ## Bound context and verification
 

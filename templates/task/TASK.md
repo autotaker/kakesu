@@ -28,6 +28,8 @@ created_at: "{{DATE}}"
 ## 受け入れ条件
 
 - [ ] TODO
+- [ ] 各QA ケースに`qa_execution_mode`（`evidence-review | focused-rerun | live-e2e`）と選択理由、fail-closed条件がある。
+- [ ] DEV 案、独立REVIEW/QA、修正後のcarry-forwardまたはrerun、`merge_tree`確認を証跡化できる。
 
 ## 検討すべき設計観点
 
@@ -38,7 +40,8 @@ created_at: "{{DATE}}"
 - [ ] 受け入れ条件を満たしている。
 - [ ] 必要な実装、テスト、文書が完成している。
 - [ ] 独立レビューと`make check`がPASSしている。
-- [ ] マージ後QAが完了している。
+- [ ] REVIEWとQAが同一案から独立に評価され、未実施/blocked理由とMain判断が記録されている。
+- [ ] `merge_tree`と承認案 treeを比較し、環境依存ケースのマージ後確認を完了している。
 - [ ] HANDOVERがWiki Agentに取り込みされている。
 
 ## 関連コンテキスト

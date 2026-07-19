@@ -23,21 +23,22 @@ make worktree-create TASK=TASK-0001
 - 無関係な整形、生成物、ローカル設定を混ぜない。
 - main Agent以外は`main`を更新しない。
 - force push、履歴改変、破壊的resetを通常手順にしない。
+- DEV完了時に`candidate_commit`と`candidate_tree`を固定し、同じtreeをREVIEWとQAへ渡す。案を変更した場合は旧結果を自動で再利用しない。
 
 ## マージ
 
-main Agentは`REVIEW_RESULT.md`のPASS、`make check`、QA計画の再確認、cleanなワークツリーを確認する。
+main Agentは`REVIEW_RESULT.md`と`QA_RESULT.md`が同一案を対象とし、`make check`、QA計画の再確認、cleanなワークツリーを確認する。修正後のcarry-forwardは[QAガイドライン](qa.md)の閉じた`CF-1`から`CF-7`を全て証明し、Mainが`QA_RESULT.md`へ記録した場合だけ許可する。影響QAケース集合が空でない、禁止条件が真、または影響が不明ならrerunへfail-closedする。
 
 ```sh
 git switch main
 git merge --no-ff task/TASK-0001-example
 ```
 
-マージコミットでTask境界を残す。squash mergeは標準手順にしない。
+マージコミットでTask境界を残す。squash mergeは標準手順にしない。マージ後に実際の`merge_tree`と承認案 treeを比較し、一致しない場合はQA結果を持ち越さず影響ケースを再評価する。一致して環境依存ケースがない場合は全面確認を重複させないが、install/deploy/config生成、実権限、外部作用、ロールバック等の環境依存ケースはケース単位で確認する。
 
 ## 保持と削除
 
-ワークツリーとブランチはマージ直後に削除せず、QA完了まで保持する。
+ワークツリーとブランチはマージ直後に削除せず、案と`merge_tree`の照合および環境依存ケースの確認が完了するまで保持する。
 
 - QA PASSまたはバグ化で元Taskを閉じた: ワークツリーを削除し、マージ済みブランチを削除する。
 - revertしてDEVへ戻す: 同じワークツリーとブランチを再利用する。

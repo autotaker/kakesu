@@ -8,6 +8,7 @@
 - 承認済み`PLAN.md`
 - `QA_PLAN.md`
 - 対象ブランチの全差分とコミット
+- DEVが固定した`candidate_commit`と`candidate_tree`、candidate-boundなHANDOVER証跡
 - 変更範囲に適用される`AGENTS.md`
 - 言語別コーディングガイドライン
 
@@ -36,5 +37,11 @@
 - 変更に応じた専門検査が成功している。
 - 各受け入れ条件に実装または試験の根拠がある。
 - `REVIEW_RESULT.md`にレビュー対象コミット、コマンド、結果、残存リスクがある。
+- QAと同一案から独立に開始し、QAのPASSを前提にしていない。
+- 案の変更後は対象コミット/treeを更新し、旧案の結果を暗黙に再利用していない。
+
+## 並行評価と修正
+
+レビュアー AgentはQA Agentと同じ案を評価するが、相互のPASSを開始条件にしない。レビュー結果には対象`candidate_commit`/`candidate_tree`、実行コマンド、`make check`、差分のダイジェストと残存リスクを記録する。修正で案が変わった場合はMainが新案を確定し、QAへ再束縛する。carry-forward候補では、独立レビュアーが全差分を確認し、挙動、テスト、安全性、契約への影響なしと新案の`make check` PASSを記録する。Mainの`qa_carry_forward`記録がない限り、旧案のQA結果を新案へ移送しない。
 
 指摘修正後は変更箇所だけでなく、同じ失敗モードで再レビューする。

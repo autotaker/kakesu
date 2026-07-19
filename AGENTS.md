@@ -6,7 +6,7 @@
 
 ### 製品変更
 
-製品コード、テスト、ランタイム/build設定、Schema、宣言済み製品依存の追加・削除・バージョン・設定、生成される製品入力または成果物、外部観測可能な挙動のいずれかを変更する場合は、外部の運用リポジトリ`../agent-harness-work`に登録したTaskを起点とし、完全な`PLAN → QA_PLAN → DEV → 独立REVIEW → マージ後QA`を適用する。
+製品コード、テスト、ランタイム/build設定、Schema、宣言済み製品依存の追加・削除・バージョン・設定、生成される製品入力または成果物、外部観測可能な挙動のいずれかを変更する場合は、外部の運用リポジトリ`../agent-harness-work`に登録したTaskを起点とし、完全な`PLAN → QA_PLAN → DEV → 同一candidateの独立REVIEW/QA → マージ後の環境依存確認`を適用する。
 
 ### 安全契約変更
 
@@ -29,13 +29,23 @@
 2. 製品変更では`PLAN / DEV / QA`の各ゲートを飛ばさない。
 3. 製品変更のDEV開始前に承認済み`PLAN.md`と独立した`QA_PLAN.md`を用意する。
 4. 製品変更ではDEV Agentとレビュアー Agent、DEV AgentとQA Agentを分離する。
-5. 製品変更のレビュアー Agentは独立レビューと`make check`を完了し、外部運用リポジトリの`REVIEW_RESULT.md`へ証跡を残す。
-6. main Agentだけが`main`へ`--no-ff`でマージする。
-7. マージ後QAのFAILは実装不具合と決めつけず、[QAガイドライン](docs/development/qa.md)に従って原因を分類する。
+5. 製品変更のレビュアー AgentはDEVが固定した同一`candidate_commit`/`candidate_tree`を独立にレビューし、`make check`を完了して外部運用リポジトリの`REVIEW_RESULT.md`へ対象を記録する。QA Agentも同じ案から独立に開始し、相互のPASSを開始条件にしない。
+6. main Agentだけが`main`へ`--no-ff`でマージする。承認案と`merge_tree`の同一性を確認し、差異があれば結果を持ち越さない。
+7. 案またはマージ後確認のFAILは実装不具合と決めつけず、[QAガイドライン](docs/development/qa.md)に従って原因を分類する。
 8. 配下に別の`AGENTS.md`がある場合は、その追加手順も守る。
 9. 子Agentの標準起動は内部`agents.spawn_agent`とし、`agent_type`欠落、内部`Spawn Agent`利用不能、または`model/effort`不一致を停止・証跡化した後に限り、親が`make work-agent TASK=TASK-NNNN ACTION=<action>`を`fallback`として使う。運用リポジトリへ証跡を書く場合は親が共通ロックを実行全体で保持し、直接並行編集しない。
 10. どの経路でも子Agentはステージ、コミット、マージ、`.git`書き込みを行わない。運用リポジトリのコミットは、子成功後に共通ロックを保持するランチャー親がスコープ、フック、検証を通して作成する。
 11. ロールとモデルは`.codex`の正規 契約に従う。mainは`Sol/high`、PLAN/QA/REVIEWは`Terra/medium`に固定し、DEVは承認済みPLANの`luna-xhigh`または`sol-high`を使う。各ロールの`Explorer`は`Luna/medium/read-only`で一件の限定質問だけを扱う。
+
+### 案とQA実施モード
+
+製品変更では、DEVが評価対象を`candidate_commit`（評価対象コミット）と`candidate_tree`（そのtree）として固定し、ケース ID、コマンド/テスト、環境またはフィクスチャ、cache条件、exit、成果物 ダイジェスト、未実施理由を運用証跡へ結び付ける。QA_PLANはDEV開始前に各ケースへ次の一つを理由付きで割り当てる。
+
+- `evidence-review`: candidate-bound証跡、テストの失敗検出能力、ネガティブ ケース、弱体化の有無をQAが独立監査する。
+- `focused-rerun`: 高リスクでもhermetic・deterministic・上限付き フィクスチャで受け入れ真実を完全再現できるケースを、QAが独立に限定再実行する。
+- `live-e2e`: 実OS権限/auth（sudo/PAMを含む）、実配置、外部作用、実restart/ロールバック/クリーンアップ、環境固有integrationに依存するケースを、承認済み実環境で確認する。環境または安全なクリーンアップが不明ならblockedのままとし、別モードのPASSで代替しない。
+
+高リスク信号、証跡不足、案/tree不一致、影響不明は`evidence-review`のPASSを禁止する。REVIEWとQAは同一案から独立かつ並行に評価し、Mainだけが修正後の`qa_carry_forward`または限定/全面再実行を選ぶ。carry-forwardは[QAガイドライン](docs/development/qa.md)の閉じた`CF-1`から`CF-7`を全て証明した場合だけ許可する。変更は実行されない誤字、空白、コメント、リンク、証跡メタデータに限定し、意味変更は許可しない。影響QAケース集合が空でなければ該当ケースを再実行し、限定できなければ全面再実行とする。QA FAIL、受け入れ条件/QA_PLAN変更、認証認可、秘密、sudo/PAM、IPC/Schema/設定/依存、並行性/ライフサイクル/persistence/エラー/fail-closed、テスト削除/弱体化、影響不明、証跡と評価対象の案/tree不一致はcarry-forwardを禁止する。`merge_tree == candidate_tree`で環境依存ケースがない場合だけ全面的な重複確認を省略でき、環境依存ケースはマージ後もケース単位で確認する。既存Task証跡とLap30 イベント Schema/JSONLは遡及変更しない。
 
 ## 子Agentの標準起動
 
@@ -50,7 +60,7 @@ agents.spawn_agent(
 )
 ```
 
-起動後は、選択したロールの契約と実際の`model/effort`を照合する。不一致なら子の成果を採用せず停止し、requested/observed値とランタイム条件を証跡化してから`fallback`可否を判断する。`agent_type`または内部`Spawn Agent`が利用できない場合も、親は原因を記録してから判断する。`fallback`を選べるのはこれらの場合だけであり、親が`make work-agent`（`Explorer`は一問専用の`make explorer-agent`）を使う。ロール対応、順次ゲート、`Explorer`の制約、サンドボックス観測限界は[Agent責務](docs/development/agent-roles.md)を正本とする。
+起動後は、選択したロールの契約と実際の`model/effort`を照合する。不一致なら子の成果を採用せず停止し、requested/observed値とランタイム条件を証跡化してから`fallback`可否を判断する。`agent_type`または内部`Spawn Agent`が利用できない場合も、親は原因を記録してから判断する。`fallback`を選べるのはこれらの場合だけであり、親が`make work-agent`（`Explorer`は一問専用の`make explorer-agent`）を使う。ロール対応、ゲート順序、`Explorer`の制約、サンドボックス観測限界は[Agent責務](docs/development/agent-roles.md)を正本とする。
 
 `role` TOMLの`sandbox_mode`は意図する契約であり、ランタイムで観測できた値だけを証跡に記録する。実効サンドボックスをTOMLの宣言だけで保証済みとは扱わない。子の`stage`、`commit`、`merge`、`.git`書込みは禁止し、共通ロック、スコープ検査、`hook`、`stage`、`commit`、事後検査は親（またはmain）が所有する。
 

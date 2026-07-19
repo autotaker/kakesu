@@ -21,10 +21,18 @@ Taskごとに次の6ファイルを持つ。
 |---|---|---|
 | `TASK.md` | main Agentまたは起票者 | Task契約 |
 | `PLAN.md` | Planner Agent | 設計と実装計画 |
-| `REVIEW_RESULT.md` | レビュアー Agent | 独立レビュー結果 |
+| `REVIEW_RESULT.md` | レビュアー Agent | 同一案の独立レビュー結果（対象コミット/tree付き） |
 | `QA_PLAN.md` | QA Agent | 実装前の受け入れ試験計画と改訂履歴 |
-| `QA_RESULT.md` | QA Agent | マージ後の実施結果とFAIL分類 |
-| `HANDOVER.md` | DEV、QA、main Agent | 成果、運用上の注意、Wiki引き渡し |
+| `QA_RESULT.md` | QA Agent（ケース結果）、main Agent（carry-forward/merge判断） | 案単位のケース別モード実施結果、未実施/blocked理由、FAIL分類、Main判断 |
+| `HANDOVER.md` | DEV、QA、main Agent | candidate-bound DEV証跡、成果、carry-forward/merge確認、運用上の注意、Wiki引き渡し |
+
+### candidate-bound証跡
+
+DEVは`candidate_commit`（評価対象コミット）と`candidate_tree`（そのtree）を固定し、各ケースのケース ID、コマンド/テスト、環境またはフィクスチャ、cache条件、exit、成果物 ダイジェスト、未実施理由を`HANDOVER.md`へ記録する。QAはこの記録を独立監査し、テストのネガティブ検出能力と弱体化の有無、コミット/tree 割り当て、ダイジェスト整合を確認する。既存Taskの証跡へ新規項目を遡及して要求しない。
+
+案単位のQA結果と、REVIEW修正後にMainが結果を引き継ぐ場合の[QAガイドライン](qa.md)の閉じた`CF-1`から`CF-7`は、`QA_RESULT.md`へ記録する。影響QAケース集合が空でなければ該当ケースを再実行し、影響を限定できなければ全面再実行とする。禁止条件が一つでも真または不明なら引き継がない。
+
+Mainは統合後に`merge_tree`を承認案 treeと比較し、環境依存ケースだけを限定確認する。この後続判断も同じTaskの証跡へ記録する。
 
 ## バックログ
 
