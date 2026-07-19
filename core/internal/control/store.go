@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	schemaVersion = 2
+	schemaVersion = 3
 	migrationV1   = `
 CREATE TABLE tasks (task_id TEXT PRIMARY KEY, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);
 CREATE TABLE task_owners (task_id TEXT PRIMARY KEY REFERENCES tasks(task_id) ON DELETE CASCADE, owner_agent_id TEXT NOT NULL);
@@ -23,7 +23,29 @@ ALTER TABLE tasks ADD COLUMN state TEXT NOT NULL DEFAULT 'ready' CHECK (state IN
 ALTER TABLE task_owners ADD COLUMN released_at TEXT;
 ALTER TABLE task_events ADD COLUMN payload BLOB NOT NULL DEFAULT '{}';
 CREATE UNIQUE INDEX one_active_task_per_agent ON task_owners(owner_agent_id) WHERE released_at IS NULL;`
-	migrationSQL = migrationV1 + migrationV2
+	migrationV3 = `
+ALTER TABLE task_contracts RENAME TO task_contracts_v2;
+CREATE TABLE task_contracts (task_id TEXT PRIMARY KEY REFERENCES tasks(task_id) ON DELETE CASCADE, version INTEGER NOT NULL CHECK (version >= 1), schema_id TEXT NOT NULL, schema_revision TEXT NOT NULL, schema_digest TEXT NOT NULL, payload BLOB NOT NULL);
+INSERT INTO task_contracts SELECT * FROM task_contracts_v2;
+DROP TABLE task_contracts_v2;
+CREATE TABLE task_contract_history (task_id TEXT NOT NULL REFERENCES tasks(task_id) ON DELETE CASCADE, version INTEGER NOT NULL CHECK (version >= 1), schema_id TEXT NOT NULL, schema_revision TEXT NOT NULL, schema_digest TEXT NOT NULL, payload BLOB NOT NULL, PRIMARY KEY (task_id, version));
+INSERT INTO task_contract_history SELECT task_id, version, schema_id, schema_revision, schema_digest, payload FROM task_contracts;
+ALTER TABLE task_progress ADD COLUMN schema_id TEXT NOT NULL DEFAULT 'urn:kakesu:control:progress:initial';
+ALTER TABLE task_progress ADD COLUMN schema_revision TEXT NOT NULL DEFAULT '0';
+ALTER TABLE task_progress ADD COLUMN schema_digest TEXT NOT NULL DEFAULT 'sha256:0000000000000000000000000000000000000000000000000000000000000000';
+ALTER TABLE task_progress ADD COLUMN payload BLOB NOT NULL DEFAULT '{}';
+ALTER TABLE task_progress ADD COLUMN through_task_event_sequence INTEGER NOT NULL DEFAULT 0 CHECK (through_task_event_sequence >= 0);
+ALTER TABLE task_progress ADD COLUMN through_agent_run_event_sequence INTEGER NOT NULL DEFAULT 0 CHECK (through_agent_run_event_sequence >= 0);
+ALTER TABLE task_progress RENAME TO task_progress_v2;
+CREATE TABLE task_progress (task_id TEXT PRIMARY KEY REFERENCES tasks(task_id) ON DELETE CASCADE, version INTEGER NOT NULL CHECK (version >= 0), schema_id TEXT NOT NULL DEFAULT 'urn:kakesu:control:progress:initial', schema_revision TEXT NOT NULL DEFAULT '0', schema_digest TEXT NOT NULL DEFAULT 'sha256:0000000000000000000000000000000000000000000000000000000000000000', payload BLOB NOT NULL DEFAULT '{}', through_task_event_sequence INTEGER NOT NULL DEFAULT 0 CHECK (through_task_event_sequence >= 0), through_agent_run_event_sequence INTEGER NOT NULL DEFAULT 0 CHECK (through_agent_run_event_sequence >= 0));
+INSERT INTO task_progress SELECT * FROM task_progress_v2;
+DROP TABLE task_progress_v2;
+CREATE TABLE task_progress_history (task_id TEXT NOT NULL REFERENCES tasks(task_id) ON DELETE CASCADE, version INTEGER NOT NULL CHECK (version >= 0), schema_id TEXT NOT NULL, schema_revision TEXT NOT NULL, schema_digest TEXT NOT NULL, payload BLOB NOT NULL, through_task_event_sequence INTEGER NOT NULL CHECK (through_task_event_sequence >= 0), through_agent_run_event_sequence INTEGER NOT NULL CHECK (through_agent_run_event_sequence >= 0), PRIMARY KEY (task_id, version));
+INSERT INTO task_progress_history SELECT task_id, version, schema_id, schema_revision, schema_digest, payload, through_task_event_sequence, through_agent_run_event_sequence FROM task_progress;
+ALTER TABLE task_events ADD COLUMN schema_id TEXT NOT NULL DEFAULT 'urn:kakesu:control:task-event:legacy';
+ALTER TABLE task_events ADD COLUMN schema_revision TEXT NOT NULL DEFAULT '1';
+ALTER TABLE task_events ADD COLUMN schema_digest TEXT NOT NULL DEFAULT 'sha256:0000000000000000000000000000000000000000000000000000000000000000';`
+	migrationSQL = migrationV1 + migrationV2 + migrationV3
 )
 
 var requiredPragmas = []string{
@@ -68,6 +90,7 @@ type TaskEvent struct {
 	Sequence int
 	Type     string
 	Payload  []byte
+	Schema   SchemaReference
 }
 
 type CreationReadModel struct {
@@ -86,6 +109,7 @@ type Store struct {
 	beforeCommit  func(*sql.Tx) error
 	afterCommit   func()
 	lifecycleHook func(*sql.Tx, string) error
+	versionedHook func(*sql.Tx, string, string) error
 }
 
 func OpenStore(path string) (*Store, error) {
@@ -144,11 +168,18 @@ func (s *Store) migrate(migration string) error {
 			return &StorageError{Operation: "record migration", Err: err}
 		}
 	case count == 1 && minimum == 1 && maximum == 1:
-		if _, err := tx.Exec(migrationV2); err != nil {
+		if _, err := tx.Exec(migrationV2 + migrationV3); err != nil {
 			return &StorageError{Operation: "migration v2", Err: err}
 		}
 		if _, err := tx.Exec(`UPDATE schema_version SET version = ?`, schemaVersion); err != nil {
 			return &StorageError{Operation: "record migration v2", Err: err}
+		}
+	case count == 1 && minimum == 2 && maximum == 2:
+		if _, err := tx.Exec(migrationV3); err != nil {
+			return &StorageError{Operation: "migration v3", Err: err}
+		}
+		if _, err := tx.Exec(`UPDATE schema_version SET version = ?`, schemaVersion); err != nil {
+			return &StorageError{Operation: "record migration v3", Err: err}
 		}
 	case count != 1 || minimum != schemaVersion || maximum != schemaVersion:
 		return &StorageError{Operation: "schema version", Err: fmt.Errorf("unsupported version set count=%d min=%d max=%d", count, minimum, maximum)}
@@ -174,6 +205,8 @@ func (s *Store) CreateTask(ctx context.Context, input CreateTaskInput) (Creation
 		{`INSERT INTO task_workspaces(task_id, workspace_ref) VALUES (?, ?)`, []any{input.TaskID, input.WorkspaceRef}},
 		{`INSERT INTO task_contracts(task_id, version, schema_id, schema_revision, schema_digest, payload) VALUES (?, 1, ?, ?, ?, ?)`, []any{input.TaskID, input.Contract.SchemaID, input.Contract.SchemaRevision, input.Contract.SchemaDigest, input.Contract.JSON}},
 		{`INSERT INTO task_progress(task_id, version) VALUES (?, 0)`, []any{input.TaskID}},
+		{`INSERT INTO task_contract_history SELECT task_id, version, schema_id, schema_revision, schema_digest, payload FROM task_contracts WHERE task_id = ?`, []any{input.TaskID}},
+		{`INSERT INTO task_progress_history SELECT task_id, version, schema_id, schema_revision, schema_digest, payload, through_task_event_sequence, through_agent_run_event_sequence FROM task_progress WHERE task_id = ?`, []any{input.TaskID}},
 		{`INSERT INTO task_events(task_id, sequence, event_type) VALUES (?, 1, 'TaskCreated'), (?, 2, 'OwnerAssigned')`, []any{input.TaskID, input.TaskID}},
 	}
 	for _, statement := range statements {
@@ -233,14 +266,14 @@ func readCreation(ctx context.Context, reader creationReader, taskID string) (Cr
 	if err != nil {
 		return CreationReadModel{}, &StorageError{Operation: "read creation", Err: err}
 	}
-	rows, err := reader.QueryContext(ctx, `SELECT sequence, event_type, payload FROM task_events WHERE task_id = ? ORDER BY sequence`, taskID)
+	rows, err := reader.QueryContext(ctx, `SELECT sequence, event_type, payload, schema_id, schema_revision, schema_digest FROM task_events WHERE task_id = ? ORDER BY sequence`, taskID)
 	if err != nil {
 		return CreationReadModel{}, &StorageError{Operation: "read events", Err: err}
 	}
 	defer rows.Close()
 	for rows.Next() {
 		var event TaskEvent
-		if err := rows.Scan(&event.Sequence, &event.Type, &event.Payload); err != nil {
+		if err := rows.Scan(&event.Sequence, &event.Type, &event.Payload, &event.Schema.ID, &event.Schema.Revision, &event.Schema.Digest); err != nil {
 			return CreationReadModel{}, &StorageError{Operation: "scan events", Err: err}
 		}
 		model.Events = append(model.Events, event)
