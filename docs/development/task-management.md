@@ -21,10 +21,16 @@ Taskごとに次の6ファイルを持つ。
 |---|---|---|
 | `TASK.md` | main Agentまたは起票者 | Task契約 |
 | `PLAN.md` | Planner Agent | 設計と実装計画 |
-| `REVIEW_RESULT.md` | レビュアー Agent | 独立レビュー結果 |
+| `REVIEW_RESULT.md` | レビュアー Agent | 同一案の独立レビュー結果（対象コミット/tree付き） |
 | `QA_PLAN.md` | QA Agent | 実装前の受け入れ試験計画と改訂履歴 |
-| `QA_RESULT.md` | QA Agent | マージ後の実施結果とFAIL分類 |
-| `HANDOVER.md` | DEV、QA、main Agent | 成果、運用上の注意、Wiki引き渡し |
+| `QA_RESULT.md` | QA Agent（ケース結果）、main Agent（carry-forward/merge判断） | 案単位のケース別モード実施結果、未実施/blocked理由、FAIL分類、Main判断 |
+| `HANDOVER.md` | DEV、QA、main Agent | candidate-bound DEV証跡、成果、carry-forward/merge確認、運用上の注意、Wiki引き渡し |
+
+### candidate-bound証跡
+
+DEVは`candidate_commit`（評価対象コミット）と`candidate_tree`（そのtree）を固定し、各ケースのケース ID、コマンド/テスト、環境またはフィクスチャ、cache条件、exit、成果物 ダイジェスト、未実施理由を`HANDOVER.md`へ記録する。QAはこの記録を独立監査し、テストのネガティブ検出能力と弱体化の有無、コミット/tree 割り当て、ダイジェスト整合を確認する。既存Taskの証跡へ新規項目を遡及して要求しない。
+
+REVIEW修正後にMainが結果を引き継ぐ場合は、非挙動かつ明示した低リスク条件を全て証明し、`qa_carry_forward`として旧新コミット/tree、diff、影響ケース、再実行証拠、理由を記録する。QA FAIL、受け入れ条件/QA_PLAN変更、認証認可・秘密・sudo/PAM・IPC/Schema/設定/依存・並行性/ライフサイクル/persistence/エラー/fail-closed、テスト削除/弱体化、影響不明、案/tree不一致では引き継がずrerunする。マージ後は`merge_tree`を承認案 treeと比較し、環境依存ケースだけを限定確認する。
 
 ## バックログ
 

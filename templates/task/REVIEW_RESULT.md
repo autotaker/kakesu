@@ -3,6 +3,8 @@ task_id: "{{TASK_ID}}"
 status: pending
 reviewer_agent: ""
 reviewed_commit: ""
+candidate_commit: ""
+candidate_tree: ""
 decision: pending
 make_check: pending
 reviewed_at: ""
@@ -13,7 +15,7 @@ reviewed_at: ""
 ## 対象
 
 - ブランチ:
-- コミット:
+- 案 コミット/tree:
 - Task / PLAN / QA PLAN:
 
 ## 実行した検査
@@ -27,6 +29,12 @@ reviewed_at: ""
 | 条件 | 結果 | 根拠 |
 |---|---|---|
 | TODO | `pending` | TODO |
+
+## QAとの独立性
+
+- QAと同一案から評価を開始した: `pending`
+- 相互のPASSを開始条件にしていない: `pending`
+- 案が変わった場合の再評価/再束縛: `pending`
 
 ## 指摘
 
