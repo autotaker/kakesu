@@ -1,4 +1,4 @@
 interface:
   display_name: "Efficient Task Delivery"
-  short_description: "Preserve gates while reducing delivery overhead"
-  default_prompt: "Use $run-efficient-task-delivery to run a gated Task with efficient handoffs."
+  short_description: "Classify work and apply proportionate delivery gates"
+  default_prompt: "Use $run-efficient-task-delivery to classify this repository change and apply the lightest safe delivery path."
