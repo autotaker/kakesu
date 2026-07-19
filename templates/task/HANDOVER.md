@@ -2,6 +2,11 @@
 task_id: "{{TASK_ID}}"
 status: draft
 completed_at: ""
+safety_checks: {}
+safety_checked_at: ""
+safety_check_digest: ""
+safety_candidate_tree: ""
+safety_merge_tree: ""
 ---
 
 # {{TASK_ID}} HANDOVER
@@ -28,6 +33,8 @@ completed_at: ""
 ## 検証結果
 
 - TODO
+
+安全契約変更では`safety_checks`の各検査を`pass`として記録し、実行結果のSHA-256、第2親の案 tree、merge treeをフロントマターへ記録する。製品用のREVIEW/QA PASS、製品用の完了HANDOVER、Wiki取込記録を代用証跡として作成しない。
 
 ## 判断
 

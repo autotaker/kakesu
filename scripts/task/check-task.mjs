@@ -15,11 +15,93 @@ import {
 } from "./lib.mjs";
 import { validateDevSelection } from "./agent-routing.mjs";
 
+const CHANGE_CLASSES = new Set(["product", "safety_contract"]);
+const SAFETY_CONTRACT_PATHS = [
+  /^AGENTS\.md$/,
+  /^\.agents\/skills\//,
+  /^docs\/development\//,
+  /^docs\/glossary\.yml$/,
+  /^templates\/task\//,
+];
+const SAFETY_CONTRACT_EXCLUSION = /製品コード[^\n]*(?:test|テスト)[^\n]*runtime\/build設定[^\n]*Schema[^\n]*製品依存[^\n]*(?:生成製品入力\/成果物[^\n]*)?(?:外部観測可能な)?(?:製品)?挙動/;
+const LEGACY_TASK_0024_EXCLUSION = /製品コード、製品test、runtime\/build設定、製品Schema、製品依存、製品挙動/;
+
+function isTimestamp(value) {
+  return typeof value === "string" && value.trim() !== "" && !Number.isNaN(Date.parse(value));
+}
+
+function checkSafetyContractDone({ root, taskDir, task, taskId }) {
+  const errors = [];
+  const plan = parseFrontmatter(path.join(taskDir, "PLAN.md"));
+  const qaPlan = parseFrontmatter(path.join(taskDir, "QA_PLAN.md"));
+  const handover = parseFrontmatter(path.join(taskDir, "HANDOVER.md"));
+  const taskContract = fs.readFileSync(path.join(taskDir, "TASK.md"), "utf8");
+  const explicitExclusion = SAFETY_CONTRACT_EXCLUSION.test(taskContract)
+    || (taskId === "TASK-0024" && LEGACY_TASK_0024_EXCLUSION.test(taskContract));
+  if (!explicitExclusion) {
+    errors.push(`${taskId}: safety_contract requires an explicit product-artifact exclusion in TASK.md`);
+  }
+  if (!plan.planning_reviewed_by
+      || [plan.planner_agent, plan.approved_by].includes(plan.planning_reviewed_by)
+      || plan.planning_review_decision !== "pass"
+      || !isTimestamp(plan.planning_reviewed_at)) {
+    errors.push(`${taskId}: safety_contract requires an independent planning review PASS`);
+  }
+  if (plan.classification_approved_by !== task.assignees?.main || !isTimestamp(plan.classification_approved_at)) {
+    errors.push(`${taskId}: safety_contract classification requires approval by the assigned main Agent`);
+  }
+  if (qaPlan.qa_agent !== task.assignees?.qa || qaPlan.approved_by !== task.assignees?.main) {
+    errors.push(`${taskId}: safety_contract requires a TASK-first QA PLAN approved by the assigned main Agent`);
+  }
+  const safetyChecks = handover.safety_checks;
+  if (!safetyChecks || Array.isArray(safetyChecks) || typeof safetyChecks !== "object"
+      || Object.keys(safetyChecks).length === 0
+      || Object.values(safetyChecks).some((result) => result !== "pass")
+      || !isTimestamp(handover.safety_checked_at)
+      || !/^[a-f0-9]{64}$/.test(handover.safety_check_digest ?? "")) {
+    errors.push(`${taskId}: safety_contract requires passed safety_checks, checked_at, and a SHA-256 digest`);
+  }
+  if (!task.merged_commit) {
+    errors.push(`${taskId}: safety_contract done requires merged_commit`);
+    return errors;
+  }
+  try {
+    const project = readYaml(path.join(root, "project.yaml"));
+    const repository = path.resolve(root, project.repository_path);
+    git(repository, ["cat-file", "-e", `${task.merged_commit}^{commit}`]);
+    git(repository, ["merge-base", "--is-ancestor", task.merged_commit, project.default_branch]);
+    const [merge, firstParent, secondParent, ...extraParents] = git(repository, ["rev-list", "--parents", "-n", "1", task.merged_commit]).split(" ");
+    if (merge !== task.merged_commit || !firstParent || !secondParent || extraParents.length) {
+      throw new Error("merged_commit is not an exact two-parent no-ff merge");
+    }
+    const candidateTree = git(repository, ["rev-parse", `${secondParent}^{tree}`]);
+    const mergeTree = git(repository, ["rev-parse", `${task.merged_commit}^{tree}`]);
+    if (handover.safety_candidate_tree !== candidateTree
+        || handover.safety_merge_tree !== mergeTree
+        || candidateTree !== mergeTree) {
+      throw new Error("safety candidate and merge trees do not match recorded Git trees");
+    }
+    const changedPaths = git(repository, ["diff", "--name-only", firstParent, secondParent]).split("\n").filter(Boolean);
+    if (changedPaths.length === 0 || changedPaths.some((changedPath) => !SAFETY_CONTRACT_PATHS.some((pattern) => pattern.test(changedPath)))) {
+      throw new Error("safety_contract includes a product or unapproved path");
+    }
+  } catch (error) {
+    errors.push(`${taskId}: safety_contract Git evidence is invalid: ${error.message}`);
+  }
+  return errors;
+}
+
 export function checkTask(root, backlog, taskId) {
   const errors = [];
   try {
     assertTaskId(taskId);
     const task = taskById(backlog, taskId);
+    const declaredChangeClass = task.change_class;
+    const changeClass = declaredChangeClass === undefined ? "product" : declaredChangeClass;
+    if (!CHANGE_CLASSES.has(changeClass)) {
+      errors.push(`${taskId}: change_class must be product or safety_contract`);
+    }
+    const safetyContract = changeClass === "safety_contract";
     if (!TASK_STATUSES.has(task.status)) {
       errors.push(`${taskId}: invalid status ${task.status}`);
     }
@@ -122,7 +204,7 @@ export function checkTask(root, backlog, taskId) {
       }
     }
 
-    if (["qa", "done"].includes(effectivePhase)) {
+    if (["qa", "done"].includes(effectivePhase) && !safetyContract) {
       const review = parseFrontmatter(path.join(taskDir, "REVIEW_RESULT.md"));
       if (review.decision !== "pass" || review.make_check !== "pass" || !review.reviewed_commit) {
         errors.push(`${taskId}: QA gate requires review PASS, make check PASS, and reviewed_commit`);
@@ -166,28 +248,32 @@ export function checkTask(root, backlog, taskId) {
     }
 
     if (task.status === "done") {
-      const qa = parseFrontmatter(path.join(taskDir, "QA_RESULT.md"));
-      const handover = parseFrontmatter(path.join(taskDir, "HANDOVER.md"));
-      if (!new Set(["pass", "accepted_with_bugs"]).has(qa.decision)) {
-        errors.push(`${taskId}: done requires QA pass or accepted_with_bugs`);
-      }
-      if (handover.status !== "complete" || !handover.completed_at) {
-        errors.push(`${taskId}: done requires a complete HANDOVER`);
-      }
-      if (!fs.existsSync(path.join(root, "wiki", "ingestions", `${taskId}.json`))) {
-        errors.push(`${taskId}: done requires a Wiki ingestion receipt`);
-      }
-      if (!qa.qa_agent || qa.qa_agent !== task.assignees?.qa || !qa.tested_commit || !qa.tested_at) {
-        errors.push(`${taskId}: done requires QA agent identity, tested commit, and tested_at`);
+      if (safetyContract) {
+        errors.push(...checkSafetyContractDone({ root, taskDir, task, taskId }));
       } else {
-        const project = readYaml(path.join(root, "project.yaml"));
-        const repository = path.resolve(root, project.repository_path);
-        try {
-          git(repository, ["cat-file", "-e", `${qa.tested_commit}^{commit}`]);
-          git(repository, ["merge-base", "--is-ancestor", task.merged_commit, qa.tested_commit]);
-          git(repository, ["merge-base", "--is-ancestor", qa.tested_commit, project.default_branch]);
-        } catch {
-          errors.push(`${taskId}: tested_commit must be on main at or after merged_commit`);
+        const qa = parseFrontmatter(path.join(taskDir, "QA_RESULT.md"));
+        const handover = parseFrontmatter(path.join(taskDir, "HANDOVER.md"));
+        if (!new Set(["pass", "accepted_with_bugs"]).has(qa.decision)) {
+          errors.push(`${taskId}: done requires QA pass or accepted_with_bugs`);
+        }
+        if (handover.status !== "complete" || !handover.completed_at) {
+          errors.push(`${taskId}: done requires a complete HANDOVER`);
+        }
+        if (!fs.existsSync(path.join(root, "wiki", "ingestions", `${taskId}.json`))) {
+          errors.push(`${taskId}: done requires a Wiki ingestion receipt`);
+        }
+        if (!qa.qa_agent || qa.qa_agent !== task.assignees?.qa || !qa.tested_commit || !qa.tested_at) {
+          errors.push(`${taskId}: done requires QA agent identity, tested commit, and tested_at`);
+        } else {
+          const project = readYaml(path.join(root, "project.yaml"));
+          const repository = path.resolve(root, project.repository_path);
+          try {
+            git(repository, ["cat-file", "-e", `${qa.tested_commit}^{commit}`]);
+            git(repository, ["merge-base", "--is-ancestor", task.merged_commit, qa.tested_commit]);
+            git(repository, ["merge-base", "--is-ancestor", qa.tested_commit, project.default_branch]);
+          } catch {
+            errors.push(`${taskId}: tested_commit must be on main at or after merged_commit`);
+          }
         }
       }
     }
