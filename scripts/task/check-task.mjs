@@ -110,7 +110,7 @@ function checkSafetyContractDone({ root, taskDir, task, taskId }) {
     if (handover.safety_check_digest !== safetyCheckDigest(candidateTree, mergeTree, safetyChecks)) {
       throw new Error("safety_check_digest does not match the canonical safety evidence");
     }
-    const changedEntries = git(repository, ["diff", "--name-status", "--find-renames", firstParent, secondParent])
+    const changedEntries = git(repository, ["diff", "--name-status", "--find-renames", "--find-copies-harder", firstParent, secondParent])
       .split("\n").filter(Boolean).map((line) => line.split("\t"));
     if (changedEntries.length === 0
         || changedEntries.some(([status]) => /^R|^C/.test(status))

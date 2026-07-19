@@ -47,7 +47,7 @@ function safetyCheckDigest(candidateTree, mergeTree, checks) {
   return createHash("sha256").update(`${normalized}\n`).digest("hex");
 }
 
-function createDoneTaskFixture({ taskId = "TASK-0090", changeClass, productPath = false, renameSpoof = false, nonNoFf = false, legacyTask0024 = false } = {}) {
+function createDoneTaskFixture({ taskId = "TASK-0090", changeClass, productPath = false, renameSpoof = false, copySpoof = false, nonNoFf = false, legacyTask0024 = false } = {}) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "task-done-gate-"));
   const repository = path.join(root, "product");
   const taskDir = path.join(root, "tasks", `${taskId}-fixture`);
@@ -57,7 +57,7 @@ function createDoneTaskFixture({ taskId = "TASK-0090", changeClass, productPath 
   git(repository, ["config", "user.name", "fixture"]);
   git(repository, ["config", "user.email", "fixture@example.invalid"]);
   fs.writeFileSync(path.join(repository, "README.md"), "baseline\n");
-  if (renameSpoof) {
+  if (renameSpoof || copySpoof) {
     fs.mkdirSync(path.join(repository, "docs", "development"), { recursive: true });
     fs.writeFileSync(path.join(repository, "docs", "development", "old.md"), "rename me\n");
   }
@@ -66,6 +66,9 @@ function createDoneTaskFixture({ taskId = "TASK-0090", changeClass, productPath 
   git(repository, ["checkout", "-b", "task"]);
   if (renameSpoof) {
     git(repository, ["mv", "docs/development/old.md", "docs/development/new.md"]);
+  } else if (copySpoof) {
+    fs.copyFileSync(path.join(repository, "docs", "development", "old.md"), path.join(repository, "docs", "development", "copy.md"));
+    git(repository, ["add", "docs/development/copy.md"]);
   } else {
     const changedPath = productPath ? "scripts/product.mjs" : "docs/development/contract.md";
     fs.mkdirSync(path.dirname(path.join(repository, changedPath)), { recursive: true });
@@ -125,13 +128,14 @@ function createDoneTaskFixture({ taskId = "TASK-0090", changeClass, productPath 
     make_check: "pass",
   };
   writeTaskEvidence(taskDir, "REVIEW_RESULT.md", reviewMetadata);
-  writeTaskEvidence(taskDir, "QA_RESULT.md", {
+  const qaResultMetadata = {
     task_id: taskId,
     qa_agent: "qa",
     tested_commit: mergedCommit,
     tested_at: "2026-07-20T00:00:00Z",
     decision: "pass",
-  });
+  };
+  writeTaskEvidence(taskDir, "QA_RESULT.md", qaResultMetadata);
   const safetyChecks = Object.fromEntries(SAFETY_CHECK_KEYS.map((key) => [key, "pass"]));
   const handoverMetadata = {
     task_id: taskId,
@@ -155,7 +159,7 @@ function createDoneTaskFixture({ taskId = "TASK-0090", changeClass, productPath 
     assignees: { main: "main", planner: "planner", dev: "dev-sol-high", reviewer: "reviewer", qa: "qa" },
   };
   if (changeClass !== undefined) task.change_class = changeClass;
-  return { root, taskDir, backlog: { tasks: [task] }, taskId, planMetadata, qaPlanMetadata, reviewMetadata, handoverMetadata };
+  return { root, taskDir, backlog: { tasks: [task] }, taskId, planMetadata, qaPlanMetadata, reviewMetadata, qaResultMetadata, handoverMetadata };
 }
 
 test("product Done gates remain required and missing change_class stays product", () => {
@@ -172,6 +176,33 @@ test("product Done gates remain required and missing change_class stays product"
     assert.ok(checkTask(fixture.root, fixture.backlog, fixture.taskId).some((error) => error.includes("change_class")));
   } finally {
     fs.rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test("product Done rejects each representative QA, HANDOVER, and commit omission", async (t) => {
+  const mutations = {
+    "QA decision": (fixture) => { fixture.qaResultMetadata.decision = "pending"; },
+    "QA identity": (fixture) => { fixture.qaResultMetadata.qa_agent = "other"; },
+    "QA tested commit missing": (fixture) => { delete fixture.qaResultMetadata.tested_commit; },
+    "HANDOVER status": (fixture) => { fixture.handoverMetadata.status = "draft"; },
+    "HANDOVER completed_at": (fixture) => { delete fixture.handoverMetadata.completed_at; },
+    "merged commit missing": (fixture) => { delete fixture.backlog.tasks[0].merged_commit; },
+    "reviewed commit invalid": (fixture) => { fixture.reviewMetadata.reviewed_commit = "0".repeat(40); },
+    "tested commit invalid": (fixture) => { fixture.qaResultMetadata.tested_commit = "0".repeat(40); },
+  };
+  for (const [name, mutate] of Object.entries(mutations)) {
+    await t.test(name, () => {
+      const fixture = createDoneTaskFixture();
+      try {
+        mutate(fixture);
+        writeTaskEvidence(fixture.taskDir, "REVIEW_RESULT.md", fixture.reviewMetadata);
+        writeTaskEvidence(fixture.taskDir, "QA_RESULT.md", fixture.qaResultMetadata);
+        writeTaskEvidence(fixture.taskDir, "HANDOVER.md", fixture.handoverMetadata);
+        assert.notDeepEqual(checkTask(fixture.root, fixture.backlog, fixture.taskId), []);
+      } finally {
+        fs.rmSync(fixture.root, { recursive: true, force: true });
+      }
+    });
   }
 });
 
@@ -200,9 +231,10 @@ test("safety_contract rejects product-path classification spoofing", () => {
   }
 });
 
-test("safety_contract rejects rename and non-no-ff spoofing", async (t) => {
+test("safety_contract rejects rename, copy, and non-no-ff spoofing", async (t) => {
   for (const [name, options, expected] of [
     ["rename", { renameSpoof: true }, "product or unapproved path"],
+    ["copy", { copySpoof: true }, "product or unapproved path"],
     ["non-no-ff", { nonNoFf: true }, "two-parent no-ff"],
   ]) {
     await t.test(name, () => {
