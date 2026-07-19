@@ -34,7 +34,7 @@
 7. 案またはマージ後確認のFAILは実装不具合と決めつけず、[QAガイドライン](docs/development/qa.md)に従って原因を分類する。
 8. 配下に別の`AGENTS.md`がある場合は、その追加手順も守る。
 9. 子Agentの標準起動は内部`agents.spawn_agent`とし、`agent_type`欠落、内部`Spawn Agent`利用不能、または`model/effort`不一致を停止・証跡化した後に限り、親が`make work-agent TASK=TASK-NNNN ACTION=<action>`を`fallback`として使う。運用リポジトリへ証跡を書く場合は親が共通ロックを実行全体で保持し、直接並行編集しない。
-10. どの経路でも子Agentはステージ、コミット、マージ、`.git`書き込みを行わない。運用リポジトリのコミットは、子成功後に共通ロックを保持するランチャー親がスコープ、フック、検証を通して作成する。
+10. 子Agentは原則としてステージ、コミット、マージ、`.git`書き込みを行わない。ただしレビュアー/QA Agentは、自ら軽微と判断した指摘をTask ワークツリーで修正・ステージ・コミットできる。Task ブランチへの取り込み後はその指摘を解消済みとしてPASSにでき、DEV差し戻し、再REVIEW、再QA、`qa_carry_forward`を要求しない。Mainだけが`main`へのmerge/pushを行う。
 11. ロールとモデルは`.codex`の正規 契約に従う。mainは`Sol/high`、PLAN/QA/REVIEWは`Terra/medium`に固定し、DEVは承認済みPLANの`luna-xhigh`または`sol-high`を使う。各ロールの`Explorer`は`Luna/medium/read-only`で一件の限定質問だけを扱う。
 
 ### 案とQA実施モード
@@ -62,7 +62,7 @@ agents.spawn_agent(
 
 起動後は、選択したロールの契約と実際の`model/effort`を照合する。不一致なら子の成果を採用せず停止し、requested/observed値とランタイム条件を証跡化してから`fallback`可否を判断する。`agent_type`または内部`Spawn Agent`が利用できない場合も、親は原因を記録してから判断する。`fallback`を選べるのはこれらの場合だけであり、親が`make work-agent`（`Explorer`は一問専用の`make explorer-agent`）を使う。ロール対応、ゲート順序、`Explorer`の制約、サンドボックス観測限界は[Agent責務](docs/development/agent-roles.md)を正本とする。
 
-`role` TOMLの`sandbox_mode`は意図する契約であり、ランタイムで観測できた値だけを証跡に記録する。実効サンドボックスをTOMLの宣言だけで保証済みとは扱わない。子の`stage`、`commit`、`merge`、`.git`書込みは禁止し、共通ロック、スコープ検査、`hook`、`stage`、`commit`、事後検査は親（またはmain）が所有する。
+`role` TOMLの`sandbox_mode`は意図する契約であり、ランタイムで観測できた値だけを証跡に記録する。実効サンドボックスをTOMLの宣言だけで保証済みとは扱わない。レビュアー/QAの軽微修正コミットを除き、子の`stage`、`commit`、`merge`、`.git`書込みは禁止する。Mainは`main`への統合を所有する。
 
 ## 共通検査
 

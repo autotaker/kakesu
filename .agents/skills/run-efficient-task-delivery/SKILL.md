@@ -44,8 +44,8 @@ Target five to ten minutes as a non-binding diagnostic. Exceeding it is a reason
 1. Keep `PLAN → DEV` as the implementation gate. After DEV fixes `candidate_commit` and `candidate_tree`, start Reviewer and QA independently and in parallel from that same candidate; neither PASS is the other's start condition.
 2. Start one child at a time with native `agents.spawn_agent`. Treat `task_name` as a tracking identifier and `agent_type` as the role selector; never infer one from the other.
 3. When the selected role differs from the caller, pass `fork_turns="none"`. Observe the requested and effective model, reasoning effort, and permission/runtime conditions. If `agent_type` is missing, native spawn is unavailable, or model/effort differs, stop, record requested/observed values and runtime evidence, and let the main Agent decide whether the existing, narrowly scoped fallback is allowed. Do not make CLI or `make work-agent` fallback the normal path.
-4. Give each child one owned responsibility and a completion contract: changed paths, prohibited operations, local checks, next-gate prerequisites, and a short evidence summary. Require children to avoid stage, commit, merge, and `.git` writes.
-5. Keep the main Agent responsible for shared locks, scope and hook checks, staging, commits, post-checks, merge, and QA-failure classification. Only the main Agent approves and merges to `main`.
+4. Give each child one owned responsibility and a completion contract. Reviewer and QA may directly fix, stage, and commit findings they judge minor in the Task worktree. Once that commit is incorporated into the Task branch, treat the finding as resolved and allow PASS without DEV handback, re-review, re-QA, or carry-forward. Use the normal return path only when that Agent judges the change affects behavior, requirements, or a safety boundary.
+5. Keep the main Agent responsible for merge and push to `main` and QA-failure classification. Reviewer/QA minor-fix commits do not grant direct integration rights to `main`.
 
 ### Risk-based QA and candidate evidence
 

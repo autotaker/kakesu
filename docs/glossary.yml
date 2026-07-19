@@ -6962,8 +6962,8 @@ extraction_notes:
 - 新しい用語を追加したときは、docs本文と正式用語のlintポリシーを同じ変更で更新する。
 extraction_inventory:
   source: 日本語を含む**/*.md
-  raw_token_count: 11928
-  unique_token_count: 2697
+  raw_token_count: 11984
+  unique_token_count: 2698
   classification: all_extracted_termsの各レコードにcategoryを付ける。
 lint:
   textlint_config: .textlintrc.json
@@ -7518,8 +7518,8 @@ all_extracted_terms:
   abbreviations: []
   variants: []
   description: KakesuのSchemaと設計で同じ対象を指す、限定された正式ドメイン名。
-  count: 646
-  prose_count: 561
+  count: 655
+  prose_count: 570
   code_count: 85
   source_count: 36
 - token: agent
@@ -11831,9 +11831,9 @@ all_extracted_terms:
   variants:
   - 確定
   description: トランザクションの変更を永続化する操作。Gitの操作にも使う。
-  count: 15
+  count: 13
   prose_count: 0
-  code_count: 15
+  code_count: 13
   source_count: 8
 - token: commit:null
   category: identifier
@@ -14404,8 +14404,8 @@ all_extracted_terms:
   abbreviations: []
   variants: []
   description: Taskの実装フェーズまたは実装Agentロール。
-  count: 63
-  prose_count: 58
+  count: 67
+  prose_count: 62
   code_count: 5
   source_count: 13
 - token: dev
@@ -19451,9 +19451,9 @@ all_extracted_terms:
   abbreviations: []
   variants: []
   description: 本文から抽出した一般技術語。自然な日本語の訳語を優先する。
-  count: 5
+  count: 3
   prose_count: 1
-  code_count: 4
+  code_count: 2
   source_count: 3
 - token: Hosted
   category: japanese_translation
@@ -22150,8 +22150,8 @@ all_extracted_terms:
   abbreviations: []
   variants: []
   description: Taskの承認、Git操作、FAIL分類を所有するAgentロール。
-  count: 26
-  prose_count: 26
+  count: 30
+  prose_count: 30
   code_count: 0
   source_count: 12
 - token: main
@@ -22161,9 +22161,9 @@ all_extracted_terms:
   abbreviations: []
   variants: []
   description: 製品リポジトリと運用リポジトリの既定ブランチ名。
-  count: 54
-  prose_count: 38
-  code_count: 16
+  count: 57
+  prose_count: 37
+  code_count: 20
   source_count: 11
 - token: main-agent
   category: identifier
@@ -22824,6 +22824,17 @@ all_extracted_terms:
   prose_count: 3
   code_count: 8
   source_count: 6
+- token: merge/push
+  category: identifier
+  formal_name: merge/push
+  japanese: null
+  abbreviations: []
+  variants: []
+  description: 本文から抽出したコード識別子。本文ではバッククォートで囲む。
+  count: 3
+  prose_count: 3
+  code_count: 0
+  source_count: 3
 - token: merge_tree
   category: identifier
   formal_name: merge_tree
@@ -25275,8 +25286,8 @@ all_extracted_terms:
   abbreviations: []
   variants: []
   description: 本文から抽出した製品名、仕様名、固有名、または略語。英語表記を維持する。
-  count: 50
-  prose_count: 47
+  count: 57
+  prose_count: 54
   code_count: 3
   source_count: 14
 - token: pass
@@ -27073,8 +27084,8 @@ all_extracted_terms:
   abbreviations: []
   variants: []
   description: 本文から抽出した製品名、仕様名、固有名、または略語。英語表記を維持する。
-  count: 112
-  prose_count: 109
+  count: 124
+  prose_count: 121
   code_count: 3
   source_count: 15
 - token: qa
@@ -27172,9 +27183,9 @@ all_extracted_terms:
   abbreviations: []
   variants: []
   description: 本文から抽出したコード識別子。本文ではバッククォートで囲む。
-  count: 13
+  count: 18
   prose_count: 0
-  code_count: 13
+  code_count: 18
   source_count: 8
 - token: qa_execution_mode
   category: identifier
@@ -29182,10 +29193,10 @@ all_extracted_terms:
   abbreviations: []
   variants: []
   description: 本文から抽出した製品名、仕様名、固有名、または略語。英語表記を維持する。
-  count: 9
-  prose_count: 9
+  count: 13
+  prose_count: 13
   code_count: 0
-  source_count: 8
+  source_count: 9
 - token: Review
   category: japanese_translation
   formal_name: review
@@ -31788,9 +31799,9 @@ all_extracted_terms:
   abbreviations: []
   variants: []
   description: 本文から抽出したコード識別子。本文ではバッククォートで囲む。
-  count: 6
+  count: 4
   prose_count: 0
-  code_count: 6
+  code_count: 4
   source_count: 3
 - token: stale
   category: japanese_translation
@@ -32873,10 +32884,10 @@ all_extracted_terms:
   abbreviations: []
   variants: []
   description: KakesuのSchemaと設計で同じ対象を指す、限定された正式ドメイン名。
-  count: 770
-  prose_count: 680
+  count: 781
+  prose_count: 691
   code_count: 90
-  source_count: 41
+  source_count: 42
 - token: task
   category: identifier
   formal_name: task
