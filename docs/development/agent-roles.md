@@ -89,7 +89,7 @@ Wiki AgentはTask契約、PLAN、レビュー結果、QA結果、バックログ
 
 ## 運用リポジトリへの書き込み
 
-Planner、レビュアー、QA、mainなどの書き込みAgentは内部の`agents.spawn_agent`を標準経路として起動する。`agent_type`の欠落、内部`Spawn Agent`の利用不能、または`model/effort`不一致時だけ、次の`make work-agent`を`fallback`として親が使う。`fallback`ランチャーは編集開始前からコミット後の再検査まで共通ロックを保持する。子stdinはclosedであり、子には`.git`書き込みを与えない。子が成功した後だけ、親がaction別の許可ファイルをpre-commitフックへ渡してコミットする。
+Planner、レビュアー、QA、mainなどの書き込みAgentは内部の`agents.spawn_agent`を標準経路として起動する。`agent_type`の欠落、内部`Spawn Agent`の利用不能、または`model/effort`不一致時だけ、次の`make work-agent`を`fallback`として親が使う。`fallback`ランチャーは編集開始前からコミット後の再検査まで共通ロックを保持する。子stdinはclosedであり、レビュアー/QAが自ら軽微と判断した指摘をTask ワークツリーで修正・ステージ・コミットする場合を除き、子には`.git`書き込みを与えない。子が成功した後だけ、親がaction別の許可ファイルをpre-commitフックへ渡してコミットする。
 
 ```sh
 make work-agent TASK=TASK-0001 ACTION=plan
