@@ -108,4 +108,4 @@ make work-agent TASK=TASK-0001 ACTION=qa-result
 - Planner AgentとQA Agentは兼任可能だが、可能なら分離する。
 - main Agentは例外判断とマージを担い、通常実装を兼任しない。
 
-REVIEWとQAは同一案を独立かつ並行に評価し、相互のPASSを前提にしない。Mainだけが修正後の`qa_carry_forward`、focused rerun、full rerunを選ぶ。carry-forwardは非挙動かつ明示した低リスク条件を全て証明できる場合だけ許可し、QA FAIL、受け入れ/QA_PLAN変更、認証認可・秘密・sudo/PAM・IPC/Schema/設定/依存・並行性/ライフサイクル/persistence/エラー/fail-closed、テスト削除/弱体化、影響不明、案/tree不一致では禁止する。
+REVIEWとQAは同一案を独立かつ並行に評価し、相互のPASSを前提にしない。Mainだけが修正後の`qa_carry_forward`、focused rerun、全面再実行を選ぶ。carry-forwardは[QAガイドライン](qa.md)の閉じた`CF-1`から`CF-7`を全て証明した場合だけ許可し、影響QAケース集合が空でなければ該当ケースを再実行する。独立レビュアーは挙動、テスト、安全性、契約への影響なしと新案の`make check` PASSを証拠化する。

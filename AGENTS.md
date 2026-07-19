@@ -45,7 +45,7 @@
 - `focused-rerun`: 高リスクでもhermetic・deterministic・上限付き フィクスチャで受け入れ真実を完全再現できるケースを、QAが独立に限定再実行する。
 - `live-e2e`: 実OS権限/auth（sudo/PAMを含む）、実配置、外部作用、実restart/ロールバック/クリーンアップ、環境固有integrationに依存するケースを、承認済み実環境で確認する。環境または安全なクリーンアップが不明ならblockedのままとし、別モードのPASSで代替しない。
 
-高リスク信号、証跡不足、案/tree不一致、影響不明は`evidence-review`のPASSを禁止する。REVIEWとQAは同一案から独立かつ並行に評価し、Mainだけが修正後の`qa_carry_forward`またはfocused/full rerunを選ぶ。carry-forwardは非挙動かつ明示した低リスク条件を全て証明し、旧新コミット/tree、diff、影響ケース、再実行証拠、理由を記録できる場合だけ許可する。QA FAIL、受け入れ条件/QA_PLAN変更、認証認可・秘密・sudo/PAM・IPC/Schema/設定/依存・並行性/ライフサイクル/persistence/エラー/fail-closed、テスト削除/弱体化、影響不明、案/tree不一致はcarry-forwardを禁止する。`merge_tree == candidate_tree`で環境依存ケースがない場合だけ全面的な重複確認を省略でき、環境依存ケースはマージ後もケース単位で確認する。既存Task証跡とLap30 イベント Schema/JSONLは遡及変更しない。
+高リスク信号、証跡不足、案/tree不一致、影響不明は`evidence-review`のPASSを禁止する。REVIEWとQAは同一案から独立かつ並行に評価し、Mainだけが修正後の`qa_carry_forward`または限定/全面再実行を選ぶ。carry-forwardは[QAガイドライン](docs/development/qa.md)の閉じた`CF-1`から`CF-7`を全て証明した場合だけ許可する。変更は実行されない誤字、空白、コメント、リンク、証跡メタデータに限定し、意味変更は許可しない。影響QAケース集合が空でなければ該当ケースを再実行し、限定できなければ全面再実行とする。QA FAIL、受け入れ条件/QA_PLAN変更、認証認可、秘密、sudo/PAM、IPC/Schema/設定/依存、並行性/ライフサイクル/persistence/エラー/fail-closed、テスト削除/弱体化、影響不明、証跡と評価対象の案/tree不一致はcarry-forwardを禁止する。`merge_tree == candidate_tree`で環境依存ケースがない場合だけ全面的な重複確認を省略でき、環境依存ケースはマージ後もケース単位で確認する。既存Task証跡とLap30 イベント Schema/JSONLは遡及変更しない。
 
 ## 子Agentの標準起動
 

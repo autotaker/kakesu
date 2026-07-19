@@ -27,7 +27,19 @@ QA AgentはDEV開始前に、Taskの受け入れ条件とリスクから`QA_PLAN
 
 QAはDEVが固定した同一`candidate_commit`/`candidate_tree`から、レビュアーと相互のPASSを前提にせず独立に開始する。単体テストの再実行だけで受け入れレビューを代替せず、利用者から見える動作、Plane間契約、運用上の完成条件、証跡の完全性を確認する。QA結果には対象案、QA PLAN改訂、モード別の操作、環境、exit、ダイジェスト、未実施理由を残す。
 
-レビュー修正で案が変わったとき、Mainだけが`qa_carry_forward`、focused rerun、full rerunを選ぶ。carry-forwardは非挙動で全許可条件が証明できる場合だけ許可し、旧新コミット/tree、diff、影響ケース、再実行証拠、理由を記録する。QA FAIL、受け入れ条件/QA_PLAN変更、認証認可・秘密・sudo/PAM・IPC/Schema/設定/依存・並行性/ライフサイクル/persistence/エラー/fail-closed、テスト削除/弱体化、影響不明、案/tree不一致ではcarry-forwardを禁止する。
+レビュー修正で案が変わったとき、Mainだけが`qa_carry_forward`、focused rerun、全面再実行を選ぶ。
+
+### `qa_carry_forward`の閉じたチェックリスト
+
+Mainは次の全項目を独立に検査できる証拠で満たした場合だけ`qa_carry_forward`を選べる。一つでも満たさない、または不明ならcarry-forwardを禁止し、影響ケースを再実行する。影響ケースを限定できなければ全面再実行とする。
+
+- `CF-1`: 旧QA結果がPASSで、記録された旧`candidate_commit`/`candidate_tree`に正しく束縛されている。
+- `CF-2`: 旧案と新案の全差分を列挙し、差分ダイジェストを記録している。
+- `CF-3`: 変更パスと内容が、実行されない誤字、空白、コメント、リンク、証跡メタデータだけに限定される。製品挙動、ランタイム、テスト、Schema、設定、依存、生成物、外部公開契約または安全契約、受け入れ条件、QA_PLANの意味を変更していない。
+- `CF-4`: 影響QAケース集合が空である。空でなければcarry-forwardせず、該当ケースを再実行する。
+- `CF-5`: 独立レビュアーが挙動、テスト、安全性、契約への影響なしを確認し、新案で`make check`がPASSしている。
+- `CF-6`: QA FAIL、受け入れ条件/QA_PLAN変更、認証認可、秘密、sudo/PAM、IPC/Schema/設定/依存、並行性/ライフサイクル/persistence/エラー/fail-closed、テスト削除/弱体化、影響不明、証跡と評価対象の案/tree不一致が全て偽である。
+- `CF-7`: Mainが旧新コミット/tree、全差分とダイジェスト、空の影響ケース集合、レビュアー確認、`make check`証拠、carry-forward理由を記録している。
 
 マージ後にMainは`merge_tree == candidate_tree`を確認する。同一かつ環境依存ケースなしなら全面確認を繰り返さない。install/deploy/config生成、実権限、外部作用、ロールバック等の環境依存ケースはマージ後にも限定確認する。
 

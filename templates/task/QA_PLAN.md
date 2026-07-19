@@ -29,7 +29,7 @@ expectation_change_approved_by: ""
 ## 境界・異常・回帰
 
 - 高リスク、証跡欠落、ダイジェスト/コミット/tree不一致、テスト削除/弱体化、影響不明は`evidence-review` PASSにしない。
-- `qa_carry_forward`は非挙動かつ明示した低リスク条件を全て証明できる場合だけ許可する。QA FAIL、受け入れ条件/QA_PLAN変更、認証認可・秘密・sudo/PAM・IPC/Schema・設定/依存・並行性/ライフサイクル/persistence/エラー/fail-closed、テスト削除/弱体化、影響不明、案/tree不一致では禁止し、focused/full rerunへ戻す。
+- `qa_carry_forward`は`QA_RESULT.md`の`CF-1`から`CF-7`を全て証明できる場合だけ許可する。影響QAケース集合が空でなければ該当ケースを再実行し、影響を限定できなければ全面再実行とする。QA FAIL、受け入れ条件/QA_PLAN変更、認証認可、秘密、sudo/PAM、IPC/Schema/設定/依存、並行性/ライフサイクル/persistence/エラー/fail-closed、テスト削除/弱体化、影響不明、証跡と評価対象の案/tree不一致では禁止する。
 - `live-e2e`の環境または安全なクリーンアップが用意できない場合はblockedとして残す。
 
 ## 実施不能時の扱い
@@ -40,7 +40,7 @@ expectation_change_approved_by: ""
 
 - DEVは`candidate_commit`、`candidate_tree`、ケース ID、コマンド/テスト、環境/フィクスチャ、cache条件、exit、成果物 ダイジェスト、未実施理由をHANDOVERへ記録する。
 - REVIEWとQAは同一案から相互のPASSを前提にせず独立に開始する。
-- 修正後の`qa_carry_forward`はMainだけが旧新コミット/tree、diff、影響ケース、再実行証拠、理由を記録して選択する。
+- 修正後の`qa_carry_forward`はMainだけが`QA_RESULT.md`の`CF-1`から`CF-7`を全て記録して選択する。
 - `merge_tree == candidate_tree`かつ環境依存ケースなしなら全面確認を省略できるが、環境依存ケースはマージ後もケース単位で確認する。
 
 ## 実装後の再確認

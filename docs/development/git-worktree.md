@@ -27,7 +27,7 @@ make worktree-create TASK=TASK-0001
 
 ## マージ
 
-main Agentは`REVIEW_RESULT.md`と`QA_RESULT.md`が同一案を対象とし、`make check`、QA計画の再確認、cleanなワークツリーを確認する。修正後のcarry-forwardは非挙動かつ明示した低リスク条件を全て証明し、`qa_carry_forward`としてMainが旧新コミット/tree、diff、影響ケース、再実行証拠、理由を記録した場合だけ許可する。禁止条件または影響不明があればrerunへfail-closedする。
+main Agentは`REVIEW_RESULT.md`と`QA_RESULT.md`が同一案を対象とし、`make check`、QA計画の再確認、cleanなワークツリーを確認する。修正後のcarry-forwardは[QAガイドライン](qa.md)の閉じた`CF-1`から`CF-7`を全て証明し、Mainが`QA_RESULT.md`へ記録した場合だけ許可する。影響QAケース集合が空でない、禁止条件が真、または影響が不明ならrerunへfail-closedする。
 
 ```sh
 git switch main

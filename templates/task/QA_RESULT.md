@@ -46,9 +46,13 @@ tested_at: ""
 ## Main-owned `qa_carry_forward` / 再実行判断
 
 - 選択: `not-applicable | qa_carry_forward | focused-rerun | full-rerun`
-- Main記録（旧新コミット/tree、diff、影響ケース、再実行証拠、理由）: TODO
-- 非挙動かつ明示した低リスク条件を全て証明した: `pending`
-- 禁止条件（QA FAIL、受け入れ/QA_PLAN変更、認証認可・秘密・sudo/PAM・IPC/Schema・設定/依存・並行性/ライフサイクル/persistence/エラー/fail-closed、テスト削除/弱体化、影響不明、案/tree不一致）を確認した: `pending`
+- `CF-1` 旧QA PASSと旧`candidate_commit`/`candidate_tree`の束縛: `pending` / 証拠: TODO
+- `CF-2` 旧新案の全差分と差分ダイジェスト: `pending` / 証拠: TODO
+- `CF-3` 変更は実行されない誤字、空白、コメント、リンク、証跡メタデータだけで、製品挙動、ランタイム、テスト、Schema、設定、依存、生成物、外部公開契約または安全契約、受け入れ条件、QA_PLANの意味変更がない: `pending` / 証拠: TODO
+- `CF-4` 影響QAケース集合: `[]`。空でなければcarry-forwardせず該当ケースを再実行する。
+- `CF-5` 独立レビュアーによる挙動、テスト、安全性、契約への影響なしの確認と、新案の`make check` PASS: `pending` / レビュアー証拠、コマンド、結果: TODO
+- `CF-6` QA FAIL、受け入れ条件/QA_PLAN変更、認証認可、秘密、sudo/PAM、IPC/Schema/設定/依存、並行性/ライフサイクル/persistence/エラー/fail-closed、テスト削除/弱体化、影響不明、証跡と評価対象の案/tree不一致が全て偽: `pending`
+- `CF-7` Main記録（旧新コミット/tree、全差分とダイジェスト、空の影響ケース集合、レビュアー/`make check`証拠、理由）: TODO
 
 ## 結論
 
