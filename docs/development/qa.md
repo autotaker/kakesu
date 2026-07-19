@@ -25,6 +25,8 @@ QA AgentはDEV開始前に、Taskの受け入れ条件とリスクから`QA_PLAN
 
 ## 実施対象
 
+QA Agentが軽微と判断した指摘は、自らTask ワークツリーで修正・ステージ・コミットできる。Task ブランチへの取り込み後は解消済みとしてPASSにでき、DEV差し戻し、再REVIEW、再QA、`qa_carry_forward`を要求しない。挙動、要件、安全境界を変えると判断した場合だけ通常経路へ戻す。
+
 QAはDEVが固定した同一`candidate_commit`/`candidate_tree`から、レビュアーと相互のPASSを前提にせず独立に開始する。単体テストの再実行だけで受け入れレビューを代替せず、利用者から見える動作、Plane間契約、運用上の完成条件、証跡の完全性を確認する。QA結果には対象案、QA PLAN改訂、モード別の操作、環境、exit、ダイジェスト、未実施理由を残す。
 
 レビュー修正で案が変わったとき、Mainだけが`qa_carry_forward`、focused rerun、全面再実行を選ぶ。
