@@ -111,7 +111,7 @@ func (s *Store) UpdateProgress(ctx context.Context, input ProgressUpdateInput) (
 		return VersionedUpdateResult{}, &StorageError{Operation: "begin progress update", Err: err}
 	}
 	defer tx.Rollback()
-	if err := requireCurrentVersion(ctx, tx, input.TaskID, "task_progress", input.ExpectedVersion); err != nil {
+	if err := requireProgressPosition(ctx, tx, input); err != nil {
 		return VersionedUpdateResult{}, err
 	}
 	if _, err := tx.ExecContext(ctx, `INSERT INTO task_progress_history(task_id, version, schema_id, schema_revision, schema_digest, payload, through_task_event_sequence, through_agent_run_event_sequence) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -166,6 +166,27 @@ func requireCurrentVersion(ctx context.Context, tx *sql.Tx, taskID, table string
 	}
 	if current != expected {
 		return &ConflictError{TaskID: taskID, Err: fmt.Errorf("expected version %d, found %d", expected, current)}
+	}
+	return nil
+}
+
+func requireProgressPosition(ctx context.Context, tx *sql.Tx, input ProgressUpdateInput) error {
+	var currentVersion, currentTaskSequence, currentAgentSequence, maximumTaskSequence int
+	err := tx.QueryRowContext(ctx, `SELECT p.version, p.through_task_event_sequence, p.through_agent_run_event_sequence,
+		COALESCE(MAX(e.sequence), 0) FROM task_progress p LEFT JOIN task_events e USING (task_id)
+		WHERE p.task_id = ? GROUP BY p.task_id`, input.TaskID).Scan(
+		&currentVersion, &currentTaskSequence, &currentAgentSequence, &maximumTaskSequence)
+	if err != nil {
+		return &StorageError{Operation: "read current progress position", Err: err}
+	}
+	if currentVersion != input.ExpectedVersion {
+		return &ConflictError{TaskID: input.TaskID, Err: fmt.Errorf("expected version %d, found %d", input.ExpectedVersion, currentVersion)}
+	}
+	if input.New.ThroughTaskEventSequence < currentTaskSequence || input.New.ThroughAgentRunEventSequence < currentAgentSequence {
+		return &ConflictError{TaskID: input.TaskID, Err: fmt.Errorf("progress event watermarks must not move backwards")}
+	}
+	if input.New.ThroughTaskEventSequence > maximumTaskSequence {
+		return &ConflictError{TaskID: input.TaskID, Err: fmt.Errorf("task event watermark %d exceeds current maximum %d", input.New.ThroughTaskEventSequence, maximumTaskSequence)}
 	}
 	return nil
 }

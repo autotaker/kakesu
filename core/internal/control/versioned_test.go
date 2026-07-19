@@ -141,6 +141,43 @@ func TestVersionedUpdatesRejectVersionAndInputBoundariesWithoutMutation(t *testi
 	}
 }
 
+func TestProgressUpdateRejectsRegressingAndFutureWatermarksWithoutMutation(t *testing.T) {
+	store := openTestStore(t, filepath.Join(t.TempDir(), "control.db"))
+	createVersionedTask(t, store, "TASK-watermark", "agent-watermark")
+	if _, err := store.UpdateProgress(context.Background(), progressUpdate("TASK-watermark", 0, 2, "v1")); err != nil {
+		t.Fatal(err)
+	}
+	before, err := store.ReadRecoveredTask(context.Background(), "TASK-watermark")
+	if err != nil {
+		t.Fatal(err)
+	}
+	base := ProgressVersion{Version: 2, Schema: versionedSchema, Payload: []byte(`{"progress":"v2"}`), ThroughTaskEventSequence: 2, ThroughAgentRunEventSequence: 102}
+	taskRegression := base
+	taskRegression.ThroughTaskEventSequence = 1
+	agentRegression := base
+	agentRegression.ThroughAgentRunEventSequence = 101
+	futureTask := base
+	futureTask.ThroughTaskEventSequence = before.Events[len(before.Events)-1].Sequence + 1
+	tests := map[string]ProgressVersion{
+		"task watermark regression":  taskRegression,
+		"agent watermark regression": agentRegression,
+		"task watermark in future":   futureTask,
+	}
+	for name, progress := range tests {
+		t.Run(name, func(t *testing.T) {
+			_, err := store.UpdateProgress(context.Background(), ProgressUpdateInput{TaskID: "TASK-watermark", ExpectedVersion: 1, New: progress})
+			var conflict *ConflictError
+			if !errors.As(err, &conflict) {
+				t.Fatalf("error = %T %v, want ConflictError", err, err)
+			}
+			after, err := store.ReadRecoveredTask(context.Background(), "TASK-watermark")
+			if err != nil || !reflect.DeepEqual(after, before) {
+				t.Fatalf("watermark rejection mutated model: err=%v before=%#v after=%#v", err, before, after)
+			}
+		})
+	}
+}
+
 func TestVersionedUpdatesRollbackAtEveryStageWithoutGap(t *testing.T) {
 	for _, kind := range []string{"contract", "progress"} {
 		for _, stage := range []string{"history", "current", "event"} {
