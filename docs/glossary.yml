@@ -6962,8 +6962,8 @@ extraction_notes:
 - 新しい用語を追加したときは、docs本文と正式用語のlintポリシーを同じ変更で更新する。
 extraction_inventory:
   source: 日本語を含む**/*.md
-  raw_token_count: 11927
-  unique_token_count: 2698
+  raw_token_count: 11928
+  unique_token_count: 2697
   classification: all_extracted_termsの各レコードにcategoryを付ける。
 lint:
   textlint_config: .textlintrc.json
@@ -18267,17 +18267,6 @@ all_extracted_terms:
   prose_count: 4
   code_count: 2
   source_count: 4
-- token: full
-  category: japanese_translation
-  formal_name: full
-  japanese: 訳語を検討
-  abbreviations: []
-  variants: []
-  description: 本文から抽出した一般技術語。自然な日本語の訳語を優先する。
-  count: 1
-  prose_count: 1
-  code_count: 0
-  source_count: 1
 - token: full-rerun
   category: identifier
   formal_name: full-rerun
@@ -22161,8 +22150,8 @@ all_extracted_terms:
   abbreviations: []
   variants: []
   description: Taskの承認、Git操作、FAIL分類を所有するAgentロール。
-  count: 25
-  prose_count: 25
+  count: 26
+  prose_count: 26
   code_count: 0
   source_count: 12
 - token: main
@@ -27084,8 +27073,8 @@ all_extracted_terms:
   abbreviations: []
   variants: []
   description: 本文から抽出した製品名、仕様名、固有名、または略語。英語表記を維持する。
-  count: 111
-  prose_count: 108
+  count: 112
+  prose_count: 109
   code_count: 3
   source_count: 15
 - token: qa
@@ -28444,10 +28433,10 @@ all_extracted_terms:
   abbreviations: []
   variants: []
   description: QA Agentが候補に対してtestまたはcaseを再実行すること。
-  count: 6
-  prose_count: 6
+  count: 5
+  prose_count: 5
   code_count: 0
-  source_count: 5
+  source_count: 4
 - token: reservation
   category: japanese_translation
   formal_name: reservation
@@ -32884,8 +32873,8 @@ all_extracted_terms:
   abbreviations: []
   variants: []
   description: KakesuのSchemaと設計で同じ対象を指す、限定された正式ドメイン名。
-  count: 769
-  prose_count: 679
+  count: 770
+  prose_count: 680
   code_count: 90
   source_count: 41
 - token: task
