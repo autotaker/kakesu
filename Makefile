@@ -17,7 +17,7 @@ UV_ENV := UV_CACHE_DIR=$(CURDIR)/.build/uv-cache
 .PHONY: build build-core build-memory build-governance node-deps
 .PHONY: test test-core test-memory test-governance test-tabletop test-docs test-process
 .PHONY: lint lint-core lint-memory lint-governance lint-docs
-.PHONY: check clean work-init work-agent explorer-agent work-config-sync task-create task-check work-check backlog-view worktree-create worktree-remove wiki-index wiki-context wiki-ingest
+.PHONY: check clean work-init work-agent explorer-agent work-config-sync task-create task-check task-preflight work-check backlog-view worktree-create worktree-remove wiki-index wiki-context wiki-ingest
 
 build: build-core build-memory build-governance
 
@@ -106,6 +106,10 @@ task-create: node-deps
 task-check: node-deps
 	@test -n "$(TASK)" || (echo "TASK is required" >&2; exit 1)
 	$(NODE) scripts/task/check-task.mjs --work-root "$(WORK_ROOT)" --task "$(TASK)"
+
+task-preflight: node-deps
+	@test -n "$(TASK)" || (echo "TASK is required" >&2; exit 1)
+	$(NODE) scripts/task/check-task.mjs --work-root "$(WORK_ROOT)" --task "$(TASK)" --phase preflight
 
 work-check: node-deps
 	$(NODE) scripts/task/validate-work.mjs --work-root "$(WORK_ROOT)"

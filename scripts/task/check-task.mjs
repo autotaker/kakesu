@@ -24,6 +24,8 @@ const SAFETY_CONTRACT_PATHS = [
   /^docs\/glossary\.yml$/,
   /^templates\/task\//,
 ];
+const SAFETY_CONTRACT_GENERATED_PATHS = new Set(["docs/99-glossary-index.md"]);
+const SAFETY_CONTRACT_V2_FIELDS = ["safety_contract_planned_paths", "safety_contract_generated_paths"];
 const SAFETY_CONTRACT_EXCLUSION = /製品コード[^\n]*(?:test|テスト)[^\n]*runtime\/build設定[^\n]*Schema[^\n]*製品依存[^\n]*(?:生成製品入力\/成果物[^\n]*)?(?:外部観測可能な)?(?:製品)?挙動/;
 const LEGACY_TASK_0024_EXCLUSION = /製品コード、製品test、runtime\/build設定、製品Schema、製品依存、製品挙動/;
 const SAFETY_CHECK_KEYS = ["process_tests", "contract_scope", "docs_lint", "make_check"];
@@ -41,7 +43,75 @@ function safetyCheckDigest(candidateTree, mergeTree, checks) {
   return createHash("sha256").update(`${normalized}\n`).digest("hex");
 }
 
-function checkSafetyContractDone({ root, taskDir, task, taskId }) {
+function hasOwn(value, key) {
+  return Object.prototype.hasOwnProperty.call(value, key);
+}
+
+function isRepositoryFilePath(value) {
+  return typeof value === "string"
+    && value.length > 0
+    && !path.posix.isAbsolute(value)
+    && path.posix.normalize(value) === value
+    && !value.endsWith("/")
+    && path.posix.extname(value) !== ""
+    && !value.includes("\\")
+    && !/[*?[\]{}]/.test(value)
+    && !value.split("/").includes("..");
+}
+
+function validateSafetyContractPlan(plan, changeClass, taskId) {
+  const errors = [];
+  const hasVersion = hasOwn(plan, "safety_contract_version");
+  const presentV2Fields = SAFETY_CONTRACT_V2_FIELDS.filter((field) => hasOwn(plan, field));
+  if (changeClass !== "safety_contract") {
+    if (hasVersion || presentV2Fields.length) {
+      errors.push(`${taskId}: safety_contract v2 fields require change_class safety_contract`);
+    }
+    return { errors, version: undefined, plannedPaths: [], generatedPaths: [] };
+  }
+  if (!hasVersion) {
+    if (presentV2Fields.length) {
+      errors.push(`${taskId}: safety_contract v2 path fields require safety_contract_version: 2`);
+    }
+    return { errors, version: undefined, plannedPaths: [], generatedPaths: [] };
+  }
+  if (plan.safety_contract_version !== 2) {
+    errors.push(`${taskId}: unsupported safety_contract_version ${String(plan.safety_contract_version)}`);
+    return { errors, version: plan.safety_contract_version, plannedPaths: [], generatedPaths: [] };
+  }
+
+  const values = {};
+  for (const field of SAFETY_CONTRACT_V2_FIELDS) {
+    if (!hasOwn(plan, field) || !Array.isArray(plan[field])) {
+      errors.push(`${taskId}: safety_contract v2 requires ${field} as an array`);
+      values[field] = [];
+    } else {
+      values[field] = plan[field];
+    }
+  }
+  const plannedPaths = values.safety_contract_planned_paths;
+  const generatedPaths = values.safety_contract_generated_paths;
+  for (const [field, paths, allowed] of [
+    ["safety_contract_planned_paths", plannedPaths, (candidate) => SAFETY_CONTRACT_PATHS.some((pattern) => pattern.test(candidate))],
+    ["safety_contract_generated_paths", generatedPaths, (candidate) => SAFETY_CONTRACT_GENERATED_PATHS.has(candidate)],
+  ]) {
+    for (const candidate of paths) {
+      if (!isRepositoryFilePath(candidate)) {
+        errors.push(`${taskId}: ${field} contains an invalid repository file path: ${String(candidate)}`);
+      } else if (!allowed(candidate)) {
+        errors.push(`${taskId}: ${field} contains an unapproved path: ${candidate}`);
+      }
+    }
+  }
+  const allPaths = [...plannedPaths, ...generatedPaths];
+  const duplicate = allPaths.find((candidate, index) => allPaths.indexOf(candidate) !== index);
+  if (duplicate !== undefined) {
+    errors.push(`${taskId}: safety_contract v2 path declarations contain a duplicate: ${String(duplicate)}`);
+  }
+  return { errors, version: 2, plannedPaths, generatedPaths };
+}
+
+function checkSafetyContractDone({ root, taskDir, task, taskId, planContract }) {
   const errors = [];
   const plan = parseFrontmatter(path.join(taskDir, "PLAN.md"));
   const qaPlan = parseFrontmatter(path.join(taskDir, "QA_PLAN.md"));
@@ -114,9 +184,21 @@ function checkSafetyContractDone({ root, taskDir, task, taskId }) {
       .split("\n").filter(Boolean).map((line) => line.split("\t"));
     if (changedEntries.length === 0
         || changedEntries.some(([status]) => /^R|^C/.test(status))
-        || changedEntries.some(([status, ...changedPaths]) => !/^[AMD]$/.test(status)
-          || changedPaths.length !== 1
-          || !SAFETY_CONTRACT_PATHS.some((pattern) => pattern.test(changedPaths[0])))) {
+        || changedEntries.some(([status, ...changedPaths]) => !/^[AMD]$/.test(status) || changedPaths.length !== 1)) {
+      throw new Error("safety_contract includes a product or unapproved path");
+    }
+    if (planContract.version === 2 && planContract.errors.length === 0) {
+      const declaredPaths = new Set([...planContract.plannedPaths, ...planContract.generatedPaths]);
+      const undeclared = changedEntries.find(([, changedPath]) => !declaredPaths.has(changedPath));
+      if (undeclared) {
+        throw new Error(`safety_contract candidate diff includes an undeclared path: ${undeclared[1]}`);
+      }
+      const changedStatuses = new Map(changedEntries.map(([status, changedPath]) => [changedPath, status]));
+      const missingGenerated = planContract.generatedPaths.find((generatedPath) => !/[AM]/.test(changedStatuses.get(generatedPath) ?? ""));
+      if (missingGenerated) {
+        throw new Error(`declared generated path is missing from the candidate diff: ${missingGenerated}`);
+      }
+    } else if (changedEntries.some(([, changedPath]) => !SAFETY_CONTRACT_PATHS.some((pattern) => pattern.test(changedPath)))) {
       throw new Error("safety_contract includes a product or unapproved path");
     }
   } catch (error) {
@@ -125,7 +207,7 @@ function checkSafetyContractDone({ root, taskDir, task, taskId }) {
   return errors;
 }
 
-export function checkTask(root, backlog, taskId) {
+export function checkTask(root, backlog, taskId, { phase = "full" } = {}) {
   const errors = [];
   try {
     assertTaskId(taskId);
@@ -136,6 +218,9 @@ export function checkTask(root, backlog, taskId) {
       errors.push(`${taskId}: change_class must be product or safety_contract`);
     }
     const safetyContract = changeClass === "safety_contract";
+    if (!new Set(["full", "preflight"]).has(phase)) {
+      errors.push(`${taskId}: unsupported check phase ${phase}`);
+    }
     if (!TASK_STATUSES.has(task.status)) {
       errors.push(`${taskId}: invalid status ${task.status}`);
     }
@@ -161,6 +246,13 @@ export function checkTask(root, backlog, taskId) {
         errors.push(`${taskId}: ${filename} has mismatched task_id`);
       }
     }
+    const planContract = validateSafetyContractPlan(
+      parseFrontmatter(path.join(taskDir, "PLAN.md")),
+      changeClass,
+      taskId,
+    );
+    errors.push(...planContract.errors);
+    if (phase === "preflight") return errors;
 
     if (["dev", "qa", "done"].includes(effectivePhase)) {
       const plan = parseFrontmatter(path.join(taskDir, "PLAN.md"));
@@ -283,7 +375,7 @@ export function checkTask(root, backlog, taskId) {
 
     if (task.status === "done") {
       if (safetyContract) {
-        errors.push(...checkSafetyContractDone({ root, taskDir, task, taskId }));
+        errors.push(...checkSafetyContractDone({ root, taskDir, task, taskId, planContract }));
       } else {
         const qa = parseFrontmatter(path.join(taskDir, "QA_RESULT.md"));
         const handover = parseFrontmatter(path.join(taskDir, "HANDOVER.md"));
@@ -323,7 +415,7 @@ if (isMain) {
   const root = workRoot(args.work_root);
   const backlog = readYaml(path.join(root, "backlog.yaml"));
   const taskIds = args.task ? [args.task] : (backlog.tasks ?? []).map((task) => task.id);
-  const errors = taskIds.flatMap((taskId) => checkTask(root, backlog, taskId));
+  const errors = taskIds.flatMap((taskId) => checkTask(root, backlog, taskId, { phase: args.phase ?? "full" }));
   if (errors.length) {
     process.stderr.write(`${errors.map((error) => `- ${error}`).join("\n")}\n`);
     process.exit(1);

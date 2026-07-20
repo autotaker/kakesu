@@ -47,7 +47,19 @@ function safetyCheckDigest(candidateTree, mergeTree, checks) {
   return createHash("sha256").update(`${normalized}\n`).digest("hex");
 }
 
-function createDoneTaskFixture({ taskId = "TASK-0090", changeClass, productPath = false, renameSpoof = false, copySpoof = false, nonNoFf = false, legacyTask0024 = false } = {}) {
+function createDoneTaskFixture({
+  taskId = "TASK-0090",
+  changeClass,
+  productPath = false,
+  changedPaths,
+  renameSpoof = false,
+  copySpoof = false,
+  nonNoFf = false,
+  legacyTask0024 = false,
+  safetyContractV2 = false,
+  plannedPaths,
+  generatedPaths,
+} = {}) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "task-done-gate-"));
   const repository = path.join(root, "product");
   const taskDir = path.join(root, "tasks", `${taskId}-fixture`);
@@ -70,10 +82,12 @@ function createDoneTaskFixture({ taskId = "TASK-0090", changeClass, productPath 
     fs.copyFileSync(path.join(repository, "docs", "development", "old.md"), path.join(repository, "docs", "development", "copy.md"));
     git(repository, ["add", "docs/development/copy.md"]);
   } else {
-    const changedPath = productPath ? "scripts/product.mjs" : "docs/development/contract.md";
-    fs.mkdirSync(path.dirname(path.join(repository, changedPath)), { recursive: true });
-    fs.writeFileSync(path.join(repository, changedPath), "changed\n");
-    git(repository, ["add", changedPath]);
+    const fixturePaths = changedPaths ?? [productPath ? "scripts/product.mjs" : "docs/development/contract.md"];
+    for (const changedPath of fixturePaths) {
+      fs.mkdirSync(path.dirname(path.join(repository, changedPath)), { recursive: true });
+      fs.writeFileSync(path.join(repository, changedPath), "changed\n");
+      git(repository, ["add", changedPath]);
+    }
   }
   git(repository, ["commit", "-m", "candidate"]);
   const candidateCommit = git(repository, ["rev-parse", "HEAD"]);
@@ -108,6 +122,11 @@ function createDoneTaskFixture({ taskId = "TASK-0090", changeClass, productPath 
     classification_approved_at: "2026-07-20T00:00:00Z",
     classification_approval_reason: "fixture classification",
   };
+  if (safetyContractV2) {
+    planMetadata.safety_contract_version = 2;
+    planMetadata.safety_contract_planned_paths = plannedPaths ?? ["docs/development/contract.md"];
+    planMetadata.safety_contract_generated_paths = generatedPaths ?? [];
+  }
   writeTaskEvidence(taskDir, "PLAN.md", planMetadata);
   const qaPlanMetadata = {
     task_id: taskId,
@@ -162,6 +181,85 @@ function createDoneTaskFixture({ taskId = "TASK-0090", changeClass, productPath 
   return { root, taskDir, backlog: { tasks: [task] }, taskId, planMetadata, qaPlanMetadata, reviewMetadata, qaResultMetadata, handoverMetadata };
 }
 
+function createSafetyPreflightFixture(planOverrides = {}) {
+  const taskId = "TASK-0091";
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "task-preflight-"));
+  const taskDir = path.join(root, "tasks", `${taskId}-fixture`);
+  fs.mkdirSync(taskDir, { recursive: true });
+  for (const filename of ["TASK.md", "REVIEW_RESULT.md", "QA_PLAN.md", "QA_RESULT.md", "HANDOVER.md"]) {
+    writeTaskEvidence(taskDir, filename, { task_id: taskId });
+  }
+  const planMetadata = {
+    task_id: taskId,
+    change_class: "safety_contract",
+    safety_contract_version: 2,
+    safety_contract_planned_paths: ["docs/development/contract.md"],
+    safety_contract_generated_paths: ["docs/99-glossary-index.md"],
+    ...planOverrides,
+  };
+  for (const [key, value] of Object.entries(planMetadata)) {
+    if (value === undefined) delete planMetadata[key];
+  }
+  writeTaskEvidence(taskDir, "PLAN.md", planMetadata);
+  const backlog = { tasks: [{ id: taskId, status: "plan", change_class: "safety_contract", task_dir: path.relative(root, taskDir) }] };
+  return { root, backlog, taskId };
+}
+
+test("safety_contract v2 preflight accepts unique declared planned and generated paths", async (t) => {
+  const valid = createSafetyPreflightFixture();
+  try {
+    assert.deepEqual(checkTask(valid.root, valid.backlog, valid.taskId, { phase: "preflight" }), []);
+  } finally {
+    fs.rmSync(valid.root, { recursive: true, force: true });
+  }
+  for (const [name, overrides, expected] of [
+    ["missing declaration", { safety_contract_generated_paths: undefined }, "requires safety_contract_generated_paths"],
+    ["unapproved planned path", { safety_contract_planned_paths: ["scripts/product.mjs"] }, "unapproved path"],
+    ["duplicate declaration", { safety_contract_planned_paths: ["docs/development/contract.md", "docs/development/contract.md"] }, "duplicate"],
+    ["duplicate across declarations", { safety_contract_planned_paths: ["docs/99-glossary-index.md"] }, "duplicate"],
+    ["empty path", { safety_contract_planned_paths: [""] }, "invalid repository file path"],
+    ["absolute path", { safety_contract_planned_paths: ["/docs/development/contract.md"] }, "invalid repository file path"],
+    ["traversing path", { safety_contract_planned_paths: ["docs/development/../contract.md"] }, "invalid repository file path"],
+    ["directory path", { safety_contract_planned_paths: ["docs/development/contract"] }, "invalid repository file path"],
+    ["glob path", { safety_contract_planned_paths: ["docs/development/*.md"] }, "invalid repository file path"],
+    ["version absent with v2 fields", { safety_contract_version: undefined }, "require safety_contract_version"],
+    ["unknown version", { safety_contract_version: 3 }, "unsupported safety_contract_version"],
+  ]) {
+    await t.test(name, () => {
+      const fixture = createSafetyPreflightFixture(overrides);
+      try {
+        assert.ok(checkTask(fixture.root, fixture.backlog, fixture.taskId, { phase: "preflight" })
+          .some((error) => error.includes(expected)));
+      } finally {
+        fs.rmSync(fixture.root, { recursive: true, force: true });
+      }
+    });
+  }
+});
+
+test("safety_contract v2 preflight permits docs glossary index only as declared generated path", async (t) => {
+  const valid = createSafetyPreflightFixture();
+  try {
+    assert.deepEqual(checkTask(valid.root, valid.backlog, valid.taskId, { phase: "preflight" }), []);
+  } finally {
+    fs.rmSync(valid.root, { recursive: true, force: true });
+  }
+  for (const [name, overrides] of [
+    ["glossary index as planned path", { safety_contract_planned_paths: ["docs/99-glossary-index.md"], safety_contract_generated_paths: [] }],
+    ["arbitrary generated path", { safety_contract_generated_paths: ["docs/98-generated.md"] }],
+  ]) {
+    await t.test(name, () => {
+      const fixture = createSafetyPreflightFixture(overrides);
+      try {
+        assert.ok(checkTask(fixture.root, fixture.backlog, fixture.taskId, { phase: "preflight" })
+          .some((error) => error.includes("unapproved path")));
+      } finally {
+        fs.rmSync(fixture.root, { recursive: true, force: true });
+      }
+    });
+  }
+});
+
 test("product Done gates remain required and missing change_class stays product", () => {
   const fixture = createDoneTaskFixture();
   try {
@@ -206,7 +304,7 @@ test("product Done rejects each representative QA, HANDOVER, and commit omission
   }
 });
 
-test("safety_contract Done accepts TASK-0024 evidence without product PASS artifacts", () => {
+test("legacy safety_contract plan remains on legacy validation without v2 opt-in", () => {
   const fixture = createDoneTaskFixture({ taskId: "TASK-0024", changeClass: "safety_contract", legacyTask0024: true });
   try {
     fs.rmSync(path.join(fixture.root, "wiki"), { recursive: true, force: true });
@@ -219,6 +317,48 @@ test("safety_contract Done accepts TASK-0024 evidence without product PASS artif
   } finally {
     fs.rmSync(fixture.root, { recursive: true, force: true });
   }
+});
+
+test("safety_contract v2 Done verifies candidate diff is declared and generated paths exist", async (t) => {
+  await t.test("declared candidate diff", () => {
+    const fixture = createDoneTaskFixture({
+      changeClass: "safety_contract",
+      safetyContractV2: true,
+      changedPaths: ["docs/development/contract.md", "docs/99-glossary-index.md"],
+      generatedPaths: ["docs/99-glossary-index.md"],
+    });
+    try {
+      assert.deepEqual(checkTask(fixture.root, fixture.backlog, fixture.taskId), []);
+    } finally {
+      fs.rmSync(fixture.root, { recursive: true, force: true });
+    }
+  });
+  await t.test("undeclared candidate path", () => {
+    const fixture = createDoneTaskFixture({
+      changeClass: "safety_contract",
+      safetyContractV2: true,
+      changedPaths: ["docs/development/contract.md", "docs/development/other.md"],
+    });
+    try {
+      assert.ok(checkTask(fixture.root, fixture.backlog, fixture.taskId)
+        .some((error) => error.includes("undeclared path")));
+    } finally {
+      fs.rmSync(fixture.root, { recursive: true, force: true });
+    }
+  });
+  await t.test("declared generated path missing", () => {
+    const fixture = createDoneTaskFixture({
+      changeClass: "safety_contract",
+      safetyContractV2: true,
+      generatedPaths: ["docs/99-glossary-index.md"],
+    });
+    try {
+      assert.ok(checkTask(fixture.root, fixture.backlog, fixture.taskId)
+        .some((error) => error.includes("generated path is missing")));
+    } finally {
+      fs.rmSync(fixture.root, { recursive: true, force: true });
+    }
+  });
 });
 
 test("safety_contract rejects product-path classification spoofing", () => {
