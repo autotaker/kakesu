@@ -15,7 +15,7 @@ expectation_change_approved_by: ""
 
 ## 方針
 
-この計画はTASKだけからDEV開始前に作成し、各ケースへ`qa_execution_mode`を一つだけ理由付きで割り当てる。`evidence-review`はcandidate-bound証跡の独立監査、`focused-rerun`はhermetic・deterministic・上限付き フィクスチャで完全再現できる高リスクケース、`live-e2e`は実OS権限/auth（sudo/PAMを含む）、実配置、外部作用、実restart/ロールバック/クリーンアップ、環境固有integrationを必要とするケースに使う。条件が不明な場合は強いモードまたはblockedへfail-closedし、PASSで代替しない。
+この計画はPLANを入力とせず、TASKの`planning input packet`だけからDEV開始前に作成する。条件本文や設計を再掲せず、各AC-IDへ観測を対応させ、各ケースへ`qa_execution_mode`を一つだけ理由付きで割り当てる。`evidence-review`はcandidate-bound証跡の独立監査、`focused-rerun`はhermetic・deterministic・上限付き フィクスチャで完全再現できる高リスクケース、`live-e2e`は実OS権限/auth（sudo/PAMを含む）、実配置、外部作用、実restart/ロールバック/クリーンアップ、環境固有integrationを必要とするケースに使う。条件が不明な場合は強いモードまたはblockedへfail-closedし、PASSで代替しない。
 
 ## 前提と環境
 
@@ -23,9 +23,9 @@ expectation_change_approved_by: ""
 
 ## 受け入れ条件との対応
 
-| ケースID | 受け入れ条件 | `qa_execution_mode` / 理由 | 操作 | 期待結果 | 必要証跡 |
+| ケースID | AC-ID | 観測方法 | `qa_execution_mode` / 理由 | 必要証跡 | fail-closed |
 |---|---|---|---|---|---|
-| QA-001 | TODO | `evidence-review` / TODO | TODO | TODO | ケース、案 コミット/tree、コマンド/テスト、環境/フィクスチャ、cache、exit、成果物 ダイジェスト、未実施理由、ネガティブ検出能力、テスト弱体化の有無 |
+| QA-001 | AC-1 | TODO | `evidence-review` / TODO | ケース、案 コミット/tree、コマンド/テスト、環境/フィクスチャ、cache、exit、成果物 ダイジェスト、未実施理由、ネガティブ検出能力、テスト弱体化の有無 | TODO |
 
 ## 境界・異常・回帰
 
