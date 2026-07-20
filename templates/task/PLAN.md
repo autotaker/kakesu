@@ -21,35 +21,29 @@ estimate_points: 1
 
 # {{TASK_ID}} PLAN
 
-## 受け入れ条件の具体化
+## AC対応
 
-| 条件 | 観測方法 | 根拠 |
-|---|---|---|
-| TODO | TODO | TODO |
+TASKの条件本文を再掲せず、`planning input packet`のAC-IDに設計を対応させる。
+
+| AC-ID | 設計判断 | 変更パス | 実施順序 | 失敗時の扱い |
+|---|---|---|---|---|
+| AC-1 | TODO | TODO | TODO | TODO |
 
 ## 関連Wikiと判断
 
 - TODO
 
-## 設計
-
-### 選択案
-
-TODO
+## 補足設計
 
 ### 代替案と不採用理由
 
 - TODO
 
-### 責務と境界
+### 責務・境界・不変条件
 
 - TODO
 
-### 不変条件
-
-- TODO
-
-### 失敗時・移行・互換性
+### 移行・互換性
 
 - TODO
 
@@ -83,9 +77,10 @@ estimate_points = 1, 2, 3, 5, 8, 13のうちmax(1, file_score, line_score)以上
 
 ## main Agentレビュー
 
-- [ ] 受け入れ条件が検証可能である。
+- [ ] TASKの全AC-IDへ設計判断、パス、順序、失敗時の扱いを対応させ、条件本文を複製していない。
 - [ ] 設計観点と代替案を検討している。
-- [ ] QA計画を作成できる。
+- [ ] QA_PLANがTASK-firstで独立作成されている。
+- [ ] `dependency-ready reconciliation`と完了経路preflightが完了している。
 - [ ] 見積もりが規則どおりである。
 - [ ] DEV開始を承認した。
 

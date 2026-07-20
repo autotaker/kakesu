@@ -28,27 +28,26 @@ merge確認 → review/qa candidate/treeの不一致または環境依存確認
 main AgentまたはTask起票担当は次を行う。
 
 1. `TASK-NNNN`を採番し、Taskディレクトリと6つの証跡ファイルを生成する。
-2. `TASK.md`へ目的、受け入れ条件、設計観点、完成の定義を記載する。
+2. `TASK.md`の`planning input packet`へ目的、対象外、AC-ID付き受け入れ条件、安定した参照、依存状態、許可パス、`preflight`結果、未決事項を記載する。この`packet`をPlannerとQAへ同じ内容で渡し、ほかの証跡へ本文を複製しない。
 3. Epic、優先度、依存Taskを`backlog.yaml`へ登録する。
 4. Wiki Agentへ関連コンテキストを問い合わせ、関連テーマと判断を`TASK.md`へ記録する。
 5. `status: plan`へ進め、Planner Agentをアサインする。
 
 ## 3. PLAN
 
-Planner Agentはコードを変更せず、Task契約と関連Wikiを基に`PLAN.md`を作成する。
+main Agentは計画開始前に完了経路を`preflight`する。完了checker、必要な権限、依存の状態と参照、生成物の有無と更新方法、割当ワークツリー、`Lap`ログの書込・Schema検証・`repository annotation`を実際のコマンドまたは参照で確認し、結果を`planning input packet`へ記録する。`Lap`ログは既存Schema/JSONLを変更せず、開始記録を書いて検証できた後だけ開始済みとする。未解決の`preflight`があれば計測を開始せず、`not_started`または`blocked`としてMainへ戻す。
 
-- 受け入れ条件を検証可能な形へ具体化する。
-- 設計選択、代替案、境界、不変条件、移行、障害時の挙動を検討する。
-- 変更予定の実装コード、Schema、設定ファイルと概算変更行数を列挙する。
-- テスト、フィクスチャ、スナップショット、文書、生成物、ロックファイル、vendorを除外して規則ベースの見積もりポイントを算出する。
-- QA Agentが実装前の`QA_PLAN.md`を作成できるだけの期待動作を明示する。
-- DEV プロファイルを`luna-xhigh`または`sol-high`から選び、理由とリスクシグナルをフロントマターへ記録する。`Luna`は局所的、明確、機械検証可能でリスクシグナルがない場合だけ選択できる。高リスク、横断的、不明な場合は`Sol`を選択する。
+Planner Agentはコードを変更せず、`planning input packet`と関連Wikiを基に`PLAN.md`を作成する。TASKの条件本文は再掲せず、各AC-IDに設計判断、変更パス、実施順序、失敗時の扱いを対応させ、変更予定と見積りを記録する。DEVプロファイルは`luna-xhigh`または`sol-high`から選び、理由とリスクシグナルをフロントマターへ記録する。`Luna`は局所的、明確、機械検証可能でリスクシグナルがない場合だけ選択でき、高リスク、横断的、不明な場合は`Sol`を選択する。
 
-main AgentはPLANをレビューし、曖昧な受け入れ条件、未解決の設計判断、過大なTaskが残る場合は承認しない。承認後にDEV Agent、レビュアー Agent、QA Agent、トピックブランチ、ワークツリーを割り当てる。
+QA AgentはPLANを入力にせず、同じTASKのpacketからDEV開始前に`QA_PLAN.md`を独立作成する。条件本文や設計を再掲せず、各AC-IDに観測方法、実施モード、必要証跡、fail-closed条件を対応させる。実装後の再確認で試験手順は修正できるが、期待結果または試験範囲の変更にはmain Agentの承認が要る。
 
 安全契約のv2完了契約はPLANフロントマターの`safety_contract_version: 2`で明示的に選ぶ。`safety_contract_planned_paths`と`safety_contract_generated_paths`をリポジトリ相対ファイルパス配列として必ず記録し、変更しない種別は空配列にする。承認後、DEV開始前に`make task-preflight TASK=TASK-NNNN`を実行し、許可外パス、欠落、配列内または配列間の重複をfail-closedで解消する。バージョン未指定の既存安全契約はこの新契約を暗黙に要求されない。
 
-QA AgentはDEV開始前に`QA_PLAN.md`を作成する。実装後の再確認で試験手順は修正できるが、期待結果または試験範囲の変更にはmain Agentの承認が要る。
+依存が未`ready`でも、安定した参照に基づく`dependency-independent planning`だけは進められる。依存待ちは`active planning`時間と分けて記録し、依存前に固定できない値を推測で埋めない。依存が`ready`になったらMainは固定参照と差分を`dependency-ready reconciliation`として`packet`へ追記する。差分がAC、設計、スコープ、QAの期待または範囲を変える場合は、DEV前にPLANとQA_PLANを再承認する。
+
+`active planning`が10分を超えたら、`境界不明 | 依存不安定 | API不明 | 資料不足 | 期待不一致 | tool/permission`から原因を記録し、文章の磨き込みだけを続けず、Mainへ不足解消またはblocked判断を返す。dependency待機はこの10分に算入しない。
+
+main AgentはPLANと`TASK-first` QA_PLANをレビューし、`packet`の欠落や矛盾、未解決の設計判断、過大なTask、未完了の`preflight`または`reconciliation`が残る場合はDEVを承認しない。承認後にDEV Agent、レビュアー Agent、QA Agent、トピックブランチ、ワークツリーを割り当てる。
 
 ## 4. DEV
 

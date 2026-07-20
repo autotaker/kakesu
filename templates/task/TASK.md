@@ -7,32 +7,71 @@ created_at: "{{DATE}}"
 
 # {{TASK_ID}} {{TITLE}}
 
-## 目的
+## `Planning input packet`（Main Agent所有）
+
+このsectionをPlannerとQAへ渡す唯一の`planning input packet`とし、各内容をPLAN/QA_PLANへ複製しない。
+
+### 目的
 
 <!-- 達成したい結果を記載する。 -->
 
-## 背景
+### 対象と対象外
 
-<!-- なぜ今必要か、現在の問題、関連する制約を記載する。 -->
-
-## スコープ
-
-<!-- backlog.yamlのchange_classをproductまたはsafety_contractに固定する。fieldがない既存Taskだけproductとして扱う。 -->
-
-### 対象
+#### 対象
 
 - TODO
 
-### 対象外
+#### 対象外
 
 - TODO
 <!-- safety_contractの場合: 製品コード、test、runtime/build設定、Schema、製品依存、生成製品入力/成果物、外部観測可能な挙動を変更しない。 -->
 
-## 受け入れ条件
+### 受け入れ条件
 
-- [ ] TODO
-- [ ] 各QA ケースに`qa_execution_mode`（`evidence-review | focused-rerun | live-e2e`）と選択理由、fail-closed条件がある。
-- [ ] DEV 案、独立REVIEW/QA、修正後のcarry-forwardまたはrerun、`merge_tree`確認を証跡化できる。
+<!-- AC-IDはTask内で一意かつ安定させ、観測可能な結果をここに一度だけ記載する。 -->
+
+- [ ] AC-1: TODO
+
+### 安定した参照
+
+| 参照ID | 対象 | 固定改訂/ダイジェスト | 用途 |
+|---|---|---|---|
+| REF-1 | TODO | TODO | TODO |
+
+### 依存状態
+
+| 依存 | 状態 (`ready` / `pending`) | planning参照 | `ready`後に固定する値 |
+|---|---|---|---|
+| なし | `ready` | N/A | N/A |
+
+### 許可パス
+
+- TODO
+
+### 完了経路preflight
+
+| 確認対象 | 結果 | コマンドまたは根拠 |
+|---|---|---|
+| 完了checker | TODO | TODO |
+| 権限 | TODO | TODO |
+| 依存状態と参照 | TODO | TODO |
+| 生成物の有無と更新方法 | TODO | TODO |
+| 割当ワークツリー | TODO | TODO |
+| Lapログの書込・Schema・`repository annotation` | TODO | TODO |
+
+### 未決事項
+
+- なし
+
+### `Dependency-ready reconciliation`
+
+<!-- 依存ready時にMainがready参照、planning参照との差分、AC/設計/scope/QAへの影響、再承認結果を追記する。依存なし又は未readyならN/Aとする。 -->
+
+- N/A
+
+## 背景
+
+<!-- なぜ今必要か、現在の問題、関連する制約を記載する。 -->
 
 ## 検討すべき設計観点
 
@@ -41,11 +80,9 @@ created_at: "{{DATE}}"
 ## 完成の定義
 
 - [ ] 受け入れ条件を満たしている。
-- [ ] 必要な実装、テスト、文書が完成している。
-- [ ] 独立レビューと`make check`がPASSしている。
-- [ ] REVIEWとQAが同一案から独立に評価され、未実施/blocked理由とMain判断が記録されている。
-- [ ] `merge_tree`と承認案 treeを比較し、環境依存ケースのマージ後確認を完了している。
-- [ ] HANDOVERがWiki Agentに取り込みされている。
+- [ ] 選択した`change_class`の完了経路と`make check`を満たしている。
+- [ ] 製品変更の場合: 実装、テスト、文書、同一案の独立REVIEW/QA、`merge_tree`確認、環境依存ケース、Wiki取り込みが完了している。
+- [ ] 安全契約変更の場合: 独立計画レビュー、契約検査、`no-ff merge`、案/merge tree一致が完了し、製品REVIEW/QA PASSやWiki receiptを代用証跡として作成していない。
 
 ## 関連コンテキスト
 

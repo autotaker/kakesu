@@ -4,14 +4,13 @@
 
 `TASK.md`は次の正本である。
 
-- 目的
-- 背景と範囲
-- 受け入れ条件
+- `planning input packet`（目的、対象外、AC-ID付き受け入れ条件、安定した参照、依存状態、許可パス、`preflight`結果、未決事項）
+- 背景と対象範囲
 - 検討すべき設計観点
 - 完成の定義
 - 関連するWikiテーマと判断
 
-受け入れ条件は観測可能な結果として書く。実装手段を不必要に固定せず、境界条件、失敗時、互換性、運用確認が必要なら明記する。
+`planning input packet`はMain Agentが所有し、PlannerとQAへ同一内容を渡す唯一の計画入力である。受け入れ条件は一意で安定したAC-IDを持つ観測可能な結果として一度だけ書き、PLANやQA_PLANへ本文を複製しない。依存が未`ready`なら状態と安定参照、`ready`後に固定する値を明示し、`dependency-ready reconciliation`で`ready`参照と差分、再承認要否を追記する。
 
 ## 証跡ファイル
 
@@ -20,9 +19,9 @@ Taskごとに次の6ファイルを持つ。
 | ファイル | 所有者 | 役割 |
 |---|---|---|
 | `TASK.md` | main Agentまたは起票者 | Task契約 |
-| `PLAN.md` | Planner Agent | 設計と実装計画 |
+| `PLAN.md` | Planner Agent | AC-IDに対応する設計判断、変更パス、順序、失敗時の扱い、見積り |
 | `REVIEW_RESULT.md` | レビュアー Agent | 同一案の独立レビュー結果（対象コミット/tree付き） |
-| `QA_PLAN.md` | QA Agent | 実装前の受け入れ試験計画と改訂履歴 |
+| `QA_PLAN.md` | QA Agent | AC-IDに対応する独立した観測計画と改訂履歴 |
 | `QA_RESULT.md` | QA Agent（ケース結果）、main Agent（carry-forward/merge判断） | 案単位のケース別モード実施結果、未実施/blocked理由、FAIL分類、Main判断 |
 | `HANDOVER.md` | DEV、QA、main Agent | candidate-bound DEV証跡、成果、carry-forward/merge確認、運用上の注意、Wiki引き渡し |
 
