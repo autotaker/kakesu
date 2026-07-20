@@ -6973,8 +6973,8 @@ extraction_notes:
 - 新しい用語を追加したときは、docs本文と正式用語のlintポリシーを同じ変更で更新する。
 extraction_inventory:
   source: 日本語を含む**/*.md
-  raw_token_count: 12143
-  unique_token_count: 2735
+  raw_token_count: 12184
+  unique_token_count: 2741
   classification: all_extracted_termsの各レコードにcategoryを付ける。
 lint:
   textlint_config: .textlintrc.json
@@ -14525,8 +14525,8 @@ all_extracted_terms:
   abbreviations: []
   variants: []
   description: Taskの実装フェーズまたは実装Agentロール。
-  count: 67
-  prose_count: 62
+  count: 70
+  prose_count: 65
   code_count: 5
   source_count: 13
 - token: dev
@@ -14999,10 +14999,10 @@ all_extracted_terms:
   abbreviations: []
   variants: []
   description: 本文から抽出したコード識別子。本文ではバッククォートで囲む。
-  count: 1
+  count: 3
   prose_count: 0
-  code_count: 1
-  source_count: 1
+  code_count: 3
+  source_count: 3
 - token: docs/AGENTS.md
   category: identifier
   formal_name: docs/AGENTS.md
@@ -17841,8 +17841,8 @@ all_extracted_terms:
   abbreviations: []
   variants: []
   description: 不明または不足がある場合に省略やPASSを許可しない判断原則。
-  count: 14
-  prose_count: 14
+  count: 15
+  prose_count: 15
   code_count: 0
   source_count: 9
 - token: failed
@@ -18690,10 +18690,10 @@ all_extracted_terms:
   variants:
   - git
   description: WorkspaceとSemantic Wikiの版管理。
-  count: 26
-  prose_count: 25
+  count: 27
+  prose_count: 26
   code_count: 1
-  source_count: 14
+  source_count: 15
 - token: git
   category: identifier
   formal_name: command name
@@ -18772,10 +18772,10 @@ all_extracted_terms:
   abbreviations: []
   variants: []
   description: 本文から抽出した一般技術語。自然な日本語の訳語を優先する。
-  count: 1
-  prose_count: 1
+  count: 2
+  prose_count: 2
   code_count: 0
-  source_count: 1
+  source_count: 2
 - token: Global
   category: identifier
   formal_name: Global
@@ -21664,10 +21664,10 @@ all_extracted_terms:
   abbreviations: []
   variants: []
   description: 本文から抽出した一般技術語。自然な日本語の訳語を優先する。
-  count: 1
-  prose_count: 1
+  count: 2
+  prose_count: 2
   code_count: 0
-  source_count: 1
+  source_count: 2
 - token: level
   category: identifier
   formal_name: level
@@ -22423,10 +22423,10 @@ all_extracted_terms:
   - gh
   - make
   description: CLIで実行するコマンド。本文ではバッククォートで囲む。
-  count: 50
+  count: 53
   prose_count: 0
-  code_count: 50
-  source_count: 14
+  code_count: 53
+  source_count: 16
 - token: make_check
   category: identifier
   formal_name: make_check
@@ -25840,8 +25840,8 @@ all_extracted_terms:
   abbreviations: []
   variants: []
   description: 本文から抽出した製品名、仕様名、固有名、または略語。英語表記を維持する。
-  count: 50
-  prose_count: 44
+  count: 54
+  prose_count: 48
   code_count: 6
   source_count: 12
 - token: plan
@@ -30454,6 +30454,61 @@ all_extracted_terms:
   prose_count: 2
   code_count: 6
   source_count: 3
+- token: safety_contract_generated_paths
+  category: identifier
+  formal_name: safety_contract_generated_paths
+  japanese: null
+  abbreviations: []
+  variants: []
+  description: 本文から抽出したコード識別子。本文ではバッククォートで囲む。
+  count: 2
+  prose_count: 0
+  code_count: 2
+  source_count: 2
+- token: 'safety_contract_generated_paths:'
+  category: identifier
+  formal_name: 'safety_contract_generated_paths:'
+  japanese: null
+  abbreviations: []
+  variants: []
+  description: 本文から抽出したコード識別子。本文ではバッククォートで囲む。
+  count: 1
+  prose_count: 1
+  code_count: 0
+  source_count: 1
+- token: safety_contract_planned_paths
+  category: identifier
+  formal_name: safety_contract_planned_paths
+  japanese: null
+  abbreviations: []
+  variants: []
+  description: 本文から抽出したコード識別子。本文ではバッククォートで囲む。
+  count: 2
+  prose_count: 0
+  code_count: 2
+  source_count: 2
+- token: 'safety_contract_planned_paths:'
+  category: identifier
+  formal_name: 'safety_contract_planned_paths:'
+  japanese: null
+  abbreviations: []
+  variants: []
+  description: 本文から抽出したコード識別子。本文ではバッククォートで囲む。
+  count: 1
+  prose_count: 1
+  code_count: 0
+  source_count: 1
+- token: 'safety_contract_version:'
+  category: identifier
+  formal_name: 'safety_contract_version:'
+  japanese: null
+  abbreviations: []
+  variants: []
+  description: 本文から抽出したコード識別子。本文ではバッククォートで囲む。
+  count: 4
+  prose_count: 1
+  code_count: 3
+  source_count: 3
 - token: safety_merge_tree
   category: identifier
   formal_name: safety_merge_tree
@@ -33282,10 +33337,10 @@ all_extracted_terms:
   abbreviations: []
   variants: []
   description: 本文から抽出した製品名、仕様名、固有名、または略語。英語表記を維持する。
-  count: 29
+  count: 32
   prose_count: 3
-  code_count: 26
-  source_count: 7
+  code_count: 29
+  source_count: 10
 - token: Task
   category: english_preferred
   formal_name: Task
@@ -33473,10 +33528,10 @@ all_extracted_terms:
   abbreviations: []
   variants: []
   description: 本文から抽出したコード識別子。本文ではバッククォートで囲む。
-  count: 4
+  count: 6
   prose_count: 0
-  code_count: 4
-  source_count: 3
+  code_count: 6
+  source_count: 4
 - token: task-ownership.md
   category: identifier
   formal_name: task-ownership.md
@@ -33488,6 +33543,17 @@ all_extracted_terms:
   prose_count: 0
   code_count: 1
   source_count: 1
+- token: task-preflight
+  category: identifier
+  formal_name: task-preflight
+  japanese: null
+  abbreviations: []
+  variants: []
+  description: 本文から抽出したコード識別子。本文ではバッククォートで囲む。
+  count: 3
+  prose_count: 0
+  code_count: 3
+  source_count: 3
 - token: task-progress.schema.json
   category: identifier
   formal_name: task-progress.schema.json
@@ -33847,9 +33913,9 @@ all_extracted_terms:
   abbreviations: []
   variants: []
   description: 本文から抽出したコード識別子。本文ではバッククォートで囲む。
-  count: 12
+  count: 13
   prose_count: 12
-  code_count: 0
+  code_count: 1
   source_count: 6
 - token: Task_id
   category: identifier
@@ -36075,10 +36141,10 @@ all_extracted_terms:
   abbreviations: []
   variants: []
   description: 本文から抽出したコード識別子。本文ではバッククォートで囲む。
-  count: 1
-  prose_count: 1
+  count: 7
+  prose_count: 7
   code_count: 0
-  source_count: 1
+  source_count: 4
 - token: V4
   category: identifier
   formal_name: V4

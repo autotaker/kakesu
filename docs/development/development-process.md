@@ -46,6 +46,8 @@ Planner Agentはコードを変更せず、Task契約と関連Wikiを基に`PLAN
 
 main AgentはPLANをレビューし、曖昧な受け入れ条件、未解決の設計判断、過大なTaskが残る場合は承認しない。承認後にDEV Agent、レビュアー Agent、QA Agent、トピックブランチ、ワークツリーを割り当てる。
 
+安全契約のv2完了契約はPLANフロントマターの`safety_contract_version: 2`で明示的に選ぶ。`safety_contract_planned_paths`と`safety_contract_generated_paths`をリポジトリ相対ファイルパス配列として必ず記録し、変更しない種別は空配列にする。承認後、DEV開始前に`make task-preflight TASK=TASK-NNNN`を実行し、許可外パス、欠落、配列内または配列間の重複をfail-closedで解消する。バージョン未指定の既存安全契約はこの新契約を暗黙に要求されない。
+
 QA AgentはDEV開始前に`QA_PLAN.md`を作成する。実装後の再確認で試験手順は修正できるが、期待結果または試験範囲の変更にはmain Agentの承認が要る。
 
 ## 4. DEV
@@ -85,7 +87,7 @@ FAILは`implementation_defect | qa_plan_defect | requirement_gap | environment_i
 
 製品変更をPASSまたはバグ化によって閉じられる場合、`QA_RESULT.md`と`HANDOVER.md`を完成させる。Wiki AgentがHANDOVERを取り込んでダイジェスト付きreceiptを直接コミットした後、main Agentが`status: done`をコミットし、ワークツリーとトピックブランチを削除する。
 
-安全契約変更の完了判定は、承認済みPLANとTASK-first QA PLAN、独立計画レビューのPASS、Mainの分類承認、対象検査のPASS、no-ff merge、第2親の案 treeとmerge treeの一致、許可された統制文書差分を要求する。PLANとQA PLANの`change_class`は`safety_contract`とし、`planning_reviewed_by`は担当レビュアーに一致させる。`PLAN.md`には`planning_review_decision`、`planning_reviewed_at`、`classification_approved_by`、`classification_approved_at`、空でない`classification_approval_reason`も記録し、計画レビュー、PLAN、QA PLAN、分類承認の時刻順を維持する。`HANDOVER.md`の`safety_checks`は`process_tests`、`contract_scope`、`docs_lint`、`make_check`だけを持ち、すべて`pass`とする。`safety_check_digest`は`safety_candidate_tree`、`safety_merge_tree`、上記順の検査名と結果を`key=value`の改行区切りで正規化し、末尾改行を含めてSHA-256を計算する。名前変更またはコピーを含む差分は安全契約経路で拒否する。製品用のREVIEW/QA PASS、製品用の完了HANDOVER、Wiki取込記録は作成しない。
+安全契約変更の完了判定は、承認済みPLANとTASK-first QA PLAN、独立計画レビューのPASS、Mainの分類承認、対象検査のPASS、no-ff merge、第2親の案 treeとmerge treeの一致、許可された統制文書差分を要求する。v2では候補差分の全パスをPLANの予定パスと生成パスの和集合へ束縛し、宣言した生成パスの全てが削除でない候補差分として存在することも要求する。生成専用パスとして許可するのは`docs/99-glossary-index.md`だけである。PLANとQA PLANの`change_class`は`safety_contract`とし、`planning_reviewed_by`は担当レビュアーに一致させる。`PLAN.md`には`planning_review_decision`、`planning_reviewed_at`、`classification_approved_by`、`classification_approved_at`、空でない`classification_approval_reason`も記録し、計画レビュー、PLAN、QA PLAN、分類承認の時刻順を維持する。`HANDOVER.md`の`safety_checks`は`process_tests`、`contract_scope`、`docs_lint`、`make_check`だけを持ち、すべて`pass`とする。`safety_check_digest`は`safety_candidate_tree`、`safety_merge_tree`、上記順の検査名と結果を`key=value`の改行区切りで正規化し、末尾改行を含めてSHA-256を計算する。名前変更またはコピーを含む差分は安全契約経路で拒否する。製品用のREVIEW/QA PASS、製品用の完了HANDOVER、Wiki取込記録は作成しない。
 
 ## 6. ブートストラップ例外
 
