@@ -29,6 +29,23 @@ export const ACTION_ROLES = Object.freeze({
 export const MAX_EXPLORER_QUESTION_LENGTH = 500;
 
 const FIXED_KEYS = ["model", "model_reasoning_effort", "sandbox_mode"];
+const PROJECT_CONFIG = Object.freeze({
+  model: "gpt-5.6-sol",
+  model_reasoning_effort: "high",
+  sandbox_mode: "workspace-write",
+});
+const PROJECT_ROLE_REGISTRY = Object.freeze({
+  main: { description: "Root orchestration and approval using Sol/high.", config_file: "agents/main.toml" },
+  planner: { description: "PLAN authoring using Terra/medium.", config_file: "agents/planner.toml" },
+  qa: { description: "QA planning and execution using Terra/medium.", config_file: "agents/qa.toml" },
+  reviewer: { description: "Independent review using Terra/medium.", config_file: "agents/reviewer.toml" },
+  "dev-luna": { description: "Low-risk DEV implementation using Luna/xhigh.", config_file: "agents/dev-luna.toml" },
+  "dev-sol": { description: "High or unknown-risk DEV implementation using Sol/high.", config_file: "agents/dev-sol.toml" },
+  explorer: { description: "Bounded read-only repository research using Luna/medium.", config_file: "agents/explorer.toml" },
+});
+const CODEX_DEFAULT_MAX_THREADS = 6;
+const CODEX_DEFAULT_MAX_DEPTH = 1;
+const PROHIBITED_PROJECT_KEYS = new Set(["hide_spawn_agent_metadata", "tool_namespace"]);
 
 function tomlSection(content, name) {
   const lines = content.split(/\r?\n/);
@@ -44,7 +61,82 @@ function quotedValue(content, key) {
   return match[1];
 }
 
+function readProjectConfig(productRoot) {
+  const file = path.join(productRoot, ".codex", "config.toml");
+  const content = fs.readFileSync(file, "utf8");
+  const topLevel = {};
+  const registry = {};
+  const seenSections = new Set();
+  let section = null;
+
+  for (const [index, sourceLine] of content.split(/\r?\n/).entries()) {
+    const line = sourceLine.trim();
+    if (!line || line.startsWith("#")) continue;
+
+    const sectionMatch = line.match(/^\[([^\]]+)]$/);
+    if (sectionMatch) {
+      section = sectionMatch[1].trim();
+      if (section === "features.multi_agent_v2") throw new Error("ROUTING_PROJECT_FEATURE_FORBIDDEN");
+      if (section === "agents") throw new Error("ROUTING_PROJECT_AGENTS_HEADER_FORBIDDEN");
+      if (!section.startsWith("agents.")) {
+        throw new Error(`ROUTING_PROJECT_SECTION_UNKNOWN: ${section}`);
+      }
+      if (seenSections.has(section)) throw new Error(`ROUTING_PROJECT_SECTION_DUPLICATE: ${section}`);
+      seenSections.add(section);
+      if (section.startsWith("agents.")) {
+        const role = section.slice("agents.".length);
+        if (!Object.hasOwn(PROJECT_ROLE_REGISTRY, role)) throw new Error(`ROUTING_PROJECT_ROLE_UNKNOWN: ${role}`);
+        registry[role] = {};
+      }
+      continue;
+    }
+
+    const assignment = line.match(/^([A-Za-z0-9_.-]+)\s*=\s*(.+)$/);
+    if (!assignment) throw new Error(`ROUTING_PROJECT_CONFIG_INVALID: line ${index + 1}`);
+    const [, key, rawValue] = assignment;
+    if (PROHIBITED_PROJECT_KEYS.has(key)) throw new Error(`ROUTING_PROJECT_KEY_FORBIDDEN: ${key}`);
+    if (key === "features.multi_agent_v2" || key.startsWith("features.multi_agent_v2.")) {
+      throw new Error("ROUTING_PROJECT_FEATURE_FORBIDDEN");
+    }
+    if (section === null && (key === "agents" || key.startsWith("agents."))) {
+      if (/^agents\.(?:max_threads|max_depth)$/.test(key)) {
+        throw new Error(`ROUTING_PROJECT_GLOBAL_OVERRIDE_FORBIDDEN: ${key.slice("agents.".length)}`);
+      }
+      throw new Error(`ROUTING_PROJECT_KEY_UNKNOWN: ${key}`);
+    }
+    const expected = section === null
+      ? PROJECT_CONFIG
+      : PROJECT_ROLE_REGISTRY[section.slice("agents.".length)];
+    if (!expected || !Object.hasOwn(expected, key)) throw new Error(`ROUTING_PROJECT_KEY_UNKNOWN: ${key}`);
+    const destination = section === null ? topLevel : registry[section.slice("agents.".length)];
+    if (Object.hasOwn(destination, key)) throw new Error(`ROUTING_PROJECT_KEY_DUPLICATE: ${key}`);
+    const valueMatch = rawValue.match(/^"([^"]*)"$/);
+    if (!valueMatch) throw new Error(`ROUTING_PROJECT_CONFIG_INVALID: line ${index + 1}`);
+    const value = valueMatch[1];
+    if (value !== expected[key]) {
+      const error = key === "config_file" ? "ROUTING_PROJECT_ROLE_MAPPING_MISMATCH" : "ROUTING_PROJECT_VALUE_MISMATCH";
+      throw new Error(`${error}: ${section ?? key}`);
+    }
+    destination[key] = value;
+  }
+
+  for (const key of FIXED_KEYS) {
+    if (!Object.hasOwn(topLevel, key)) throw new Error(`ROUTING_CONFIG_INVALID: missing ${key}`);
+  }
+  for (const [role, expected] of Object.entries(PROJECT_ROLE_REGISTRY)) {
+    if (!Object.hasOwn(registry, role)) throw new Error(`ROUTING_PROJECT_ROLE_MISSING: ${role}`);
+    for (const key of Object.keys(expected)) {
+      if (!Object.hasOwn(registry[role], key)) throw new Error(`ROUTING_PROJECT_ROLE_FIELD_MISSING: ${role}.${key}`);
+    }
+  }
+  return {
+    top_level: Object.fromEntries(FIXED_KEYS.map((key) => [key, topLevel[key]])),
+    agents: Object.fromEntries(Object.keys(PROJECT_ROLE_REGISTRY).map((role) => [role, registry[role]])),
+  };
+}
+
 export function readCanonicalContracts(productRoot = MODULE_ROOT) {
+  readProjectConfig(productRoot);
   const contracts = {};
   for (const [role, expected] of Object.entries(ROLE_CONTRACTS)) {
     const file = path.join(productRoot, ".codex", "agents", `${role}.toml`);
@@ -78,15 +170,12 @@ export function readCanonicalContracts(productRoot = MODULE_ROOT) {
     }
     contracts[role] = actual;
   }
-  const projectConfig = fs.readFileSync(path.join(productRoot, ".codex", "config.toml"), "utf8");
-  if (!/^max_threads\s*=\s*2\s*$/m.test(projectConfig) || !/^max_depth\s*=\s*2\s*$/m.test(projectConfig)) {
-    throw new Error("ROUTING_DEPTH_POLICY_MISMATCH");
-  }
   return contracts;
 }
 
 export function canonicalDigest(productRoot = MODULE_ROOT) {
-  return crypto.createHash("sha256").update(JSON.stringify(readCanonicalContracts(productRoot))).digest("hex");
+  const canonical = { project: readProjectConfig(productRoot), roles: readCanonicalContracts(productRoot) };
+  return crypto.createHash("sha256").update(JSON.stringify(canonical)).digest("hex");
 }
 
 export function renderWorkAdapter(productRoot, adapterRoot) {
@@ -95,13 +184,7 @@ export function renderWorkAdapter(productRoot, adapterRoot) {
   const lines = [
     "# Generated by make work-config-sync. Do not edit by hand.",
     `# canonical_digest = "${canonicalDigest(productRoot)}"`,
-    'model = "gpt-5.6-sol"',
-    'model_reasoning_effort = "high"',
-    'sandbox_mode = "workspace-write"',
-    "",
-    "[agents]",
-    "max_threads = 2",
-    "max_depth = 2",
+    ...Object.entries(PROJECT_CONFIG).map(([key, value]) => `${key} = ${JSON.stringify(value)}`),
   ];
   for (const role of Object.keys(ROLE_CONTRACTS)) {
     lines.push(
@@ -196,9 +279,11 @@ export function validateDelegation({ chain, questions = [], threads = 1 }) {
   if (!Array.isArray(chain) || chain.length < 2 || chain[0] !== "root" || chain.at(-1) !== "explorer") {
     throw new Error("ROUTING_DELEGATION_INVALID");
   }
-  if (chain.length > 3) throw new Error("ROUTING_MAX_DEPTH_EXCEEDED");
   if (chain.slice(0, -1).includes("explorer")) throw new Error("ROUTING_EXPLORER_SPAWN_FORBIDDEN");
-  if (threads > 2) throw new Error("ROUTING_MAX_THREADS_EXCEEDED");
+  if (chain.length - 1 > CODEX_DEFAULT_MAX_DEPTH) throw new Error("ROUTING_MAX_DEPTH_EXCEEDED");
+  if (!Number.isInteger(threads) || threads < 1 || threads > CODEX_DEFAULT_MAX_THREADS) {
+    throw new Error("ROUTING_MAX_THREADS_EXCEEDED");
+  }
   if (questions.length !== 1) {
     throw new Error("ROUTING_BOUNDED_QUESTION_REQUIRED");
   }
