@@ -21,6 +21,7 @@ import { buildExplorerInvocation, parseExplorerArgs, runExplorer } from "./run-e
 
 const productRoot = path.resolve(import.meta.dirname, "../..");
 const normalRoles = ["main", "planner", "qa", "reviewer", "dev-luna", "dev-sol"];
+const allRoles = Object.keys(ROLE_CONTRACTS);
 
 function canonicalFixture() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "routing-canonical-"));
@@ -69,7 +70,7 @@ test("role routing matches the canonical model and effort contracts", () => {
   assert.deepEqual(ROLE_CONTRACTS.explorer, { profile: "luna-medium", model: "gpt-5.6-luna", effort: "medium", sandbox: "read-only" });
 });
 
-test("normal roles use project depth and retain local thread and Explorer registry contracts", () => {
+test("standalone roles and the project subagent registry retain their contracts without global overrides", () => {
   for (const role of normalRoles) {
     const content = fs.readFileSync(path.join(productRoot, ".codex", "agents", `${role}.toml`), "utf8");
     const agents = section(content, "agents");
@@ -79,8 +80,18 @@ test("normal roles use project depth and retain local thread and Explorer regist
     assert.match(content, /^config_file\s*=\s*"explorer\.toml"\s*$/m);
   }
   const projectConfig = fs.readFileSync(path.join(productRoot, ".codex", "config.toml"), "utf8");
-  assert.match(projectConfig, /^max_depth\s*=\s*2\s*$/m);
-  assert.match(projectConfig, /^max_threads\s*=\s*2\s*$/m);
+  assert.match(projectConfig, /^model = "gpt-5\.6-sol"$/m);
+  assert.match(projectConfig, /^model_reasoning_effort = "high"$/m);
+  assert.match(projectConfig, /^sandbox_mode = "workspace-write"$/m);
+  assert.doesNotMatch(projectConfig, /^\s*\[features\.multi_agent_v2]\s*$/m);
+  assert.doesNotMatch(projectConfig, /^\s*(?:hide_spawn_agent_metadata|tool_namespace)\s*=/m);
+  assert.doesNotMatch(projectConfig, /^\s*\[agents]\s*$/m);
+  assert.doesNotMatch(projectConfig, /^\s*agents\.(?:max_threads|max_depth)\s*=/m);
+  for (const role of allRoles) {
+    const registry = section(projectConfig, `agents.${role}`);
+    assert.match(registry, new RegExp(`^config_file\\s*=\\s*"agents/${role}\\.toml"\\s*$`, "m"));
+    assert.match(registry, /^description\s*=\s*"[^"]+"\s*$/m);
+  }
   const explorer = fs.readFileSync(path.join(productRoot, ".codex", "agents", "explorer.toml"), "utf8");
   assert.match(explorer, /^max_depth\s*=\s*0\s*$/m);
   assert.match(explorer, /^max_threads\s*=\s*1\s*$/m);
@@ -99,7 +110,7 @@ test("normal role local depth reintroduction fails closed before adapter sync", 
   });
 });
 
-test("Explorer and project depth policies fail closed before adapter sync", () => {
+test("Explorer and prohibited project settings fail closed before adapter sync", () => {
   const cases = [
     {
       mutate(root) {
@@ -121,15 +132,73 @@ test("Explorer and project depth policies fail closed before adapter sync", () =
     },
     {
       mutate(root) {
-        replaceCanonical(root, path.join(".codex", "config.toml"), /^max_depth\s*=\s*2\s*$/m, "max_depth = 3");
+        fs.appendFileSync(path.join(root, ".codex", "config.toml"), "\n[features.multi_agent_v2]\nhide_spawn_agent_metadata = false\n");
       },
-      error: /ROUTING_DEPTH_POLICY_MISMATCH/,
+      error: /ROUTING_PROJECT_FEATURE_FORBIDDEN/,
     },
     {
       mutate(root) {
-        replaceCanonical(root, path.join(".codex", "config.toml"), /^max_threads\s*=\s*2\s*$/m, "max_threads = 3");
+        fs.appendFileSync(path.join(root, ".codex", "config.toml"), "\nhide_spawn_agent_metadata = false\n");
       },
-      error: /ROUTING_DEPTH_POLICY_MISMATCH/,
+      error: /ROUTING_PROJECT_KEY_FORBIDDEN: hide_spawn_agent_metadata/,
+    },
+    {
+      mutate(root) {
+        fs.appendFileSync(path.join(root, ".codex", "config.toml"), "\ntool_namespace = \"agents\"\n");
+      },
+      error: /ROUTING_PROJECT_KEY_FORBIDDEN: tool_namespace/,
+    },
+    {
+      mutate(root) {
+        replaceCanonical(root, path.join(".codex", "config.toml"), /^sandbox_mode = "workspace-write"$/m, 'sandbox_mode = "workspace-write"\n\n[agents]');
+      },
+      error: /ROUTING_PROJECT_AGENTS_HEADER_FORBIDDEN/,
+    },
+    {
+      mutate(root) {
+        replaceCanonical(root, path.join(".codex", "config.toml"), /^sandbox_mode = "workspace-write"$/m, 'sandbox_mode = "workspace-write"\nagents.max_threads = 6');
+      },
+      error: /ROUTING_PROJECT_GLOBAL_OVERRIDE_FORBIDDEN: max_threads/,
+    },
+    {
+      mutate(root) {
+        replaceCanonical(root, path.join(".codex", "config.toml"), /^sandbox_mode = "workspace-write"$/m, 'sandbox_mode = "workspace-write"\nagents.max_depth = 1');
+      },
+      error: /ROUTING_PROJECT_GLOBAL_OVERRIDE_FORBIDDEN: max_depth/,
+    },
+    {
+      mutate(root) {
+        replaceCanonical(
+          root,
+          path.join(".codex", "config.toml"),
+          /\n\[agents\.qa]\n[\s\S]*?(?=\n\[agents\.)/,
+          "\n",
+        );
+      },
+      error: /ROUTING_PROJECT_ROLE_MISSING: qa/,
+    },
+    {
+      mutate(root) {
+        replaceCanonical(
+          root,
+          path.join(".codex", "config.toml"),
+          /^config_file = "agents\/reviewer\.toml"$/m,
+          'config_file = "agents/qa.toml"',
+        );
+      },
+      error: /ROUTING_PROJECT_ROLE_MAPPING_MISMATCH: agents\.reviewer/,
+    },
+    {
+      mutate(root) {
+        fs.appendFileSync(path.join(root, ".codex", "config.toml"), "\n[agents.extra]\ndescription = \"extra\"\nconfig_file = \"agents/extra.toml\"\n");
+      },
+      error: /ROUTING_PROJECT_ROLE_UNKNOWN: extra/,
+    },
+    {
+      mutate(root) {
+        replaceCanonical(root, path.join(".codex", "config.toml"), /^model = "gpt-5\.6-sol"$/m, 'model = "gpt-5.6-terra"');
+      },
+      error: /ROUTING_PROJECT_VALUE_MISMATCH: model/,
     },
   ];
   for (const { mutate, error } of cases) assertCanonicalDriftFailsClosed(mutate, error);
@@ -153,13 +222,12 @@ test("DEV selection permits Luna only without risk and validates promotion", () 
   }), "sol-high");
 });
 
-test("explorer delegation accepts only depth two, two threads, and one question", () => {
-  assert.equal(validateDelegation({ chain: ["root", "explorer"], questions: ["Where is routing defined?"] }), true);
-  assert.equal(validateDelegation({ chain: ["root", "planner", "explorer"], questions: ["Which file owns the gate?"], threads: 2 }), true);
-  assert.throws(() => validateDelegation({ chain: ["root", "planner", "qa", "explorer"], questions: ["x"] }), /MAX_DEPTH/);
+test("explorer delegation follows the built-in depth one and six-thread defaults", () => {
+  assert.equal(validateDelegation({ chain: ["root", "explorer"], questions: ["Where is routing defined?"], threads: 6 }), true);
+  assert.throws(() => validateDelegation({ chain: ["root", "planner", "explorer"], questions: ["Which file owns the gate?"], threads: 2 }), /MAX_DEPTH/);
   assert.throws(() => validateDelegation({ chain: ["root", "explorer", "explorer"], questions: ["x"] }), /EXPLORER_SPAWN/);
   assert.throws(() => validateDelegation({ chain: ["root", "explorer"], questions: ["x", "y"] }), /BOUNDED_QUESTION/);
-  assert.throws(() => validateDelegation({ chain: ["root", "explorer"], questions: ["x"], threads: 3 }), /MAX_THREADS/);
+  assert.throws(() => validateDelegation({ chain: ["root", "explorer"], questions: ["x"], threads: 7 }), /MAX_THREADS/);
   assert.throws(() => validateExplorerQuestion("first line\nsecond line"), /BOUNDED_QUESTION_INVALID/);
   assert.throws(() => validateExplorerQuestion("x".repeat(MAX_EXPLORER_QUESTION_LENGTH + 1)), /BOUNDED_QUESTION_INVALID/);
 });
@@ -214,10 +282,29 @@ test("work adapter generation is deterministic and detects drift", () => {
     assert.equal(syncWorkAdapter({ productRoot, adapterRoot }).changed, false);
     assert.doesNotThrow(() => syncWorkAdapter({ productRoot, adapterRoot, check: true }));
     const target = path.join(adapterRoot, ".codex", "config.toml");
+    const cleanAdapter = fs.readFileSync(target, "utf8");
+    fs.writeFileSync(target, cleanAdapter.replace(/\n\[agents\.qa]\n[\s\S]*?(?=\n\[agents\.)/, "\n"));
+    assert.throws(() => syncWorkAdapter({ productRoot, adapterRoot, check: true }), /ROUTING_ADAPTER_DRIFT/);
+    fs.writeFileSync(target, cleanAdapter.replace(/qa\.toml/, "reviewer.toml"));
+    assert.throws(() => syncWorkAdapter({ productRoot, adapterRoot, check: true }), /ROUTING_ADAPTER_DRIFT/);
+    fs.writeFileSync(target, cleanAdapter);
     fs.appendFileSync(target, "# drift\n");
     assert.throws(() => syncWorkAdapter({ productRoot, adapterRoot, check: true }), /ROUTING_ADAPTER_DRIFT/);
-    assert.match(renderWorkAdapter(productRoot, adapterRoot), /^max_depth = 2$/m);
-    assert.match(renderWorkAdapter(productRoot, adapterRoot), /^max_threads = 2$/m);
+    const rendered = renderWorkAdapter(productRoot, adapterRoot);
+    assert.match(rendered, /^model = "gpt-5\.6-sol"$/m);
+    assert.match(rendered, /^model_reasoning_effort = "high"$/m);
+    assert.match(rendered, /^sandbox_mode = "workspace-write"$/m);
+    assert.doesNotMatch(rendered, /^\s*\[features\.multi_agent_v2]\s*$/m);
+    assert.doesNotMatch(rendered, /^\s*(?:hide_spawn_agent_metadata|tool_namespace)\s*=/m);
+    assert.doesNotMatch(rendered, /^\s*\[agents]\s*$/m);
+    assert.doesNotMatch(rendered, /^\s*agents\.(?:max_threads|max_depth)\s*=/m);
+    const relativeAgents = path.relative(path.join(adapterRoot, ".codex"), path.join(productRoot, ".codex", "agents"));
+    for (const role of allRoles) {
+      const registry = section(rendered, `agents.${role}`);
+      const configFile = path.posix.join(relativeAgents.split(path.sep).join("/"), `${role}.toml`);
+      assert.match(registry, new RegExp(`^config_file\\s*=\\s*"${configFile.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\\\$&")}"\\s*$`, "m"));
+      assert.match(registry, new RegExp(`^description\\s*=\\s*"${role} canonical role contract"\\s*$`, "m"));
+    }
   } finally {
     fs.rmSync(adapterRoot, { recursive: true, force: true });
   }

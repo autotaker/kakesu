@@ -2,7 +2,7 @@
 
 ## Codex モデル ルーティング
 
-製品リポジトリの`.codex/config.toml`と`.codex/agents/*.toml`をロール契約の正本とする。グローバル設定やモデルエイリアスには依存しない。
+固定ロールの契約は製品リポジトリの`standalone`な`.codex/agents/*.toml`を正本とする。`project-scoped`な`.codex/config.toml`と運用リポジトリの生成アダプターは、`top-level`の`model`、`effort`、`sandbox`に加えて7件の`[agents.<role>]`と`config_file` mappingを維持する。明示的な`[agents]`ヘッダーと全体委譲上限は置かず、子テーブルが親テーブルを暗黙に作るTOML構造とする。`user-level`設定やモデルエイリアスには依存しない。
 
 | ロール | モデル | 推論 `effort` | 備考 |
 |---|---|---|---|
@@ -49,7 +49,7 @@ mainは`PLAN → DEV`を進めた後、レビュアーとQAを同一`candidate_c
 
 `Explorer`は`agent_type="explorer"`で起動し、一度に一件の限定質問だけを扱う。対象は`read-only`の検索・読取りに限り、ファイル編集、Git書込み、スコープ拡大、別Agentの再委譲、実装や方針決定を行わず、短い根拠要約とファイル参照だけを返す。`max_depth=0`と`max_threads=1`も維持する。内部`Spawn Agent`が使えない場合だけ、同じ一問契約を検査する`make explorer-agent QUESTION='...'`へ`fallback`する。
 
-`fallback`で`work-agent`を使う場合だけ、ランチャーが専用ランチャーの絶対パスと調査対象をプロンプトへ渡す。`QUESTION`は前後の空白や改行を含まない500文字以下の一件の限定質問とし、`EXPLORER_ROOT`を省略した場合は製品リポジトリを調査する。Agentの自己申告をルーティング証跡として信用せず、ランタイムで観測できた`model/effort`と起動条件を親が検査する。全体の委譲上限は製品設定の深さ2、最大thread数2を正本とし、通常6ロールには個別の深さ上限を置かない。
+`fallback`で`work-agent`を使う場合だけ、ランチャーが専用ランチャーの絶対パスと調査対象をプロンプトへ渡す。`QUESTION`は前後の空白や改行を含まない500文字以下の一件の限定質問とし、`EXPLORER_ROOT`を省略した場合は製品リポジトリを調査する。Agentの自己申告をルーティング証跡として信用せず、ランタイムで観測できた`model/effort`と起動条件を親が検査する。`role registry`を維持したまま全体上限の`project override`は置かず、Codexの組み込み既定である深さ1、最大thread数6へ委ねる。このため`root`から`Explorer`への直接起動だけを許可し、`role`を介した`nested Explorer`起動は許可しない。通常6ロールの`role-local`な`max_threads=2`と`Explorer`の`max_threads=1`、`max_depth=0`は`standalone role`契約として維持する。
 
 ## main Agent
 

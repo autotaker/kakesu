@@ -2,14 +2,6 @@ model = "gpt-5.6-sol"
 model_reasoning_effort = "high"
 sandbox_mode = "workspace-write"
 
-[features.multi_agent_v2]
-hide_spawn_agent_metadata = false
-tool_namespace = "agents"
-
-[agents]
-max_threads = 2
-max_depth = 2
-
 [agents.main]
 description = "Root orchestration and approval using Sol/high."
 config_file = "agents/main.toml"

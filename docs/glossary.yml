@@ -6973,8 +6973,8 @@ extraction_notes:
 - 新しい用語を追加したときは、docs本文と正式用語のlintポリシーを同じ変更で更新する。
 extraction_inventory:
   source: 日本語を含む**/*.md
-  raw_token_count: 12340
-  unique_token_count: 2762
+  raw_token_count: 12370
+  unique_token_count: 2772
   classification: all_extracted_termsの各レコードにcategoryを付ける。
 lint:
   textlint_config: .textlintrc.json
@@ -8013,10 +8013,10 @@ all_extracted_terms:
   abbreviations: []
   variants: []
   description: 本文から抽出したコード識別子。本文ではバッククォートで囲む。
-  count: 1
+  count: 3
   prose_count: 0
-  code_count: 1
-  source_count: 1
+  code_count: 3
+  source_count: 2
 - token: AGENTS.md
   category: identifier
   formal_name: AGENTS.md
@@ -11883,8 +11883,8 @@ all_extracted_terms:
   abbreviations: []
   variants: []
   description: 本文から抽出した一般技術語。自然な日本語の訳語を優先する。
-  count: 1
-  prose_count: 1
+  count: 2
+  prose_count: 2
   code_count: 0
   source_count: 1
 - token: codex
@@ -12712,6 +12712,17 @@ all_extracted_terms:
   prose_count: 1
   code_count: 1
   source_count: 2
+- token: config_file
+  category: identifier
+  formal_name: config_file
+  japanese: null
+  abbreviations: []
+  variants: []
+  description: 本文から抽出したコード識別子。本文ではバッククォートで囲む。
+  count: 1
+  prose_count: 0
+  code_count: 1
+  source_count: 1
 - token: configuration
   category: japanese_translation
   formal_name: configuration
@@ -15716,9 +15727,9 @@ all_extracted_terms:
   abbreviations: []
   variants: []
   description: 本文から抽出した一般技術語。自然な日本語の訳語を優先する。
-  count: 4
+  count: 5
   prose_count: 1
-  code_count: 3
+  code_count: 4
   source_count: 2
 - token: Egress
   category: japanese_translation
@@ -17841,9 +17852,9 @@ all_extracted_terms:
   abbreviations: []
   variants: []
   description: 本文から抽出した一般技術語。自然な日本語の訳語を優先する。
-  count: 8
+  count: 11
   prose_count: 1
-  code_count: 7
+  code_count: 10
   source_count: 3
 - token: explorer
   category: identifier
@@ -22581,6 +22592,17 @@ all_extracted_terms:
   prose_count: 0
   code_count: 1
   source_count: 1
+- token: mapping
+  category: japanese_translation
+  formal_name: mapping
+  japanese: 訳語を検討
+  abbreviations: []
+  variants: []
+  description: 本文から抽出した一般技術語。自然な日本語の訳語を優先する。
+  count: 1
+  prose_count: 1
+  code_count: 0
+  source_count: 1
 - token: mark
   category: identifier
   formal_name: mark
@@ -22709,9 +22731,9 @@ all_extracted_terms:
   abbreviations: []
   variants: []
   description: 本文から抽出したコード識別子。本文ではバッククォートで囲む。
-  count: 1
+  count: 2
   prose_count: 0
-  code_count: 1
+  code_count: 2
   source_count: 1
 - token: max_rows
   category: identifier
@@ -22753,9 +22775,9 @@ all_extracted_terms:
   abbreviations: []
   variants: []
   description: 本文から抽出したコード識別子。本文ではバッククォートで囲む。
-  count: 1
+  count: 3
   prose_count: 0
-  code_count: 1
+  code_count: 3
   source_count: 1
 - token: max_uses
   category: identifier
@@ -23361,9 +23383,9 @@ all_extracted_terms:
   variants:
   - model
   description: 本文では自然な日本語または定着したカタカナ語の「モデル」を使う。
-  count: 7
+  count: 8
   prose_count: 0
-  code_count: 7
+  code_count: 8
   source_count: 3
 - token: model/effort
   category: identifier
@@ -23537,10 +23559,10 @@ all_extracted_terms:
   abbreviations: []
   variants: []
   description: 本文から抽出した一般技術語。自然な日本語の訳語を優先する。
-  count: 1
+  count: 2
   prose_count: 1
-  code_count: 0
-  source_count: 1
+  code_count: 1
+  source_count: 2
 - token: netlink
   category: japanese_translation
   formal_name: netlink
@@ -24988,6 +25010,17 @@ all_extracted_terms:
   count: 2
   prose_count: 2
   code_count: 0
+  source_count: 1
+- token: override
+  category: identifier
+  formal_name: override
+  japanese: null
+  abbreviations: []
+  variants: []
+  description: 本文から抽出したコード識別子。本文ではバッククォートで囲む。
+  count: 1
+  prose_count: 0
+  code_count: 1
   source_count: 1
 - token: overview
   category: japanese_translation
@@ -27324,10 +27357,21 @@ all_extracted_terms:
   abbreviations: []
   variants: []
   description: 本文から抽出したコード識別子。本文ではバッククォートで囲む。
-  count: 4
+  count: 5
   prose_count: 0
-  code_count: 4
-  source_count: 2
+  code_count: 5
+  source_count: 3
+- token: project-scoped
+  category: identifier
+  formal_name: project-scoped
+  japanese: null
+  abbreviations: []
+  variants: []
+  description: 本文から抽出したコード識別子。本文ではバッククォートで囲む。
+  count: 1
+  prose_count: 0
+  code_count: 1
+  source_count: 1
 - token: project_ref
   category: identifier
   formal_name: project_ref
@@ -28377,6 +28421,18 @@ all_extracted_terms:
   abbreviations: []
   variants: []
   description: 本文から抽出したコード識別子。本文ではバッククォートで囲む。
+  count: 1
+  prose_count: 0
+  code_count: 1
+  source_count: 1
+- token: registry
+  category: japanese_translation
+  formal_name: Registry
+  japanese: レジストリ
+  abbreviations: []
+  variants:
+  - registry
+  description: 本文では自然な日本語または定着したカタカナ語の「レジストリ」を使う。
   count: 1
   prose_count: 0
   code_count: 1
@@ -30123,10 +30179,21 @@ all_extracted_terms:
   abbreviations: []
   variants: []
   description: 本文から抽出したコード識別子。本文ではバッククォートで囲む。
-  count: 5
+  count: 9
   prose_count: 0
-  code_count: 5
+  code_count: 9
   source_count: 2
+- token: role-local
+  category: identifier
+  formal_name: role-local
+  japanese: null
+  abbreviations: []
+  variants: []
+  description: 本文から抽出したコード識別子。本文ではバッククォートで囲む。
+  count: 1
+  prose_count: 0
+  code_count: 1
+  source_count: 1
 - token: 'role:'
   category: identifier
   formal_name: 'role:'
@@ -30149,6 +30216,18 @@ all_extracted_terms:
   count: 2
   prose_count: 0
   code_count: 2
+  source_count: 1
+- token: root
+  category: japanese_translation
+  formal_name: Root
+  japanese: ルート
+  abbreviations: []
+  variants:
+  - root
+  description: 本文では自然な日本語または定着したカタカナ語の「ルート」を使う。
+  count: 1
+  prose_count: 0
+  code_count: 1
   source_count: 1
 - token: root_task_id
   category: identifier
@@ -30759,10 +30838,10 @@ all_extracted_terms:
   variants:
   - sandbox
   description: 本文では自然な日本語または定着したカタカナ語の「サンドボックス」を使う。
-  count: 1
+  count: 2
   prose_count: 0
-  code_count: 1
-  source_count: 1
+  code_count: 2
+  source_count: 2
 - token: sandbox-manager
   category: identifier
   formal_name: sandbox-manager
@@ -32507,6 +32586,17 @@ all_extracted_terms:
   count: 1
   prose_count: 1
   code_count: 0
+  source_count: 1
+- token: standalone
+  category: japanese_translation
+  formal_name: standalone
+  japanese: スタンドアロン
+  abbreviations: []
+  variants: []
+  description: 一般技術語。本文では「スタンドアロン」と表記する。
+  count: 2
+  prose_count: 0
+  code_count: 2
   source_count: 1
 - token: start
   category: japanese_translation
@@ -35096,8 +35186,8 @@ all_extracted_terms:
   abbreviations: []
   variants: []
   description: 本文から抽出した製品名、仕様名、固有名、または略語。英語表記を維持する。
-  count: 4
-  prose_count: 4
+  count: 5
+  prose_count: 5
   code_count: 0
   source_count: 2
 - token: toml
@@ -35396,6 +35486,17 @@ all_extracted_terms:
   abbreviations: []
   variants: []
   description: 本文から抽出したコード識別子。本文ではバッククォートで囲む。
+  count: 1
+  prose_count: 0
+  code_count: 1
+  source_count: 1
+- token: top-level
+  category: japanese_translation
+  formal_name: top-level
+  japanese: 最上位
+  abbreviations: []
+  variants: []
+  description: 一般技術語。本文では「最上位」と表記する。
   count: 1
   prose_count: 0
   code_count: 1
@@ -36240,6 +36341,17 @@ all_extracted_terms:
   count: 1
   prose_count: 1
   code_count: 0
+  source_count: 1
+- token: user-level
+  category: identifier
+  formal_name: user-level
+  japanese: null
+  abbreviations: []
+  variants: []
+  description: 本文から抽出したコード識別子。本文ではバッククォートで囲む。
+  count: 1
+  prose_count: 0
+  code_count: 1
   source_count: 1
 - token: uses
   category: identifier
