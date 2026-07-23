@@ -9,6 +9,7 @@ PNPM ?= pnpm
 PRODUCT_ROOT ?= $(abspath $(dir $(shell git rev-parse --path-format=absolute --git-common-dir)))
 MAIN_ROOT ?= $(PRODUCT_ROOT)
 SOURCE_REF ?= d030db5dc2974056387616d047197823b94602ce
+SOURCE_HEAD ?= a49338d5013f8e54f72a9c7cc4f92c4a76c52d91
 WIKI_CONTEXT_TARGET ?= task
 WIKI_PROFILE ?=
 WIKI_MODEL ?= gpt-5.6-terra
@@ -136,7 +137,7 @@ sync: node-deps
 
 bootstrap-plan bootstrap-apply bootstrap-freeze bootstrap-unfreeze: node-deps
 	@test -n "$(SOURCE_ROOT)" || (echo "SOURCE_ROOT is required" >&2; exit 1)
-	$(NODE) scripts/task/migrate-operations.mjs --mode "$(patsubst bootstrap-%,%,$@)" --source "$(SOURCE_ROOT)" --source-ref "$(SOURCE_REF)" --target "$(MAIN_ROOT)"
+	$(NODE) scripts/task/migrate-operations.mjs --mode "$(patsubst bootstrap-%,%,$@)" --source "$(SOURCE_ROOT)" --source-ref "$(SOURCE_REF)" --expected-head "$(SOURCE_HEAD)" --target "$(MAIN_ROOT)"
 
 bootstrap-verify: node-deps
 	$(NODE) scripts/task/migrate-operations.mjs --mode verify --target "$(MAIN_ROOT)"

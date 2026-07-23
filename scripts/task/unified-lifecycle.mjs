@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
+import YAML from "yaml";
 import {
   REPO_ROOT, REQUIRED_TASK_FILES, acquireWorkRepoLock, assertSlug, assertTaskId, dateInTimezone,
   findMainWorktree, git, isMainManagedPath, parseArgs, parseFrontmatter, readYaml, replaceTemplate,
@@ -71,6 +72,7 @@ function assertMain(root) {
 
 const OPERATION_SCHEMAS = ["backlog", "decision", "ingestion-receipt", "bootstrap-manifest"];
 const PRE_MERGE_EVIDENCE_ACTIONS = new Set(["handover", "review", "qa-result"]);
+const BOOTSTRAP_MANIFEST_PATH = "tasks/TASK-0033-unify-work-repository/BOOTSTRAP_MANIFEST.json";
 
 function hasOperationSchemas(root) {
   return OPERATION_SCHEMAS.every((name) => fs.existsSync(path.join(root, "schemas", "operations", `${name}.schema.json`)));
@@ -200,6 +202,13 @@ export function taskStart(args, root, allocate = createSparseWorktree) {
   const branch = `task/${args.id}-${args.slug}`;
   const taskDir = resolveInside(root, relativeTaskDir);
   const worktree = resolveInside(root, relativeWorktree);
+  let allocated = false;
+  const removeAllocation = () => {
+    if (!allocated) return;
+    output("git", ["worktree", "remove", "--force", worktree], root, true);
+    output("git", ["branch", "-D", branch], root, true);
+    allocated = false;
+  };
   fs.mkdirSync(path.dirname(taskDir), { recursive: true });
   fs.mkdirSync(taskDir, { recursive: false });
   try {
@@ -218,42 +227,28 @@ export function taskStart(args, root, allocate = createSparseWorktree) {
       },
     });
     writeYaml(backlogFile, backlog);
+    allocate(root, branch, worktree);
+    allocated = true;
     const published = evidenceCommit({ root, action: "task-start", taskId: args.id, message: `task: start ${args.id}`, push: args.push !== "false" });
-    try {
-      allocate(root, branch, worktree);
-    } catch (error) {
-      const corrected = readYaml(backlogFile);
-      corrected.tasks = corrected.tasks.filter((task) => task.id !== args.id);
-      fs.rmSync(taskDir, { recursive: true, force: true });
-      writeYaml(backlogFile, corrected);
-      evidenceCommit({ root, action: "task-start-rollback", taskId: args.id, message: `task: rollback failed start ${args.id}`, push: args.push !== "false" });
-      throw new Error(`Task start was rolled back after worktree allocation failed: ${error.message}`);
-    }
+    git(worktree, ["reset", "--hard", "main"]);
     return { ...published, branch, worktree };
   } catch (error) {
-    let removedInvocationState = false;
-    if (fs.existsSync(taskDir)) {
-      fs.rmSync(taskDir, { recursive: true, force: true });
-      removedInvocationState = true;
-    }
-    const currentBacklog = readYaml(backlogFile);
-    if ((currentBacklog.tasks ?? []).some((task) => task.id === args.id)) {
-      currentBacklog.tasks = currentBacklog.tasks.filter((task) => task.id !== args.id);
-      writeYaml(backlogFile, currentBacklog);
-      removedInvocationState = true;
-    }
-    if (git(root, ["rev-parse", "HEAD"]) === startHead) {
-      if (git(root, ["status", "--porcelain", "backlog.yaml"])) fs.writeFileSync(backlogFile, originalBacklog);
-      throw error;
-    }
-    if (removedInvocationState || git(root, ["status", "--porcelain"])) {
-      try {
-        evidenceCommit({ root, action: "task-start-rollback", taskId: args.id, message: `task: rollback unpublished start ${args.id}`, push: args.push !== "false" });
-      } catch (rollbackError) {
-        throw new Error(`${error.message}; invocation state was removed locally but corrective publish requires reconciliation: ${rollbackError.message}`);
+    const currentHead = git(root, ["rev-parse", "HEAD"]);
+    if (currentHead !== startHead) {
+      const remote = output("git", ["ls-remote", "origin", "refs/heads/main"], root, true);
+      const remoteHead = remote.status === 0 ? remote.stdout.trim().split(/\s+/)[0] : null;
+      if (remoteHead !== startHead) {
+        throw new Error(`${error.message}; publish outcome is not the starting remote, so allocated resources and local evidence were retained for reconciliation`);
       }
+      removeAllocation();
+      git(root, ["reset", "--hard", startHead]);
+      throw new Error(`${error.message}; remote remained unchanged and invocation-created resources were removed (branch, worktree, and local evidence)`);
     }
-    throw error;
+    removeAllocation();
+    git(root, ["reset", "--mixed", startHead]);
+    if (fs.existsSync(taskDir)) fs.rmSync(taskDir, { recursive: true, force: true });
+    if (git(root, ["status", "--porcelain", "backlog.yaml"])) fs.writeFileSync(backlogFile, originalBacklog);
+    throw new Error(`${error.message}; remote was not published and invocation-created resources were removed`);
   }
 }
 
@@ -266,6 +261,24 @@ export function managedDigest(root, base, head) {
     return `${file}\0${result.status === 0 ? result.stdout.trim() : "DELETED"}\n`;
   }).join("");
   return crypto.createHash("sha256").update(records).digest("hex");
+}
+
+function assertBootstrapBinding(root, evidence, refs) {
+  const commit = evidence.bootstrap_evidence_commit ?? "";
+  const digest = evidence.bootstrap_evidence_digest ?? "";
+  if (!/^[0-9a-f]{40}$/.test(commit) || !/^[0-9a-f]{64}$/.test(digest)) {
+    throw new Error("Evidence is missing the bootstrap evidence binding");
+  }
+  for (const ref of refs) git(root, ["merge-base", "--is-ancestor", commit, ref]);
+  let manifest;
+  try {
+    manifest = JSON.parse(git(root, ["show", `${commit}:${BOOTSTRAP_MANIFEST_PATH}`]));
+  } catch (error) {
+    throw new Error(`Bootstrap binding does not resolve to its manifest: ${error.message}`);
+  }
+  const { manifest_sha256: recordedDigest, ...manifestBody } = manifest;
+  const computedDigest = crypto.createHash("sha256").update(`${JSON.stringify(manifestBody)}\n`).digest("hex");
+  if (recordedDigest !== digest || computedDigest !== digest) throw new Error("Bootstrap binding digest differs from the bound manifest");
 }
 
 export function assertComposite(root, taskId) {
@@ -292,8 +305,7 @@ export function assertComposite(root, taskId) {
   const forbidden = diffPaths(root, "main", head).filter(isMainManagedPath);
   if (forbidden.length) throw new Error(`PR contains main-managed paths: ${forbidden.join(", ")}`);
   const [bootstrapCommit, bootstrapDigest] = bindings[0].split(":");
-  git(root, ["merge-base", "--is-ancestor", bootstrapCommit, head]);
-  git(root, ["merge-base", "--is-ancestor", bootstrapCommit, "main"]);
+  assertBootstrapBinding(root, handover, [head, "main"]);
   return { task, head, tree, digest, bootstrap_commit: bootstrapCommit, bootstrap_digest: bootstrapDigest };
 }
 
@@ -314,7 +326,35 @@ export function scopeCheck(args, root) {
     if (forbidden.length) throw new Error(`PR scope contains main-managed paths: ${forbidden.join(", ")}`);
   } else if (args.event === "main") {
     const parents = git(root, ["rev-list", "--parents", "-n", "1", args.head]).split(" ");
-    if (args.allow_merge === "true" && parents.length === 3) return { files, merge_commit: true };
+    if (args.allow_merge === "true" && parents.length === 3) {
+      const firstParent = parents[1];
+      const candidateCommit = parents[2];
+      const backlog = YAML.parse(git(root, ["show", `${firstParent}:backlog.yaml`]));
+      const observedCandidates = [];
+      const matches = (backlog.tasks ?? []).filter((task) => {
+        try {
+          const content = git(root, ["show", `${firstParent}:${task.task_dir}/HANDOVER.md`]);
+          const frontmatter = content.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/);
+          const boundCandidate = frontmatter ? YAML.parse(frontmatter[1]).candidate_commit : null;
+          if (boundCandidate) observedCandidates.push(`${task.id}:${boundCandidate}`);
+          return boundCandidate === candidateCommit;
+        } catch {
+          return false;
+        }
+      });
+      if (matches.length !== 1) throw new Error(`Merge commit is not bound to exactly one Task HANDOVER candidate: merge_candidate=${candidateCommit}, observed=${observedCandidates.join(",") || "none"}`);
+      const task = matches[0];
+      const content = git(root, ["show", `${firstParent}:${task.task_dir}/HANDOVER.md`]);
+      const handover = YAML.parse(content.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/)[1]);
+      if (git(root, ["rev-parse", `${candidateCommit}^{tree}`]) !== handover.candidate_tree) throw new Error("Merge candidate tree differs from HANDOVER");
+      if (managedDigest(root, firstParent, args.head) !== handover.managed_path_digest) throw new Error("Merge managed-path digest differs from HANDOVER");
+      const forbidden = diffPaths(root, firstParent, candidateCommit).filter(isMainManagedPath);
+      if (forbidden.length) throw new Error(`Merge candidate contains main-managed paths: ${forbidden.join(", ")}`);
+      const mergeEvidenceChanges = diffPaths(root, firstParent, args.head).filter(isMainManagedPath);
+      if (mergeEvidenceChanges.length) throw new Error(`Merge commit changes main-managed paths: ${mergeEvidenceChanges.join(", ")}`);
+      assertBootstrapBinding(root, handover, [firstParent, candidateCommit]);
+      return { files, merge_commit: true, task: task.id, candidate_commit: candidateCommit };
+    }
     const forbidden = files.filter((file) => !isMainManagedPath(file));
     if (forbidden.length) throw new Error(`Direct main push contains product paths: ${forbidden.join(", ")}`);
   } else throw new Error("--event must be pr or main");

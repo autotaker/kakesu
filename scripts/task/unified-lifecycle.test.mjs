@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import crypto from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -20,6 +21,16 @@ function git(root, ...argv) { return command("git", argv, root).stdout.trim(); }
 
 function writeProject(file) {
   fs.writeFileSync(file, "version: 2\nproject_id: agent-harness\nrepository_path: .\nevidence_root: .\ndefault_branch: main\ntimezone: Pacific/Guam\nworktree_root: worktrees\n");
+}
+
+function commitBootstrapManifest(root) {
+  const body = { version: 1, task_id: "TASK-0033", entries: [] };
+  const digest = crypto.createHash("sha256").update(`${JSON.stringify(body)}\n`).digest("hex");
+  const file = path.join(root, "tasks/TASK-0033-unify-work-repository/BOOTSTRAP_MANIFEST.json");
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, `${JSON.stringify({ ...body, manifest_sha256: digest }, null, 2)}\n`);
+  git(root, "add", file); git(root, "commit", "-m", "bootstrap fixture");
+  return { commit: git(root, "rev-parse", "HEAD"), digest };
 }
 
 function initRepository() {
@@ -116,15 +127,43 @@ test("migration rejects a source revision other than the fixed full commit", () 
 
 test("migration freeze blocks every source commit and unfreeze restores hooks", () => {
   const { source, ref } = initMigrationSource();
+  git(source, "add", "."); git(source, "commit", "-m", "current overlay");
+  const expectedHead = git(source, "rev-parse", "HEAD");
+  const authority = fs.mkdtempSync(path.join(os.tmpdir(), "freeze-authority-"));
+  git(authority, "init", "-b", "main");
   git(source, "config", "core.hooksPath", ".original-hooks");
-  command(process.execPath, [path.join(ROOT, "scripts/task/migrate-operations.mjs"), "--mode", "freeze", "--source", source, "--source-ref", ref, "--target", ROOT, "--fixture", "true"], ROOT);
-  assert.match(git(source, "config", "--get", "core.hooksPath"), /agent-harness-frozen-hooks$/);
-  fs.appendFileSync(path.join(source, "backlog.yaml"), "# frozen\n");
-  git(source, "add", "backlog.yaml");
-  command("git", ["commit", "-m", "must fail while frozen"], source, 1);
-  command(process.execPath, [path.join(ROOT, "scripts/task/migrate-operations.mjs"), "--mode", "unfreeze", "--source", source, "--source-ref", ref, "--target", ROOT, "--fixture", "true"], ROOT);
+  const common = git(source, "rev-parse", "--git-common-dir");
+  const frozenHooks = path.resolve(source, common, "agent-harness-frozen-hooks");
+  fs.mkdirSync(frozenHooks); fs.writeFileSync(path.join(frozenHooks, "pre-commit"), "#!/bin/sh\nexit 1\n", { mode: 0o755 });
+  fs.writeFileSync(path.resolve(source, common, "agent-harness-evidence-frozen"), `${JSON.stringify({ authority, source_ref: ref, prior_hooks_path: ".original-hooks", frozen_hooks_path: frozenHooks })}\n`);
+  git(source, "config", "core.hooksPath", frozenHooks);
+  command(process.execPath, [path.join(ROOT, "scripts/task/migrate-operations.mjs"), "--mode", "freeze", "--source", source, "--source-ref", ref, "--expected-head", expectedHead, "--target", authority, "--fixture", "true"], ROOT);
+  command("git", ["status", "--porcelain"], source, 128);
+  command("git", ["commit", "--no-verify", "-m", "must fail"], source, 128);
+  command("git", ["commit-tree", `${expectedHead}^{tree}`, "-m", "must fail"], source, 128);
+  command(process.execPath, [path.join(ROOT, "scripts/task/migrate-operations.mjs"), "--mode", "unfreeze", "--source", source, "--source-ref", ref, "--expected-head", expectedHead, "--target", authority, "--fixture", "true"], ROOT);
   assert.equal(git(source, "config", "--get", "core.hooksPath"), ".original-hooks");
+  fs.appendFileSync(path.join(source, "backlog.yaml"), "# unfrozen\n");
+  git(source, "add", "backlog.yaml");
   git(source, "commit", "-m", "allowed after unfreeze");
+});
+
+test("bootstrap verify follows immutable HANDOVER binding after current evidence changes", () => {
+  const { source, ref } = initMigrationSource();
+  const target = fs.mkdtempSync(path.join(os.tmpdir(), "bootstrap-bound-"));
+  git(target, "init", "-b", "main"); git(target, "config", "user.name", "Fixture"); git(target, "config", "user.email", "fixture@example.invalid");
+  writeProject(path.join(target, "project.yaml"));
+  const applied = command(process.execPath, [path.join(ROOT, "scripts/task/migrate-operations.mjs"), "--mode", "apply", "--source", source, "--source-ref", ref, "--target", target, "--fixture", "true"], ROOT);
+  const manifest = JSON.parse(applied.stdout);
+  git(target, "add", "."); git(target, "commit", "-m", "bootstrap");
+  const bootstrapCommit = git(target, "rev-parse", "HEAD");
+  const handover = path.join(target, "tasks/TASK-0033-unify-work-repository/HANDOVER.md");
+  fs.writeFileSync(handover, `---\ntask_id: TASK-0033\nbootstrap_evidence_commit: ${bootstrapCommit}\nbootstrap_evidence_digest: ${manifest.manifest_sha256}\n---\nupdated evidence\n`);
+  git(target, "add", handover); git(target, "commit", "-m", "bind bootstrap");
+  fs.appendFileSync(path.join(target, "lap30/events.jsonl"), "current evidence changed\n");
+  command(process.execPath, [path.join(ROOT, "scripts/task/migrate-operations.mjs"), "--mode", "verify", "--target", target], ROOT);
+  fs.writeFileSync(handover, fs.readFileSync(handover, "utf8").replace(bootstrapCommit, git(target, "rev-parse", "HEAD")));
+  command(process.execPath, [path.join(ROOT, "scripts/task/migrate-operations.mjs"), "--mode", "verify", "--target", target], ROOT, 1);
 });
 
 test("evidence transaction commits only the action allowlist and fails closed on lock/scope", () => {
@@ -164,30 +203,45 @@ test("task-start publishes evidence and creates one sparse branch/worktree", () 
   assert.equal(result.branch, "task/TASK-9001-start");
   assert.equal(git(root, "rev-parse", "main"), git(root, "rev-parse", "origin/main"));
   assert.match(git(root, "show-ref", "--verify", "refs/heads/task/TASK-9001-start"), /TASK-9001-start/);
+  assert.equal(git(result.worktree, "rev-parse", "HEAD"), git(root, "rev-parse", "main"));
   for (const relative of ["backlog.yaml", "project.yaml", "tasks", "wiki"]) assert.equal(fs.existsSync(path.join(result.worktree, relative)), false);
 });
 
 test("task-start allocation failure removes invocation-created Task evidence and assignment", () => {
   const root = initTaskStartRepository();
-  assert.throws(() => taskStart({ id: "TASK-9002", slug: "rollback", title: "rollback fixture", epic: "EPIC-001", push: "true" }, root, () => { throw new Error("injected allocation failure"); }), /rolled back/);
+  assert.throws(() => taskStart({ id: "TASK-9002", slug: "rollback", title: "rollback fixture", epic: "EPIC-001", push: "true" }, root, () => { throw new Error("injected allocation failure"); }), /resources were removed/);
   assert.doesNotMatch(fs.readFileSync(path.join(root, "backlog.yaml"), "utf8"), /TASK-9002/);
   assert.equal(fs.existsSync(path.join(root, "tasks/TASK-9002-rollback")), false);
   assert.notEqual(spawnSync("git", ["show-ref", "--verify", "refs/heads/task/TASK-9002-rollback"], { cwd: root }).status, 0);
   assert.equal(git(root, "status", "--porcelain"), "");
 });
 
+test("task-start commit failure removes staged invocation state", () => {
+  const root = initTaskStartRepository();
+  const hook = path.join(root, ".git/hooks/pre-commit");
+  fs.writeFileSync(hook, "#!/bin/sh\nexit 1\n", { mode: 0o755 });
+  assert.throws(() => taskStart({ id: "TASK-9003", slug: "commit", title: "commit fixture", epic: "EPIC-001", push: "true" }, root), /resources were removed/);
+  assert.doesNotMatch(fs.readFileSync(path.join(root, "backlog.yaml"), "utf8"), /TASK-9003/);
+  assert.equal(fs.existsSync(path.join(root, "tasks/TASK-9003-commit")), false);
+  assert.notEqual(spawnSync("git", ["show-ref", "--verify", "refs/heads/task/TASK-9003-commit"], { cwd: root }).status, 0);
+  assert.equal(git(root, "status", "--porcelain"), "");
+});
+
 test("task-start publish failure removes invocation-created state and leaves remote unchanged", () => {
   const root = initTaskStartRepository();
   const remote = git(root, "remote", "get-url", "origin");
+  const attempts = path.join(remote, "attempts");
   fs.mkdirSync(path.join(remote, "hooks"), { recursive: true });
-  fs.writeFileSync(path.join(remote, "hooks/pre-receive"), "#!/bin/sh\nexit 1\n", { mode: 0o755 });
+  fs.writeFileSync(path.join(remote, "hooks/pre-receive"), `#!/bin/sh\nprintf x >> '${attempts}'\nexit 1\n`, { mode: 0o755 });
   const remoteBefore = git(root, "rev-parse", "origin/main");
-  assert.throws(() => taskStart({ id: "TASK-9003", slug: "publish", title: "publish fixture", epic: "EPIC-001", push: "true" }, root), /corrective publish requires reconciliation/);
+  assert.throws(() => taskStart({ id: "TASK-9003", slug: "publish", title: "publish fixture", epic: "EPIC-001", push: "true" }, root), /remote remained unchanged.*resources were removed/);
   assert.doesNotMatch(fs.readFileSync(path.join(root, "backlog.yaml"), "utf8"), /TASK-9003/);
   assert.equal(fs.existsSync(path.join(root, "tasks/TASK-9003-publish")), false);
   assert.notEqual(spawnSync("git", ["show-ref", "--verify", "refs/heads/task/TASK-9003-publish"], { cwd: root }).status, 0);
   assert.equal(git(root, "status", "--porcelain"), "");
+  assert.equal(git(root, "rev-parse", "HEAD"), remoteBefore);
   assert.equal(git(root, "ls-remote", "origin", "refs/heads/main").split("\t")[0], remoteBefore);
+  assert.equal(fs.readFileSync(attempts, "utf8"), "xxx");
 });
 
 test("pre-merge evidence uses the bound candidate validator while post-merge uses main", () => {
@@ -274,6 +328,36 @@ test("composite binding and PR scope reject stale or main-managed evidence", () 
   fs.appendFileSync(path.join(root, "backlog.yaml"), "# forbidden evidence\n");
   git(root, "add", "backlog.yaml"); git(root, "commit", "-m", "forbidden evidence");
   assert.throws(() => scopeCheck({ event: "pr", base, head: git(root, "rev-parse", "HEAD") }, root), /main-managed paths/);
+});
+
+test("main scope accepts only the HANDOVER-bound candidate merge", () => {
+  const root = initRepository();
+  const bootstrap = commitBootstrapManifest(root);
+  git(root, "checkout", "-b", "task/TASK-9000-fixture");
+  fs.appendFileSync(path.join(root, "README.md"), "candidate\n");
+  git(root, "add", "README.md"); git(root, "commit", "-m", "candidate");
+  const candidate = git(root, "rev-parse", "HEAD");
+  const tree = git(root, "rev-parse", "HEAD^{tree}");
+  git(root, "checkout", "main");
+  const digest = managedDigest(root, git(root, "merge-base", "main", candidate), candidate);
+  fs.writeFileSync(path.join(root, "tasks/TASK-9000-fixture/HANDOVER.md"), `---\ntask_id: TASK-9000\ncandidate_commit: ${candidate}\ncandidate_tree: ${tree}\nmanaged_path_digest: ${digest}\nbootstrap_evidence_commit: ${bootstrap.commit}\nbootstrap_evidence_digest: ${bootstrap.digest}\n---\n`);
+  git(root, "add", "tasks/TASK-9000-fixture/HANDOVER.md"); git(root, "commit", "-m", "bind candidate");
+  const firstParent = git(root, "rev-parse", "HEAD");
+  git(root, "merge", "--no-ff", "task/TASK-9000-fixture", "-m", "merge candidate");
+  const merge = git(root, "rev-parse", "HEAD");
+  assert.equal(scopeCheck({ event: "main", base: firstParent, head: merge, allow_merge: "true" }, root).candidate_commit, candidate);
+  fs.appendFileSync(path.join(root, "backlog.yaml"), "# injected merge evidence\n");
+  git(root, "add", "backlog.yaml"); git(root, "commit", "--amend", "--no-edit");
+  assert.throws(() => scopeCheck({ event: "main", base: firstParent, head: git(root, "rev-parse", "HEAD"), allow_merge: "true" }, root), /changes main-managed paths/);
+
+  const arbitrary = initRepository();
+  git(arbitrary, "checkout", "-b", "arbitrary");
+  fs.appendFileSync(path.join(arbitrary, "README.md"), "unbound\n");
+  git(arbitrary, "add", "README.md"); git(arbitrary, "commit", "-m", "unbound product");
+  git(arbitrary, "checkout", "main");
+  const arbitraryFirst = git(arbitrary, "rev-parse", "HEAD");
+  git(arbitrary, "merge", "--no-ff", "arbitrary", "-m", "arbitrary merge");
+  assert.throws(() => scopeCheck({ event: "main", base: arbitraryFirst, head: git(arbitrary, "rev-parse", "HEAD"), allow_merge: "true" }, arbitrary), /not bound/);
 });
 
 test("sync FAST only updates main and normal empty sync is idempotent", () => {

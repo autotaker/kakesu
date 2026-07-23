@@ -3,7 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import YAML from "yaml";
-import { REPO_ROOT, parseArgs, resolveInside, writeFileAtomic } from "./lib.mjs";
+import { REPO_ROOT, parseArgs, parseFrontmatter, resolveInside, writeFileAtomic } from "./lib.mjs";
 
 const BASELINE_REF = "d030db5dc2974056387616d047197823b94602ce";
 const TASK_ID = "TASK-0033";
@@ -113,18 +113,91 @@ function writeEntry(target, entry) {
   if (!fs.existsSync(output)) fs.writeFileSync(output, entry.content);
 }
 
-function verify(target, manifest) {
+function verify(target, manifest, readEntry = (file) => fs.readFileSync(resolveInside(target, file, "manifest entry"))) {
   const errors = [];
   const { manifest_sha256: recordedManifestDigest, ...manifestBody } = manifest;
   if (sha256(`${JSON.stringify(manifestBody)}\n`) !== recordedManifestDigest) errors.push("manifest self-digest mismatch");
   for (const entry of manifest.entries ?? []) {
-    const file = resolveInside(target, entry.file, "manifest entry");
-    if (!fs.existsSync(file)) errors.push(`missing ${entry.file}`);
-    else if (fs.statSync(file).size !== entry.bytes || sha256(fs.readFileSync(file)) !== entry.sha256) errors.push(`digest mismatch ${entry.file}`);
+    try {
+      const content = readEntry(entry.file);
+      if (content.length !== entry.bytes || sha256(content) !== entry.sha256) errors.push(`digest mismatch ${entry.file}`);
+    } catch {
+      errors.push(`missing ${entry.file}`);
+    }
   }
-  if (sha256(fs.readFileSync(path.join(target, "project.yaml"))) !== manifest.project_sha256) errors.push("project.yaml digest mismatch");
+  try {
+    if (sha256(readEntry("project.yaml")) !== manifest.project_sha256) errors.push("project.yaml digest mismatch");
+  } catch {
+    errors.push("missing project.yaml");
+  }
   if (manifest.category_counts?.historical_tasks !== 32 || manifest.category_counts?.current_tasks !== 1) errors.push("task count mismatch");
   if (errors.length) throw new Error(`Bootstrap verification failed:\n${errors.map((error) => `- ${error}`).join("\n")}`);
+}
+
+function quarantinePaths(source, target) {
+  const targetCommon = path.resolve(target, runGit(target, ["rev-parse", "--git-common-dir"]).stdout.toString().trim());
+  const key = sha256(path.resolve(source)).slice(0, 16);
+  return {
+    marker: path.join(source, ".agent-harness-evidence-quarantine.json"),
+    pending: path.join(source, ".agent-harness-evidence-quarantine.pending.json"),
+    quarantine: path.join(targetCommon, "agent-harness-quarantine", `${key}.git`),
+  };
+}
+
+function freezeSource(source, target, sourceRef, expectedHead) {
+  const paths = quarantinePaths(source, target);
+  if (fs.existsSync(paths.marker) || fs.existsSync(paths.pending)) throw new Error("Source repository is already quarantined");
+  const gitDirValue = runGit(source, ["rev-parse", "--git-dir"]).stdout.toString().trim();
+  const gitDir = path.resolve(source, gitDirValue);
+  if (gitDir !== path.join(source, ".git") || !fs.statSync(gitDir).isDirectory()) throw new Error("Quarantine requires a standalone .git directory");
+  const worktrees = runGit(source, ["worktree", "list", "--porcelain"]).stdout.toString().split("\n").filter((line) => line.startsWith("worktree "));
+  const registeredWorktree = worktrees.length === 1 ? fs.realpathSync(path.resolve(worktrees[0].slice(9))) : null;
+  if (worktrees.length !== 1 || registeredWorktree !== fs.realpathSync(source)) throw new Error("Quarantine requires exactly the source main worktree");
+  if (runGit(source, ["status", "--porcelain"]).stdout.toString().trim()) throw new Error("Quarantine requires a clean source repository");
+  const head = runGit(source, ["rev-parse", "HEAD"]).stdout.toString().trim();
+  if (!expectedHead || head !== expectedHead) throw new Error(`Source HEAD mismatch: expected ${expectedHead || "<required>"}, got ${head}`);
+  const oldMarker = path.join(gitDir, "agent-harness-evidence-frozen");
+  const legacy = fs.existsSync(oldMarker) ? JSON.parse(fs.readFileSync(oldMarker, "utf8")) : null;
+  if (legacy && (legacy.authority !== path.resolve(target) || legacy.source_ref !== sourceRef)) throw new Error("Legacy freeze authority or source ref mismatch");
+  const priorResult = runGit(source, ["config", "--local", "--get", "core.hooksPath"], { allowFailure: true });
+  const state = {
+    version: 2, authority: path.resolve(target), source: path.resolve(source), source_ref: sourceRef,
+    expected_head: head, quarantine: paths.quarantine,
+    prior_hooks_path: legacy?.prior_hooks_path ?? (priorResult.status === 0 ? priorResult.stdout.toString().trim() : null),
+    legacy_frozen_hooks_path: legacy?.frozen_hooks_path ?? null,
+  };
+  if (fs.existsSync(paths.quarantine)) throw new Error(`Quarantine destination already exists: ${paths.quarantine}`);
+  fs.mkdirSync(path.dirname(paths.quarantine), { recursive: true });
+  writeFileAtomic(paths.pending, `${JSON.stringify(state)}\n`);
+  try {
+    fs.renameSync(gitDir, paths.quarantine);
+  } catch (error) {
+    fs.rmSync(paths.pending, { force: true });
+    throw error;
+  }
+  fs.renameSync(paths.pending, paths.marker);
+  process.stdout.write(`${paths.marker}\n`);
+}
+
+function unfreezeSource(source, target) {
+  const paths = quarantinePaths(source, target);
+  const stateFile = fs.existsSync(paths.marker) ? paths.marker : paths.pending;
+  if (!fs.existsSync(stateFile)) throw new Error("Source repository is not quarantined");
+  const state = JSON.parse(fs.readFileSync(stateFile, "utf8"));
+  if (state.authority !== path.resolve(target) || state.source !== path.resolve(source) || state.quarantine !== paths.quarantine) throw new Error("Quarantine marker mismatch");
+  const sourceGit = path.join(source, ".git");
+  if (fs.existsSync(sourceGit) && fs.existsSync(paths.quarantine)) throw new Error("Both source and quarantined Git metadata exist; refusing ambiguous recovery");
+  if (!fs.existsSync(sourceGit)) {
+    const quarantinedHead = runGit(source, ["--git-dir", paths.quarantine, "rev-parse", "HEAD"]).stdout.toString().trim();
+    if (quarantinedHead !== state.expected_head) throw new Error("Quarantined source HEAD mismatch");
+    fs.renameSync(paths.quarantine, sourceGit);
+  }
+  if (runGit(source, ["rev-parse", "HEAD"]).stdout.toString().trim() !== state.expected_head) throw new Error("Restored source HEAD mismatch");
+  if (state.prior_hooks_path) runGit(source, ["config", "--local", "core.hooksPath", state.prior_hooks_path]);
+  else runGit(source, ["config", "--local", "--unset-all", "core.hooksPath"], { allowFailure: true });
+  fs.rmSync(path.join(source, ".git", "agent-harness-evidence-frozen"), { force: true });
+  if (state.legacy_frozen_hooks_path) fs.rmSync(state.legacy_frozen_hooks_path.replace(paths.quarantine, path.join(source, ".git")), { recursive: true, force: true });
+  fs.rmSync(stateFile, { force: true });
 }
 
 const args = parseArgs(process.argv.slice(2));
@@ -137,43 +210,22 @@ if (sourceRef !== BASELINE_REF && args.fixture !== "true") throw new Error(`Prod
 if (!["plan", "apply", "verify", "freeze", "unfreeze"].includes(mode)) throw new Error("--mode must be plan, apply, verify, freeze, or unfreeze");
 
 if (mode === "freeze" || mode === "unfreeze") {
-  const commonDir = path.resolve(source, runGit(source, ["rev-parse", "--git-common-dir"]).stdout.toString().trim());
-  const marker = path.join(commonDir, "agent-harness-evidence-frozen");
-  const frozenHooks = path.join(commonDir, "agent-harness-frozen-hooks");
-  if (mode === "freeze") {
-    if (fs.existsSync(marker)) throw new Error(`Source repository is already frozen: ${marker}`);
-    const priorResult = runGit(source, ["config", "--local", "--get", "core.hooksPath"], { allowFailure: true });
-    const priorHooksPath = priorResult.status === 0 ? priorResult.stdout.toString().trim() : null;
-    fs.mkdirSync(frozenHooks, { recursive: false });
-    const hook = path.join(frozenHooks, "pre-commit");
-    fs.writeFileSync(hook, "#!/bin/sh\necho 'Evidence repository is frozen; agent-harness main is authoritative.' >&2\nexit 1\n", "utf8");
-    fs.chmodSync(hook, 0o755);
-    writeFileAtomic(marker, `${JSON.stringify({
-      authority: path.resolve(target),
-      source_ref: sourceRef,
-      prior_hooks_path: priorHooksPath,
-      frozen_hooks_path: frozenHooks,
-    })}\n`);
-    try {
-      runGit(source, ["config", "--local", "core.hooksPath", frozenHooks]);
-    } catch (error) {
-      fs.rmSync(marker, { force: true });
-      fs.rmSync(frozenHooks, { recursive: true, force: true });
-      throw error;
-    }
-    process.stdout.write(`${marker}\n`);
-  } else {
-    if (!fs.existsSync(marker)) throw new Error(`Source repository is not frozen: ${marker}`);
-    const state = JSON.parse(fs.readFileSync(marker, "utf8"));
-    if (state.frozen_hooks_path !== frozenHooks) throw new Error("Freeze marker hook path mismatch");
-    if (state.prior_hooks_path) runGit(source, ["config", "--local", "core.hooksPath", state.prior_hooks_path]);
-    else runGit(source, ["config", "--local", "--unset-all", "core.hooksPath"], { allowFailure: true });
-    fs.rmSync(frozenHooks, { recursive: true, force: true });
-    fs.rmSync(marker, { force: true });
-  }
+  if (mode === "freeze") freezeSource(source, target, sourceRef, args.expected_head);
+  else unfreezeSource(source, target);
 } else if (mode === "verify") {
-  const manifest = JSON.parse(fs.readFileSync(resolveInside(target, args.manifest ?? MANIFEST_PATH, "manifest"), "utf8"));
-  verify(target, manifest);
+  const handoverFile = path.join(target, "tasks/TASK-0033-unify-work-repository/HANDOVER.md");
+  const binding = fs.existsSync(handoverFile) ? parseFrontmatter(handoverFile) : {};
+  let manifest;
+  if (/^[0-9a-f]{40}$/.test(binding.bootstrap_evidence_commit ?? "") && /^[0-9a-f]{64}$/.test(binding.bootstrap_evidence_digest ?? "")) {
+    runGit(target, ["merge-base", "--is-ancestor", binding.bootstrap_evidence_commit, "main"]);
+    const readCommit = (file) => runGit(target, ["show", `${binding.bootstrap_evidence_commit}:${file}`]).stdout;
+    manifest = JSON.parse(readCommit(args.manifest ?? MANIFEST_PATH).toString());
+    if (manifest.manifest_sha256 !== binding.bootstrap_evidence_digest) throw new Error("HANDOVER bootstrap digest does not match the bound manifest");
+    verify(target, manifest, readCommit);
+  } else {
+    manifest = JSON.parse(fs.readFileSync(resolveInside(target, args.manifest ?? MANIFEST_PATH, "manifest"), "utf8"));
+    verify(target, manifest);
+  }
   process.stdout.write(`${manifest.manifest_sha256}\n`);
 } else {
   const { entries, projectBytes, manifest } = buildManifest(source, target, sourceRef);
