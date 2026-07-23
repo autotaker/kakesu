@@ -320,7 +320,9 @@ function taskPr(args, root) {
 
 export function scopeCheck(args, root) {
   const before = /^0+$/.test(args.base ?? "") ? `${args.head}^` : args.base;
-  const files = lines(git(root, ["diff", "--name-only", before, args.head]));
+  const files = args.event === "pr"
+    ? diffPaths(root, before, args.head)
+    : lines(git(root, ["diff", "--name-only", before, args.head]));
   if (args.event === "pr") {
     const forbidden = files.filter(isMainManagedPath);
     if (forbidden.length) throw new Error(`PR scope contains main-managed paths: ${forbidden.join(", ")}`);

@@ -331,6 +331,25 @@ test("composite binding and PR scope reject stale or main-managed evidence", () 
   assert.throws(() => scopeCheck({ event: "pr", base, head: git(root, "rev-parse", "HEAD") }, root), /main-managed paths/);
 });
 
+test("PR scope ignores diverged main evidence but rejects candidate evidence", () => {
+  const root = initRepository();
+  git(root, "checkout", "-b", "task/TASK-9001-scope");
+  fs.appendFileSync(path.join(root, "README.md"), "candidate\n");
+  git(root, "add", "README.md"); git(root, "commit", "-m", "candidate code");
+  const productHead = git(root, "rev-parse", "HEAD");
+
+  git(root, "checkout", "main");
+  fs.appendFileSync(path.join(root, "tasks/TASK-9000-fixture/HANDOVER.md"), "main evidence\n");
+  git(root, "add", "tasks/TASK-9000-fixture/HANDOVER.md"); git(root, "commit", "-m", "advance main evidence");
+  const advancedBase = git(root, "rev-parse", "HEAD");
+  assert.doesNotThrow(() => scopeCheck({ event: "pr", base: advancedBase, head: productHead }, root));
+
+  git(root, "checkout", "task/TASK-9001-scope");
+  fs.appendFileSync(path.join(root, "tasks/TASK-9000-fixture/QA_RESULT.md"), "candidate evidence\n");
+  git(root, "add", "tasks/TASK-9000-fixture/QA_RESULT.md"); git(root, "commit", "-m", "candidate evidence");
+  assert.throws(() => scopeCheck({ event: "pr", base: advancedBase, head: git(root, "rev-parse", "HEAD") }, root), /main-managed paths/);
+});
+
 test("main scope accepts only the HANDOVER-bound candidate merge", () => {
   const root = initRepository();
   const bootstrap = commitBootstrapManifest(root);
@@ -386,7 +405,7 @@ test("workflow responsibilities are disjoint and required check names are stable
   assert.match(main, /permissions:\n  contents: read/);
   assert.doesNotMatch(main, /git push|evidence-commit/);
   for (const name of ["Full check", "Task check", "Scope check"]) assert.match(pr, new RegExp(`name: ${name}`));
-  assert.ok(fullSteps.some((step) => /^astral-sh\/setup-uv@/.test(step.uses ?? "")), "Full check must set up uv");
+  assert.ok(fullSteps.some((step) => step.uses === "astral-sh/setup-uv@v9"), "Full check must set up uv with the supported action major");
   assert.ok(scopeSteps.some((step) => /^pnpm\/action-setup@/.test(step.uses ?? "")), "Scope check must set up pnpm");
   assert.ok(scopeSteps.some((step) => /\bpnpm install --frozen-lockfile\b/.test(step.run ?? "")), "Scope check must install locked Node dependencies");
   assert.match(post, /types: \[closed\]/);
