@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "task_id": "TASK-0002",
+  "handover_sha256": "4098e1c14ae34f54484774ea23ac941c0b6cd8484321f52fd35bd08b260547f8",
+  "ingested_at": "2026-07-14T12:39:48+10:00",
+  "updated_pages": [
+    "wiki/semantic/case-patterns/qa-fail-attribution.md",
+    "wiki/semantic/schemas/codex-agent-model-routing.md"
+  ],
+  "created_decisions": [
+    "DECISION-0003"
+  ],
+  "deferred": [
+    "Generic work-agent prompt/context minimization is an operational follow-up constraint, not a product acceptance failure or a new Task."
+  ]
+}

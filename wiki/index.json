@@ -1,0 +1,137 @@
+{
+  "version": 1,
+  "pages": [
+    {
+      "path": "wiki/decisions/DECISION-0001-plan-dev-qa-process.md",
+      "kind": "decision",
+      "title": "PLAN DEV QA Process",
+      "decision_id": "DECISION-0001",
+      "status": "accepted",
+      "links": [
+        "../../tasks/TASK-0001-development-process-foundation/TASK.md"
+      ]
+    },
+    {
+      "path": "wiki/decisions/DECISION-0002-work-repository-and-wiki-ownership.md",
+      "kind": "decision",
+      "title": "Work Repository and Wiki Ownership",
+      "decision_id": "DECISION-0002",
+      "status": "accepted",
+      "links": [
+        "../../tasks/TASK-0001-development-process-foundation/TASK.md"
+      ]
+    },
+    {
+      "path": "wiki/decisions/DECISION-0003-codex-agent-model-routing.md",
+      "kind": "decision",
+      "title": "Codex Agent Model Routing",
+      "decision_id": "DECISION-0003",
+      "status": "superseded",
+      "links": [
+        "../../tasks/TASK-0002-codex-agent-model-routing/TASK.md"
+      ]
+    },
+    {
+      "path": "wiki/decisions/DECISION-0004-multiagentv2-role-startup.md",
+      "kind": "decision",
+      "title": "MultiAgentV2 Role Startup",
+      "decision_id": "DECISION-0004",
+      "status": "accepted",
+      "links": [
+        "../../tasks/TASK-0003-multi-agent-v2-nested-explorer/HANDOVER.md"
+      ]
+    },
+    {
+      "path": "wiki/semantic/case-patterns/qa-fail-attribution.md",
+      "kind": "case-pattern",
+      "title": "QA FAIL Attribution",
+      "links": [
+        "../scripts/task-delivery.md",
+        "../schemas/codex-agent-model-routing.md"
+      ]
+    },
+    {
+      "path": "wiki/semantic/case-patterns/schema-artifact-digest-drift.md",
+      "kind": "case-pattern",
+      "title": "Schema Artifact Digest Drift",
+      "links": [
+        "../schemas/mvp-wire-contracts.md",
+        "../../../tasks/TASK-0006-mvp-wire-contracts/HANDOVER.md"
+      ]
+    },
+    {
+      "path": "wiki/semantic/concepts/development-task.md",
+      "kind": "concept",
+      "title": "Development Task",
+      "links": [
+        "../scripts/task-delivery.md",
+        "../schemas/work-repository-boundary.md",
+        "../../decisions/DECISION-0001-plan-dev-qa-process.md"
+      ]
+    },
+    {
+      "path": "wiki/semantic/schemas/codex-agent-model-routing.md",
+      "kind": "schema",
+      "title": "Codex Agent Model Routing",
+      "links": [
+        "../case-patterns/qa-fail-attribution.md",
+        "../../decisions/DECISION-0004-multiagentv2-role-startup.md",
+        "../../../tasks/TASK-0002-codex-agent-model-routing/HANDOVER.md",
+        "../../../tasks/TASK-0003-multi-agent-v2-nested-explorer/HANDOVER.md",
+        "../../../tasks/TASK-0004-remove-redundant-agent-depth-limits/HANDOVER.md",
+        "../../../tasks/TASK-0032-reset-default-agent-config/HANDOVER.md"
+      ]
+    },
+    {
+      "path": "wiki/semantic/schemas/control-durable-store.md",
+      "kind": "schema",
+      "title": "Control Durable Store",
+      "links": [
+        "../../../tasks/TASK-0027-control-durable-foundation/HANDOVER.md",
+        "../../../tasks/TASK-0028-control-ownership-lifecycle/HANDOVER.md",
+        "../../../tasks/TASK-0029-control-versioned-recovery/HANDOVER.md"
+      ]
+    },
+    {
+      "path": "wiki/semantic/schemas/mvp-wire-contracts.md",
+      "kind": "schema",
+      "title": "MVP Wire Contracts",
+      "links": [
+        "../case-patterns/schema-artifact-digest-drift.md",
+        "../../../tasks/TASK-0006-mvp-wire-contracts/HANDOVER.md"
+      ]
+    },
+    {
+      "path": "wiki/semantic/schemas/safety-contract-completion-preflight.md",
+      "kind": "schema",
+      "title": "Safety Contract Completion Preflight",
+      "links": [
+        "../../../tasks/TASK-0031-safety-completion-preflight/HANDOVER.md"
+      ]
+    },
+    {
+      "path": "wiki/semantic/schemas/work-repository-boundary.md",
+      "kind": "schema",
+      "title": "Work Repository Boundary",
+      "links": [
+        "../../decisions/DECISION-0002-work-repository-and-wiki-ownership.md"
+      ]
+    },
+    {
+      "path": "wiki/semantic/scripts/task-delivery.md",
+      "kind": "script",
+      "title": "Task Delivery",
+      "links": [
+        "../case-patterns/qa-fail-attribution.md",
+        "../../decisions/DECISION-0001-plan-dev-qa-process.md",
+        "../../../tasks/TASK-0005-main-agent-efficient-delivery/HANDOVER.md"
+      ]
+    },
+    {
+      "path": "wiki/semantic/scripts/wiki-ingestion.md",
+      "kind": "script",
+      "title": "Wiki Ingestion",
+      "links": []
+    }
+  ]
+}

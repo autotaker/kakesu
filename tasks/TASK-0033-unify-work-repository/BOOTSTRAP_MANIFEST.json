@@ -1,0 +1,1392 @@
+{
+  "version": 1,
+  "task_id": "TASK-0033",
+  "source_ref": "d030db5dc2974056387616d047197823b94602ce",
+  "source_tree": "f5a5fde073836bc9965b9a05ae4ccf06f36eccaa",
+  "target_repository": "agent-harness",
+  "project_sha256": "031b8315e0f96088be4efe8fc17cc018a77c779434599c8bf92b38ebc9d63a7f",
+  "category_counts": {
+    "historical_tasks": 32,
+    "current_tasks": 1,
+    "task_files": 198,
+    "wiki_files": 29,
+    "lap30_files": 1
+  },
+  "entries": [
+    {
+      "file": "backlog.yaml",
+      "origin": "TASK-0033-overlay",
+      "bytes": 17330,
+      "sha256": "5e76213e03ce3e50a408b03e0a8f6ae80b3551d61cc077ccd0b07674b5937e0b"
+    },
+    {
+      "file": "lap30/events.jsonl",
+      "origin": "REF-2",
+      "bytes": 521841,
+      "sha256": "3fa7711738b10baa0b7cc52f30fcab3d175160a1e3ee01883c97dc8ed8663bd7"
+    },
+    {
+      "file": "tasks/TASK-0001-development-process-foundation/HANDOVER.md",
+      "origin": "REF-2",
+      "bytes": 3235,
+      "sha256": "18d290c1c1899d65d37af783ccf337ba0596add7f2a9237662e44423c9e7fc90"
+    },
+    {
+      "file": "tasks/TASK-0001-development-process-foundation/PLAN.md",
+      "origin": "REF-2",
+      "bytes": 5545,
+      "sha256": "e1571f200918e8edea0eb1277ed2eca747e97aad4c9ba668976948461501405e"
+    },
+    {
+      "file": "tasks/TASK-0001-development-process-foundation/QA_PLAN.md",
+      "origin": "REF-2",
+      "bytes": 3067,
+      "sha256": "95d39b72e3e4537fa9ef6b329fceea1c7f36df1233de63515b755eae7b922ce6"
+    },
+    {
+      "file": "tasks/TASK-0001-development-process-foundation/QA_RESULT.md",
+      "origin": "REF-2",
+      "bytes": 1763,
+      "sha256": "881d55a9d8f2b8fb6c8819fac5da7d7c20ea40ba751c9e3142b5ae815f9039d6"
+    },
+    {
+      "file": "tasks/TASK-0001-development-process-foundation/REVIEW_RESULT.md",
+      "origin": "REF-2",
+      "bytes": 2157,
+      "sha256": "38dcdda22aedb707d275a900e9970c2bfc5b42c2488471489c9347ba58f9e9e1"
+    },
+    {
+      "file": "tasks/TASK-0001-development-process-foundation/TASK.md",
+      "origin": "REF-2",
+      "bytes": 4101,
+      "sha256": "acb1d772016d3db18846292a375c6a6b0e77b0b35b20d7a2845f17cc0c4c5f6f"
+    },
+    {
+      "file": "tasks/TASK-0002-codex-agent-model-routing/HANDOVER.md",
+      "origin": "REF-2",
+      "bytes": 4675,
+      "sha256": "4098e1c14ae34f54484774ea23ac941c0b6cd8484321f52fd35bd08b260547f8"
+    },
+    {
+      "file": "tasks/TASK-0002-codex-agent-model-routing/PLAN.md",
+      "origin": "REF-2",
+      "bytes": 17228,
+      "sha256": "7f26bfd631437b508978c918351b098efa510421b72d3418a1d82a372cc14b89"
+    },
+    {
+      "file": "tasks/TASK-0002-codex-agent-model-routing/QA_PLAN.md",
+      "origin": "REF-2",
+      "bytes": 16949,
+      "sha256": "da99b1b7093f1465371128ccb5a5d1649fff794bdcd1c7d4405bf4956b8c4ccd"
+    },
+    {
+      "file": "tasks/TASK-0002-codex-agent-model-routing/QA_RESULT.md",
+      "origin": "REF-2",
+      "bytes": 6105,
+      "sha256": "9bbc2e90bc8ac4eec7bcde5d44cf7328aad203c39226cc6c9832ca829a05ee84"
+    },
+    {
+      "file": "tasks/TASK-0002-codex-agent-model-routing/REVIEW_RESULT.md",
+      "origin": "REF-2",
+      "bytes": 3546,
+      "sha256": "27f65f72a6516568f3697a28cfab5bd202067162c56cfad9db6d66d7da7846c6"
+    },
+    {
+      "file": "tasks/TASK-0002-codex-agent-model-routing/TASK.md",
+      "origin": "REF-2",
+      "bytes": 10636,
+      "sha256": "3317432fdca3539edb5b28ac42ad8b0d438c98dc0f94e2a48dc35c7542777758"
+    },
+    {
+      "file": "tasks/TASK-0003-multi-agent-v2-nested-explorer/HANDOVER.md",
+      "origin": "REF-2",
+      "bytes": 4711,
+      "sha256": "6a6b8f036b683a303cdeed8c07b645b1a01d2e3ed80e13a580a853752a6b5917"
+    },
+    {
+      "file": "tasks/TASK-0003-multi-agent-v2-nested-explorer/PLAN.md",
+      "origin": "REF-2",
+      "bytes": 13504,
+      "sha256": "786d77423ae3d732a473f72cf0ac10e152c66a5da2b2ac40535d991e0ffa04cc"
+    },
+    {
+      "file": "tasks/TASK-0003-multi-agent-v2-nested-explorer/QA_PLAN.md",
+      "origin": "REF-2",
+      "bytes": 10432,
+      "sha256": "ecf7351c1dfca940c327bdec69221d90dfbe7e1169ebd0bb3b541ba2971bc742"
+    },
+    {
+      "file": "tasks/TASK-0003-multi-agent-v2-nested-explorer/QA_RESULT.md",
+      "origin": "REF-2",
+      "bytes": 4759,
+      "sha256": "24c500cae0956b02d7b18e6f4f970742a763ee5630cba4cd1244d7b52b862cde"
+    },
+    {
+      "file": "tasks/TASK-0003-multi-agent-v2-nested-explorer/REVIEW_RESULT.md",
+      "origin": "REF-2",
+      "bytes": 3770,
+      "sha256": "a9d0d9b071331ffffbb805b01f4a7d4e40b4a211cbef544c6b4621498faa57eb"
+    },
+    {
+      "file": "tasks/TASK-0003-multi-agent-v2-nested-explorer/TASK.md",
+      "origin": "REF-2",
+      "bytes": 4954,
+      "sha256": "3b69c6dbe6ff1195e47bf6d8673ed48c8e44d8e63adea065506a9177f7d40151"
+    },
+    {
+      "file": "tasks/TASK-0004-remove-redundant-agent-depth-limits/HANDOVER.md",
+      "origin": "REF-2",
+      "bytes": 6536,
+      "sha256": "f6078acfb3be7da33e1d01989475dde0a4be1f932ec010bd139a5a017d19490a"
+    },
+    {
+      "file": "tasks/TASK-0004-remove-redundant-agent-depth-limits/PLAN.md",
+      "origin": "REF-2",
+      "bytes": 14160,
+      "sha256": "7edf2e55d42931ddf39f250fd59f5adf57ac4102a8e1b1f1fad5165c2c85a620"
+    },
+    {
+      "file": "tasks/TASK-0004-remove-redundant-agent-depth-limits/QA_PLAN.md",
+      "origin": "REF-2",
+      "bytes": 9635,
+      "sha256": "2aae848e672c2d0f61e8082b56a77ae54035c81689ee3864d4cc4dbadba793e6"
+    },
+    {
+      "file": "tasks/TASK-0004-remove-redundant-agent-depth-limits/QA_RESULT.md",
+      "origin": "REF-2",
+      "bytes": 3624,
+      "sha256": "3c4d17081f97027e5951e031803fe20016fe16d316c8f8cc5e5ceadd1df0e294"
+    },
+    {
+      "file": "tasks/TASK-0004-remove-redundant-agent-depth-limits/REVIEW_RESULT.md",
+      "origin": "REF-2",
+      "bytes": 4475,
+      "sha256": "786d7d30df525c9708acfab51a106cf73a029ee0cfc255ca281a24d4528e7a79"
+    },
+    {
+      "file": "tasks/TASK-0004-remove-redundant-agent-depth-limits/TASK.md",
+      "origin": "REF-2",
+      "bytes": 11343,
+      "sha256": "b41991c88356da30ada01072d037b074cac2240bc3b5bcaad05cc4fc94de6a99"
+    },
+    {
+      "file": "tasks/TASK-0005-main-agent-efficient-delivery/HANDOVER.md",
+      "origin": "REF-2",
+      "bytes": 2943,
+      "sha256": "4661c4e390edd48ffabbf553c31fbc28ddf6c03280f374bc92bd218c991fde9b"
+    },
+    {
+      "file": "tasks/TASK-0005-main-agent-efficient-delivery/PLAN.md",
+      "origin": "REF-2",
+      "bytes": 15557,
+      "sha256": "a61d4d06820136d26f1b78ff61c056d9e84b130a5206036378decc9276519783"
+    },
+    {
+      "file": "tasks/TASK-0005-main-agent-efficient-delivery/QA_PLAN.md",
+      "origin": "REF-2",
+      "bytes": 9764,
+      "sha256": "3bcff34330dd5e99a5fe34a014f13870530045574f08524370ae101e937dedaf"
+    },
+    {
+      "file": "tasks/TASK-0005-main-agent-efficient-delivery/QA_RESULT.md",
+      "origin": "REF-2",
+      "bytes": 4935,
+      "sha256": "99b7f7e36499c026017274b52e930653c19b92d493c869fbb9c37aa207d23bc3"
+    },
+    {
+      "file": "tasks/TASK-0005-main-agent-efficient-delivery/REVIEW_RESULT.md",
+      "origin": "REF-2",
+      "bytes": 2676,
+      "sha256": "a9dba869c2bc022b7ca16edf67595705936d9c44f5f45645ef3e8b8dec43b0d1"
+    },
+    {
+      "file": "tasks/TASK-0005-main-agent-efficient-delivery/TASK.md",
+      "origin": "REF-2",
+      "bytes": 6550,
+      "sha256": "9813e63d1836bf0406531da0fbaf57a9b153b21249e244db637a666eccbc154c"
+    },
+    {
+      "file": "tasks/TASK-0006-mvp-wire-contracts/HANDOVER.md",
+      "origin": "REF-2",
+      "bytes": 10142,
+      "sha256": "0d9a7e0a5f5fc7f7b298c0fa2dfd2d65022196a19558432b6e2e4552cd038c40"
+    },
+    {
+      "file": "tasks/TASK-0006-mvp-wire-contracts/PLAN.md",
+      "origin": "REF-2",
+      "bytes": 15485,
+      "sha256": "22020dff9aec1e1b6c3b91f242bc2f66fc479dbf6985c9c57023d4fa738f19e6"
+    },
+    {
+      "file": "tasks/TASK-0006-mvp-wire-contracts/QA_PLAN.md",
+      "origin": "REF-2",
+      "bytes": 9912,
+      "sha256": "f25b289ceff498bd03103993ab9257a5430251720fb29c7f82173b89ce24a9bb"
+    },
+    {
+      "file": "tasks/TASK-0006-mvp-wire-contracts/QA_RESULT.md",
+      "origin": "REF-2",
+      "bytes": 4390,
+      "sha256": "3995bced319fc9e6cac023cca7ce646ec0f9be932154754bf5245c86381462bd"
+    },
+    {
+      "file": "tasks/TASK-0006-mvp-wire-contracts/REVIEW_RESULT.md",
+      "origin": "REF-2",
+      "bytes": 4027,
+      "sha256": "6aee5b5d895c1c1352841b1c541671d6a13dfe380d212788c31253cc6d1c8a70"
+    },
+    {
+      "file": "tasks/TASK-0006-mvp-wire-contracts/TASK.md",
+      "origin": "REF-2",
+      "bytes": 3459,
+      "sha256": "020e627ea8ae3eb20fd5503aeea77eef3d2fc2dcccd7c11a9e1de301da00022f"
+    },
+    {
+      "file": "tasks/TASK-0007-control-durable-task-store/HANDOVER.md",
+      "origin": "REF-2",
+      "bytes": 449,
+      "sha256": "5893e246e2df684e4b007908a44553bf802d72728fba7934b178723da7757c85"
+    },
+    {
+      "file": "tasks/TASK-0007-control-durable-task-store/PLAN.md",
+      "origin": "REF-2",
+      "bytes": 9307,
+      "sha256": "426bf1cd4da18ad647b6850bc8fb4014ac473c91ef0064ac26557aeefaae7994"
+    },
+    {
+      "file": "tasks/TASK-0007-control-durable-task-store/QA_PLAN.md",
+      "origin": "REF-2",
+      "bytes": 942,
+      "sha256": "00a9ec651701f5a60a3a60c116293f8477b7f81db879a23144316aa2a74aeb4e"
+    },
+    {
+      "file": "tasks/TASK-0007-control-durable-task-store/QA_RESULT.md",
+      "origin": "REF-2",
+      "bytes": 576,
+      "sha256": "f3fac4086105b9402d699072a13b3ebcc9405ad47b1e4da63a7f7ddd4e46c663"
+    },
+    {
+      "file": "tasks/TASK-0007-control-durable-task-store/REVIEW_RESULT.md",
+      "origin": "REF-2",
+      "bytes": 605,
+      "sha256": "150d418f4c9780aa216e4423eb11340912a72cf28b88ca62ca3270422149690b"
+    },
+    {
+      "file": "tasks/TASK-0007-control-durable-task-store/TASK.md",
+      "origin": "REF-2",
+      "bytes": 3702,
+      "sha256": "23b9469f7089962d4560293bac63d22a5f4389eee08b61f97cdac37bb0a9a29a"
+    },
+    {
+      "file": "tasks/TASK-0008-cross-plane-transport/HANDOVER.md",
+      "origin": "REF-2",
+      "bytes": 449,
+      "sha256": "49735f6af35d34b282cf6dda4ffde323a6e8612411a23ab531897ddf20468fe5"
+    },
+    {
+      "file": "tasks/TASK-0008-cross-plane-transport/PLAN.md",
+      "origin": "REF-2",
+      "bytes": 6522,
+      "sha256": "c26d7be1e6efac7689fa66d23d5e9c6473f4987f8a41c99190589b345025fea1"
+    },
+    {
+      "file": "tasks/TASK-0008-cross-plane-transport/QA_PLAN.md",
+      "origin": "REF-2",
+      "bytes": 942,
+      "sha256": "d22502dc54c483478252c037c1634e9d68e0fdd7af0e1874162b48e02455c3e6"
+    },
+    {
+      "file": "tasks/TASK-0008-cross-plane-transport/QA_RESULT.md",
+      "origin": "REF-2",
+      "bytes": 576,
+      "sha256": "1e29c020c5716d4f574a4e1bc254a0f12399f4a60cd40c9c972c9a5b9bf3c763"
+    },
+    {
+      "file": "tasks/TASK-0008-cross-plane-transport/REVIEW_RESULT.md",
+      "origin": "REF-2",
+      "bytes": 605,
+      "sha256": "ac35aae07898bea8b7b055e2d1d146352c9d43d9debbc825a4d5485f0e4907c7"
+    },
+    {
+      "file": "tasks/TASK-0008-cross-plane-transport/TASK.md",
+      "origin": "REF-2",
+      "bytes": 3453,
+      "sha256": "09f63e759db6af42743a9da8e0c07c444b66c669cf7fa15a576b573628bec79f"
+    },
+    {
+      "file": "tasks/TASK-0009-linux-workspace-isolation/HANDOVER.md",
+      "origin": "REF-2",
+      "bytes": 449,
+      "sha256": "8e8ca853a44f31d27c4526421b2b8b3e4a11e00755bb4c06e2e77a085d1a92b8"
+    },
+    {
+      "file": "tasks/TASK-0009-linux-workspace-isolation/PLAN.md",
+      "origin": "REF-2",
+      "bytes": 6314,
+      "sha256": "0fba783c3e8ce95b0484431fb5c6ca7b1a72d6fac39e36af83aab80a6e2d01da"
+    },
+    {
+      "file": "tasks/TASK-0009-linux-workspace-isolation/QA_PLAN.md",
+      "origin": "REF-2",
+      "bytes": 942,
+      "sha256": "8881080bd41b50adda8af889c0a11d54bdb1e5204de95e03f568985c0d69fffc"
+    },
+    {
+      "file": "tasks/TASK-0009-linux-workspace-isolation/QA_RESULT.md",
+      "origin": "REF-2",
+      "bytes": 576,
+      "sha256": "a226f698cc2e803bddd1d88009446e00dc3950d1a34fd8377d3d4558bae6e653"
+    },
+    {
+      "file": "tasks/TASK-0009-linux-workspace-isolation/REVIEW_RESULT.md",
+      "origin": "REF-2",
+      "bytes": 605,
+      "sha256": "1430ad0e47288ee94dadced29200d5697ea9605bb16a00263483d1a1426d75dc"
+    },
+    {
+      "file": "tasks/TASK-0009-linux-workspace-isolation/TASK.md",
+      "origin": "REF-2",
+      "bytes": 3860,
+      "sha256": "e4f81632fb1245f5118db0a6026fd4074237ca3199e17110b8520ac4c97d7092"
+    },
+    {
+      "file": "tasks/TASK-0010-root-task-cli/HANDOVER.md",
+      "origin": "REF-2",
+      "bytes": 449,
+      "sha256": "b374d6b383ad21ee9c9bf77f1f330366edcccbee8a8b4230dc365d8decc61598"
+    },
+    {
+      "file": "tasks/TASK-0010-root-task-cli/PLAN.md",
+      "origin": "REF-2",
+      "bytes": 6078,
+      "sha256": "29c37f02dcc2002070ce2c227447e04662064c3e13c646e84034f1209893955e"
+    },
+    {
+      "file": "tasks/TASK-0010-root-task-cli/QA_PLAN.md",
+      "origin": "REF-2",
+      "bytes": 942,
+      "sha256": "33be545b2e7960da76f27c18e37cf68d975d251552c6813554a4261300f29772"
+    },
+    {
+      "file": "tasks/TASK-0010-root-task-cli/QA_RESULT.md",
+      "origin": "REF-2",
+      "bytes": 576,
+      "sha256": "9c2a08d937667c61c71607d5f182fc08d55a696af0d85a2eec87a5634bae71d6"
+    },
+    {
+      "file": "tasks/TASK-0010-root-task-cli/REVIEW_RESULT.md",
+      "origin": "REF-2",
+      "bytes": 605,
+      "sha256": "50e1707533dfba5d8d2d623372a6882693379ca685c7a3183571e522c718dc33"
+    },
+    {
+      "file": "tasks/TASK-0010-root-task-cli/TASK.md",
+      "origin": "REF-2",
+      "bytes": 3989,
+      "sha256": "f7eead58a14eebdde0ac80cf479f1c3b6c60ec51fa54cf090414932544e28659"
+    },
+    {
+      "file": "tasks/TASK-0011-work-agent-runtime/HANDOVER.md",
+      "origin": "REF-2",
+      "bytes": 449,
+      "sha256": "d906dc7956336f5c39123d773c295afa9c1f95a3f29c8662f5fa873ad6ebe4ac"
+    },
+    {
+      "file": "tasks/TASK-0011-work-agent-runtime/PLAN.md",
+      "origin": "REF-2",
+      "bytes": 4107,
+      "sha256": "5f57776cc9003d8a819f27a148a0382bc00d6b1d641939389b15cdbb40517d33"
+    },
+    {
+      "file": "tasks/TASK-0011-work-agent-runtime/QA_PLAN.md",
+      "origin": "REF-2",
+      "bytes": 942,
+      "sha256": "7c6917313511f140be356cc241751fc30418001af3f0ebdfcfb8f9097f45f043"
+    },
+    {
+      "file": "tasks/TASK-0011-work-agent-runtime/QA_RESULT.md",
+      "origin": "REF-2",
+      "bytes": 576,
+      "sha256": "e821d081a1e2bdcac4db56f3a75666208fc376932e154fa592b6e2b8022c1c4e"
+    },
+    {
+      "file": "tasks/TASK-0011-work-agent-runtime/REVIEW_RESULT.md",
+      "origin": "REF-2",
+      "bytes": 605,
+      "sha256": "dd39657f66b6132b739835607c4bba29344294144d45179fd158cfa3949b1f75"
+    },
+    {
+      "file": "tasks/TASK-0011-work-agent-runtime/TASK.md",
+      "origin": "REF-2",
+      "bytes": 3103,
+      "sha256": "6c717b6cc429e8f12f4c1e6cb94efaad4a7ab2d1f1d80a468d3e9403ca2e19b1"
+    },
+    {
+      "file": "tasks/TASK-0012-terminal-async-operations/HANDOVER.md",
+      "origin": "REF-2",
+      "bytes": 449,
+      "sha256": "7496097efd2d208ba9bc23b065cde8ff74266494033bc97886e21c8eee1c83f5"
+    },
+    {
+      "file": "tasks/TASK-0012-terminal-async-operations/PLAN.md",
+      "origin": "REF-2",
+      "bytes": 3586,
+      "sha256": "defdd3c7aaf4a6921de8bc9e56cfbe69f094870817d1a927604a32ea66666a8f"
+    },
+    {
+      "file": "tasks/TASK-0012-terminal-async-operations/QA_PLAN.md",
+      "origin": "REF-2",
+      "bytes": 942,
+      "sha256": "cb2767f117865d235fec4c5d3a374ae0eee5fc3c8424c2100f2be8d74adce423"
+    },
+    {
+      "file": "tasks/TASK-0012-terminal-async-operations/QA_RESULT.md",
+      "origin": "REF-2",
+      "bytes": 576,
+      "sha256": "77af0d888f9dcdde4a2ebe9920c381bea2a054f4f69b4da5ae4ee291956d7200"
+    },
+    {
+      "file": "tasks/TASK-0012-terminal-async-operations/REVIEW_RESULT.md",
+      "origin": "REF-2",
+      "bytes": 605,
+      "sha256": "3bd06ad3252faf0be688b732a01efd7b4c880fc2513a1bf313f236da50a24b96"
+    },
+    {
+      "file": "tasks/TASK-0012-terminal-async-operations/TASK.md",
+      "origin": "REF-2",
+      "bytes": 2403,
+      "sha256": "abdd24808e3dd53b3130f9b94444a24a84212c08f208daa73e40ec51c160ab59"
+    },
+    {
+      "file": "tasks/TASK-0013-mailbox-task-resume/HANDOVER.md",
+      "origin": "REF-2",
+      "bytes": 449,
+      "sha256": "81ed3404ded85ca425b1a15e19fd4bea07ba2732b7c2717722fd20545c9dc26f"
+    },
+    {
+      "file": "tasks/TASK-0013-mailbox-task-resume/PLAN.md",
+      "origin": "REF-2",
+      "bytes": 3679,
+      "sha256": "c8345191cf7174f996a4c32942886ccb48a0b358b8ec02e4e3921e156269571a"
+    },
+    {
+      "file": "tasks/TASK-0013-mailbox-task-resume/QA_PLAN.md",
+      "origin": "REF-2",
+      "bytes": 942,
+      "sha256": "aae201e146f212e59bc76b85a4e48b47757b0951f53a256cbc3faf3a9dbf7e18"
+    },
+    {
+      "file": "tasks/TASK-0013-mailbox-task-resume/QA_RESULT.md",
+      "origin": "REF-2",
+      "bytes": 576,
+      "sha256": "a1d4488c4a5824ecf699cb7b984ca37572a7e4fd3565211fbeabdad00599d287"
+    },
+    {
+      "file": "tasks/TASK-0013-mailbox-task-resume/REVIEW_RESULT.md",
+      "origin": "REF-2",
+      "bytes": 605,
+      "sha256": "eb28889990ed2139b135c057e29c37204fbe64e74730f481e2fab06eab5bec84"
+    },
+    {
+      "file": "tasks/TASK-0013-mailbox-task-resume/TASK.md",
+      "origin": "REF-2",
+      "bytes": 2245,
+      "sha256": "4ef60bf1f669b302472acfadb2f709b20b7abc22b26b3dbe73fc823f6cbe004e"
+    },
+    {
+      "file": "tasks/TASK-0014-child-task-delegation/HANDOVER.md",
+      "origin": "REF-2",
+      "bytes": 449,
+      "sha256": "bd747533de6dede9f7235a0e61463a0de559f6b43cf721e108e44cd20d2cceb9"
+    },
+    {
+      "file": "tasks/TASK-0014-child-task-delegation/PLAN.md",
+      "origin": "REF-2",
+      "bytes": 4053,
+      "sha256": "7caaf926f3079dbc7f75b400f0abd2c82c63739032c9ac274d705fc57ad4dd34"
+    },
+    {
+      "file": "tasks/TASK-0014-child-task-delegation/QA_PLAN.md",
+      "origin": "REF-2",
+      "bytes": 942,
+      "sha256": "da1fdd68d7de5e579aef157958d08eb5549b49eb5397fb53ca58e8584b174796"
+    },
+    {
+      "file": "tasks/TASK-0014-child-task-delegation/QA_RESULT.md",
+      "origin": "REF-2",
+      "bytes": 576,
+      "sha256": "63016778bf646846171d3fa133c5623a730c19ef5015d86c311b9c27125632d9"
+    },
+    {
+      "file": "tasks/TASK-0014-child-task-delegation/REVIEW_RESULT.md",
+      "origin": "REF-2",
+      "bytes": 605,
+      "sha256": "b98d1e2d619531c9cc5f0f0545415da6af92c3c9786038b01e44f49b0ed72f5d"
+    },
+    {
+      "file": "tasks/TASK-0014-child-task-delegation/TASK.md",
+      "origin": "REF-2",
+      "bytes": 2642,
+      "sha256": "2827bb5fafb0803c2c771aa673f26039b6af25d9a1f1306dcb33dfe2f19472d1"
+    },
+    {
+      "file": "tasks/TASK-0015-completion-review/HANDOVER.md",
+      "origin": "REF-2",
+      "bytes": 449,
+      "sha256": "bc34554e729d3ac5f25839e75a6757b23d892612220e0fcb57db2b96b35348e2"
+    },
+    {
+      "file": "tasks/TASK-0015-completion-review/PLAN.md",
+      "origin": "REF-2",
+      "bytes": 3964,
+      "sha256": "522347bfae007a7805ed2afd6886604027fe4676b034a49963520770b1ec767c"
+    },
+    {
+      "file": "tasks/TASK-0015-completion-review/QA_PLAN.md",
+      "origin": "REF-2",
+      "bytes": 942,
+      "sha256": "c5ff29515980aab9fda90052e42a4856c58928c96541dadea26a4c1b64bb6f74"
+    },
+    {
+      "file": "tasks/TASK-0015-completion-review/QA_RESULT.md",
+      "origin": "REF-2",
+      "bytes": 576,
+      "sha256": "e02d52e485a3cb98c37ab5b4e8c99adfe6b00712e4a51dc34989e14eefaa2722"
+    },
+    {
+      "file": "tasks/TASK-0015-completion-review/REVIEW_RESULT.md",
+      "origin": "REF-2",
+      "bytes": 605,
+      "sha256": "87d29dc8473bec82983991da9e20f1c9ac5f0858fc32140c668bf2d3396b935f"
+    },
+    {
+      "file": "tasks/TASK-0015-completion-review/TASK.md",
+      "origin": "REF-2",
+      "bytes": 2598,
+      "sha256": "477e068cdb8c7d68b74f0085c707bad23b11b1e4dff0e843b18f22162667e3bd"
+    },
+    {
+      "file": "tasks/TASK-0016-governance-policy-store/HANDOVER.md",
+      "origin": "REF-2",
+      "bytes": 449,
+      "sha256": "15d2e98c57bb4a6c0e9df0d70cf53d6b26971e2dc7b8d7121d68290233084ecc"
+    },
+    {
+      "file": "tasks/TASK-0016-governance-policy-store/PLAN.md",
+      "origin": "REF-2",
+      "bytes": 4031,
+      "sha256": "ee0fb4d9ad9329db0280c6ea6fecd36eb0630b38226faeee94bdc3b7b01ed2bf"
+    },
+    {
+      "file": "tasks/TASK-0016-governance-policy-store/QA_PLAN.md",
+      "origin": "REF-2",
+      "bytes": 942,
+      "sha256": "e6db4dca6575095b1b140a5c0d614700f1d04aa7102223f236884ed5449eeaf1"
+    },
+    {
+      "file": "tasks/TASK-0016-governance-policy-store/QA_RESULT.md",
+      "origin": "REF-2",
+      "bytes": 576,
+      "sha256": "31327efbdb281d40b6a513a7922cded8968a4e577b9e019b6a9832f5420d6abf"
+    },
+    {
+      "file": "tasks/TASK-0016-governance-policy-store/REVIEW_RESULT.md",
+      "origin": "REF-2",
+      "bytes": 605,
+      "sha256": "3bfc8ce823fc6ae37e7b870e441334aa5e07c62c25998b237a0194aff60f8d17"
+    },
+    {
+      "file": "tasks/TASK-0016-governance-policy-store/TASK.md",
+      "origin": "REF-2",
+      "bytes": 3278,
+      "sha256": "ec94af5e178f587339937546f29792a84f1e48c6f91a9f8cd88be55d0b607da8"
+    },
+    {
+      "file": "tasks/TASK-0017-linux-egress-enforcement/HANDOVER.md",
+      "origin": "REF-2",
+      "bytes": 449,
+      "sha256": "f7809646162874f1db7dd8fd8bfa9b5ce0801c22c1e38ce4588567765a763dc1"
+    },
+    {
+      "file": "tasks/TASK-0017-linux-egress-enforcement/PLAN.md",
+      "origin": "REF-2",
+      "bytes": 4008,
+      "sha256": "f508e0773f05c8a89b062b217a38c1fd9cbe297cff1beb1954df933239e2102d"
+    },
+    {
+      "file": "tasks/TASK-0017-linux-egress-enforcement/QA_PLAN.md",
+      "origin": "REF-2",
+      "bytes": 942,
+      "sha256": "77ee6daf84f6422d528bd6bf07ca5930aef0f74069196283130f0139adf92e0b"
+    },
+    {
+      "file": "tasks/TASK-0017-linux-egress-enforcement/QA_RESULT.md",
+      "origin": "REF-2",
+      "bytes": 576,
+      "sha256": "65bd0eeee5c1f75120df7c03cd9f86fda64717a40ffcc2bf944d3462fffcf9f2"
+    },
+    {
+      "file": "tasks/TASK-0017-linux-egress-enforcement/REVIEW_RESULT.md",
+      "origin": "REF-2",
+      "bytes": 605,
+      "sha256": "998f3bf08340abfc7692860f0bac49b0fb3c738a1719ac31de56e1abdfbc2072"
+    },
+    {
+      "file": "tasks/TASK-0017-linux-egress-enforcement/TASK.md",
+      "origin": "REF-2",
+      "bytes": 3130,
+      "sha256": "3388287f3d21d8bc37181741727d70630723326a10819f73f2453f39487fb112"
+    },
+    {
+      "file": "tasks/TASK-0018-grant-activation/HANDOVER.md",
+      "origin": "REF-2",
+      "bytes": 449,
+      "sha256": "9380622e7bf14cf37fcbbe273e4ecef9888f5627c406f6e8d0f470cc9a67d496"
+    },
+    {
+      "file": "tasks/TASK-0018-grant-activation/PLAN.md",
+      "origin": "REF-2",
+      "bytes": 4156,
+      "sha256": "b4267127a58e9b3c5aaa30fdef1275778a19359d0383eca58df386336183d0ed"
+    },
+    {
+      "file": "tasks/TASK-0018-grant-activation/QA_PLAN.md",
+      "origin": "REF-2",
+      "bytes": 942,
+      "sha256": "7eae3ab856aca3dc123a77feb092772e4794258e78c68ce17bc27495d8becf7a"
+    },
+    {
+      "file": "tasks/TASK-0018-grant-activation/QA_RESULT.md",
+      "origin": "REF-2",
+      "bytes": 576,
+      "sha256": "499e17d3337b02cdd2de1df5bef8351314c229717dc2ba5fa82224137787fd35"
+    },
+    {
+      "file": "tasks/TASK-0018-grant-activation/REVIEW_RESULT.md",
+      "origin": "REF-2",
+      "bytes": 605,
+      "sha256": "091a4d271bb55cee7effb1ea489161ac5a4105ef9a61c4ae4c03766dcfad791d"
+    },
+    {
+      "file": "tasks/TASK-0018-grant-activation/TASK.md",
+      "origin": "REF-2",
+      "bytes": 2952,
+      "sha256": "acf48869896e49cf1650166f9b2594fa42dc73386ebb0046595d91f2251881ce"
+    },
+    {
+      "file": "tasks/TASK-0019-memory-episode/HANDOVER.md",
+      "origin": "REF-2",
+      "bytes": 449,
+      "sha256": "1843168cd0d7b4caaf6e8ff63ea435d178173bed5e98ce44f1feae607aa936da"
+    },
+    {
+      "file": "tasks/TASK-0019-memory-episode/PLAN.md",
+      "origin": "REF-2",
+      "bytes": 4080,
+      "sha256": "81bf600ee8477a97877504fe927eab05847bdb2cd2c1f8dbf3a95b8289fe00e2"
+    },
+    {
+      "file": "tasks/TASK-0019-memory-episode/QA_PLAN.md",
+      "origin": "REF-2",
+      "bytes": 942,
+      "sha256": "4c4b92ce0cadae6bed4a1fa23594ef00456f0c89e1f3d09fdeb0eee5f09ca113"
+    },
+    {
+      "file": "tasks/TASK-0019-memory-episode/QA_RESULT.md",
+      "origin": "REF-2",
+      "bytes": 576,
+      "sha256": "02a06e285082dd335a2f0ae9aa73f5729045b5ffd578fbb00e8137e64d64f3c6"
+    },
+    {
+      "file": "tasks/TASK-0019-memory-episode/REVIEW_RESULT.md",
+      "origin": "REF-2",
+      "bytes": 605,
+      "sha256": "c6d23d44e10cc1aabe38ce194d2b3bd669810f0f01fd437eff85ac8a8c011064"
+    },
+    {
+      "file": "tasks/TASK-0019-memory-episode/TASK.md",
+      "origin": "REF-2",
+      "bytes": 3264,
+      "sha256": "824a92f8263a6e249bd10dcf5eb75e5ee5c4ce24b6b92c6e6cdf0e68d9972db3"
+    },
+    {
+      "file": "tasks/TASK-0020-wiki-context-injection/HANDOVER.md",
+      "origin": "REF-2",
+      "bytes": 449,
+      "sha256": "5274d9c5469c7d95768faae85180154d2b59fb6eb1374c3f07744995c0185dd1"
+    },
+    {
+      "file": "tasks/TASK-0020-wiki-context-injection/PLAN.md",
+      "origin": "REF-2",
+      "bytes": 4071,
+      "sha256": "423eb1da34116c0c50fae0bedb340e7bef5afe56cec7d0d38b13b12ee679f9fe"
+    },
+    {
+      "file": "tasks/TASK-0020-wiki-context-injection/QA_PLAN.md",
+      "origin": "REF-2",
+      "bytes": 942,
+      "sha256": "8b7de1ff2fdbe069e0c5a469f704d424dbb25fb960b46734f3a3b127c9e6e847"
+    },
+    {
+      "file": "tasks/TASK-0020-wiki-context-injection/QA_RESULT.md",
+      "origin": "REF-2",
+      "bytes": 576,
+      "sha256": "f03da2ac1d13d94dbe659fc657bce8f73ea169f6ef21069ae05cb111d9387f1e"
+    },
+    {
+      "file": "tasks/TASK-0020-wiki-context-injection/REVIEW_RESULT.md",
+      "origin": "REF-2",
+      "bytes": 605,
+      "sha256": "eff4752fca92fc5877377095bb0676dc936888ef35668e5bd62b822a0f4bd67c"
+    },
+    {
+      "file": "tasks/TASK-0020-wiki-context-injection/TASK.md",
+      "origin": "REF-2",
+      "bytes": 3190,
+      "sha256": "ca55e829bddf20063a3a35abd76a3ee96bf9b6f0c342b3e01440285e6be1ee43"
+    },
+    {
+      "file": "tasks/TASK-0021-mvp-e2e-release/HANDOVER.md",
+      "origin": "REF-2",
+      "bytes": 449,
+      "sha256": "6b8ccab564a2bdc555657a78774f38c64f7573945b6b3337c9bc5ba8dfc84085"
+    },
+    {
+      "file": "tasks/TASK-0021-mvp-e2e-release/PLAN.md",
+      "origin": "REF-2",
+      "bytes": 4226,
+      "sha256": "d3b15557f09430949329b14d83098bf2d5e6011d49f91d1f47326ab44840134e"
+    },
+    {
+      "file": "tasks/TASK-0021-mvp-e2e-release/QA_PLAN.md",
+      "origin": "REF-2",
+      "bytes": 942,
+      "sha256": "86d7fa18517a2e5cb0e96e94bb5e1a7af16a6e512bd5760e04b8e4cbdecc71a2"
+    },
+    {
+      "file": "tasks/TASK-0021-mvp-e2e-release/QA_RESULT.md",
+      "origin": "REF-2",
+      "bytes": 576,
+      "sha256": "82acb01369d0bf4b15a8410c746eb8811e65ec006f38febd2f7dd83356d755f7"
+    },
+    {
+      "file": "tasks/TASK-0021-mvp-e2e-release/REVIEW_RESULT.md",
+      "origin": "REF-2",
+      "bytes": 605,
+      "sha256": "dd314d733dd56df09a38ceea6dceb90047c80ee2b21300eb0c40c9ca6cfa70dd"
+    },
+    {
+      "file": "tasks/TASK-0021-mvp-e2e-release/TASK.md",
+      "origin": "REF-2",
+      "bytes": 3100,
+      "sha256": "322588d659789c8f42ae4baf4d39f85c645e69c9de1329a2e9e6158ba68c32b1"
+    },
+    {
+      "file": "tasks/TASK-0022-linux-filesystem-isolation/HANDOVER.md",
+      "origin": "REF-2",
+      "bytes": 449,
+      "sha256": "3394bde24ee6a79b43bcc0854481ec90ce9c84fe2fa03c33910ed8285d0b9390"
+    },
+    {
+      "file": "tasks/TASK-0022-linux-filesystem-isolation/PLAN.md",
+      "origin": "REF-2",
+      "bytes": 3572,
+      "sha256": "af42cee3980b4143dcfdcc1eec45eabdc79ebefaabfb585f9cefe62796b32d7c"
+    },
+    {
+      "file": "tasks/TASK-0022-linux-filesystem-isolation/QA_PLAN.md",
+      "origin": "REF-2",
+      "bytes": 942,
+      "sha256": "8e4c68fe39bd820f3ea3d92d1e31a87cb6d1fce12c7122b02f478d79b8e4bab8"
+    },
+    {
+      "file": "tasks/TASK-0022-linux-filesystem-isolation/QA_RESULT.md",
+      "origin": "REF-2",
+      "bytes": 576,
+      "sha256": "b79981ce452759672d6afe3fbb43cea60aa14165a7503a3114221ab299c0dbaf"
+    },
+    {
+      "file": "tasks/TASK-0022-linux-filesystem-isolation/REVIEW_RESULT.md",
+      "origin": "REF-2",
+      "bytes": 605,
+      "sha256": "676d9c05f425779341ef22fe650364236f09270f749a60005531571d49eaefb1"
+    },
+    {
+      "file": "tasks/TASK-0022-linux-filesystem-isolation/TASK.md",
+      "origin": "REF-2",
+      "bytes": 2720,
+      "sha256": "d25369314975d3177689344c0fb388a620c935f75948dc102822e601c1f88cce"
+    },
+    {
+      "file": "tasks/TASK-0023-https-interception-proxy/HANDOVER.md",
+      "origin": "REF-2",
+      "bytes": 449,
+      "sha256": "5264bba0bda59197dd1b06c0f6de00bc3cb44c519c57cf6d23d9998b0b9bf1bf"
+    },
+    {
+      "file": "tasks/TASK-0023-https-interception-proxy/PLAN.md",
+      "origin": "REF-2",
+      "bytes": 4520,
+      "sha256": "012b16fabf0ace7ba64ca0463d210f19ba990d2308ed900d9a46fa1f13867887"
+    },
+    {
+      "file": "tasks/TASK-0023-https-interception-proxy/QA_PLAN.md",
+      "origin": "REF-2",
+      "bytes": 942,
+      "sha256": "6eef3b91a96cecae9f073b55df8fb3e1fd7ac9568a173fc6b7631aabe8d34d08"
+    },
+    {
+      "file": "tasks/TASK-0023-https-interception-proxy/QA_RESULT.md",
+      "origin": "REF-2",
+      "bytes": 576,
+      "sha256": "2a76b711f053f31dcfbd11bfd6139257902c56b58dbacf1f7ef8e14e5c082804"
+    },
+    {
+      "file": "tasks/TASK-0023-https-interception-proxy/REVIEW_RESULT.md",
+      "origin": "REF-2",
+      "bytes": 605,
+      "sha256": "63b95da41c0c7d580405ca2ce8b432fd8d72433b3d0dd9e3453e8e2ed5bb8550"
+    },
+    {
+      "file": "tasks/TASK-0023-https-interception-proxy/TASK.md",
+      "origin": "REF-2",
+      "bytes": 3077,
+      "sha256": "01f0bf3914f5ba7fb944e3920996dce69849494dbdd1d8ca1d85019dbed0ad86"
+    },
+    {
+      "file": "tasks/TASK-0024-risk-based-qa-evidence/HANDOVER.md",
+      "origin": "REF-2",
+      "bytes": 813,
+      "sha256": "21dbf55b9189c2f6ea7c44e131c8112e7a7850fccd49801d4d62d008d9f01108"
+    },
+    {
+      "file": "tasks/TASK-0024-risk-based-qa-evidence/PLAN.md",
+      "origin": "REF-2",
+      "bytes": 18822,
+      "sha256": "55b63629a6d936d20ac2d5fd0667c4df40ddc7fd7232e94ec25244a76b7e358d"
+    },
+    {
+      "file": "tasks/TASK-0024-risk-based-qa-evidence/QA_PLAN.md",
+      "origin": "REF-2",
+      "bytes": 18745,
+      "sha256": "42072911319c38ad47b1590f537829767a4c2b8b8c2fb89d0b80efd9ca966115"
+    },
+    {
+      "file": "tasks/TASK-0024-risk-based-qa-evidence/QA_RESULT.md",
+      "origin": "REF-2",
+      "bytes": 576,
+      "sha256": "c5db0bd07792a12d2a300ee146c7ff729a997cfd0d9141dcf70a25f80a00dcc2"
+    },
+    {
+      "file": "tasks/TASK-0024-risk-based-qa-evidence/REVIEW_RESULT.md",
+      "origin": "REF-2",
+      "bytes": 605,
+      "sha256": "e5af9a0627c533ea2a8ebef23e07e57aabe59e2b6e821cc9768103200d676548"
+    },
+    {
+      "file": "tasks/TASK-0024-risk-based-qa-evidence/TASK.md",
+      "origin": "REF-2",
+      "bytes": 5462,
+      "sha256": "82d7f1041846090250bff1e2930b538597d3065ad5c8ac0eea367097155d726c"
+    },
+    {
+      "file": "tasks/TASK-0025-safety-contract-task-check/HANDOVER.md",
+      "origin": "REF-2",
+      "bytes": 2994,
+      "sha256": "1d05c4d1ed0a4bf606e7fc3fea53ab80e5c77101a8d5120bd0ee22a2d86351f0"
+    },
+    {
+      "file": "tasks/TASK-0025-safety-contract-task-check/PLAN.md",
+      "origin": "REF-2",
+      "bytes": 17730,
+      "sha256": "12233f9e4fdcfefa0a8f1881c6c6d2b7b063b77cbc6a0bd99922f01d6fa14a7c"
+    },
+    {
+      "file": "tasks/TASK-0025-safety-contract-task-check/QA_PLAN.md",
+      "origin": "REF-2",
+      "bytes": 14196,
+      "sha256": "bbc6fbb7c90e69378a819c937b62f14bc3c3493a22594d548aa23465e1c278ca"
+    },
+    {
+      "file": "tasks/TASK-0025-safety-contract-task-check/QA_RESULT.md",
+      "origin": "REF-2",
+      "bytes": 2498,
+      "sha256": "11c570e4695cc2e959bf86b0648544d4046724c2ec661041cd0a80024b4c4f49"
+    },
+    {
+      "file": "tasks/TASK-0025-safety-contract-task-check/REVIEW_RESULT.md",
+      "origin": "REF-2",
+      "bytes": 1160,
+      "sha256": "f9444feec5f46d426667196747c23a238172b527913cc8aff20be5f06c01ebcb"
+    },
+    {
+      "file": "tasks/TASK-0025-safety-contract-task-check/TASK.md",
+      "origin": "REF-2",
+      "bytes": 3514,
+      "sha256": "4766e2b95a273e0ca90a555eeb85fd29d55b50a8425d219fd0902a04777a11f2"
+    },
+    {
+      "file": "tasks/TASK-0026-trusted-nit-fix-commits/HANDOVER.md",
+      "origin": "REF-2",
+      "bytes": 1959,
+      "sha256": "2ee9b3f1f4c1166eb0b19ec973e3b300aae6dc2dd9c27700a423edacc283e9a4"
+    },
+    {
+      "file": "tasks/TASK-0026-trusted-nit-fix-commits/PLAN.md",
+      "origin": "REF-2",
+      "bytes": 3786,
+      "sha256": "956ce7c0c9b37bf38b2482087d204ef7b5a1a123d97ae983af273d87280cd6c0"
+    },
+    {
+      "file": "tasks/TASK-0026-trusted-nit-fix-commits/QA_PLAN.md",
+      "origin": "REF-2",
+      "bytes": 6127,
+      "sha256": "05bca4b1b9eb8525e146fc2200fdc59040f77bd1b3328b1aa1619305dc7613f8"
+    },
+    {
+      "file": "tasks/TASK-0026-trusted-nit-fix-commits/QA_RESULT.md",
+      "origin": "REF-2",
+      "bytes": 2403,
+      "sha256": "6009b8a2dbfe8ddedddc5a949379aac7e99f87ffc04aab5d235af88a044cf1d9"
+    },
+    {
+      "file": "tasks/TASK-0026-trusted-nit-fix-commits/REVIEW_RESULT.md",
+      "origin": "REF-2",
+      "bytes": 852,
+      "sha256": "e9229e1ae27a9417988a9f56f87c0e3246c1ff9a8b9aea86241075c07721067b"
+    },
+    {
+      "file": "tasks/TASK-0026-trusted-nit-fix-commits/TASK.md",
+      "origin": "REF-2",
+      "bytes": 3023,
+      "sha256": "cf9569ed61366c455a5f6f2e5eb02e81e7a8fd5b12529b30d526d52908b539b3"
+    },
+    {
+      "file": "tasks/TASK-0027-control-durable-foundation/HANDOVER.md",
+      "origin": "REF-2",
+      "bytes": 5369,
+      "sha256": "f3c5a31b50e833c95cb1699df7e50d42abfe67b06f549596827eb14cf5fc49d2"
+    },
+    {
+      "file": "tasks/TASK-0027-control-durable-foundation/PLAN.md",
+      "origin": "REF-2",
+      "bytes": 5937,
+      "sha256": "197765244697945ea78a3ce66f4ef9bd3660b4f0683c551b11b6a557503da34a"
+    },
+    {
+      "file": "tasks/TASK-0027-control-durable-foundation/QA_PLAN.md",
+      "origin": "REF-2",
+      "bytes": 14787,
+      "sha256": "ede01f2656bd15fe88f4b03be30714db691d6802f57c4c405518664e4e9a5fac"
+    },
+    {
+      "file": "tasks/TASK-0027-control-durable-foundation/QA_RESULT.md",
+      "origin": "REF-2",
+      "bytes": 4800,
+      "sha256": "2404b05da78249af8607f9cac1cd0c00a5ef5fdedc70a233aa2443afe8480823"
+    },
+    {
+      "file": "tasks/TASK-0027-control-durable-foundation/REVIEW_RESULT.md",
+      "origin": "REF-2",
+      "bytes": 2330,
+      "sha256": "820a2b732b7adff296298a0f33dd69c1e57065972540aadf1808a57f0edc890b"
+    },
+    {
+      "file": "tasks/TASK-0027-control-durable-foundation/TASK.md",
+      "origin": "REF-2",
+      "bytes": 4132,
+      "sha256": "1895c08371ddf5f28ac6f0e9de79b6047867c82a105e401b89621def14b85c0b"
+    },
+    {
+      "file": "tasks/TASK-0028-control-ownership-lifecycle/HANDOVER.md",
+      "origin": "REF-2",
+      "bytes": 4952,
+      "sha256": "9de6bb3c0828e7645ca3317874daecaf62f0d9512959bc02b273eaf1aa4f909d"
+    },
+    {
+      "file": "tasks/TASK-0028-control-ownership-lifecycle/PLAN.md",
+      "origin": "REF-2",
+      "bytes": 8742,
+      "sha256": "9992ddde3aa0d1097b1b1cf825c5ac684105706bc465764d2dd75b8d3bcd3552"
+    },
+    {
+      "file": "tasks/TASK-0028-control-ownership-lifecycle/QA_PLAN.md",
+      "origin": "REF-2",
+      "bytes": 11984,
+      "sha256": "06d81e52fafcec133f3984782a394810fb2a76a1199d5ddf0c76258973c70cf7"
+    },
+    {
+      "file": "tasks/TASK-0028-control-ownership-lifecycle/QA_RESULT.md",
+      "origin": "REF-2",
+      "bytes": 3515,
+      "sha256": "0806fd1cdbd15a9886454dbe0f3e9f4f8e96085f508f8ad31cb403dca65b6607"
+    },
+    {
+      "file": "tasks/TASK-0028-control-ownership-lifecycle/REVIEW_RESULT.md",
+      "origin": "REF-2",
+      "bytes": 2013,
+      "sha256": "6ad5f61c23a3b9b6848055ea4be9e98cd34191c69e79bccdbb9294fa19cb45e4"
+    },
+    {
+      "file": "tasks/TASK-0028-control-ownership-lifecycle/TASK.md",
+      "origin": "REF-2",
+      "bytes": 5119,
+      "sha256": "7c47694f6148f96cced0d66b07956b4b5f06b35bf8df5196c26368ca7a8b79c4"
+    },
+    {
+      "file": "tasks/TASK-0029-control-versioned-recovery/HANDOVER.md",
+      "origin": "REF-2",
+      "bytes": 4860,
+      "sha256": "51583e85c1b33d9627408c95da5bb19ddad03d9fc252ef55d905aa59c189fa35"
+    },
+    {
+      "file": "tasks/TASK-0029-control-versioned-recovery/PLAN.md",
+      "origin": "REF-2",
+      "bytes": 10972,
+      "sha256": "05133d2662bb0a93efb3beb52af66feb033269e8350af97aa7542314878afb13"
+    },
+    {
+      "file": "tasks/TASK-0029-control-versioned-recovery/QA_PLAN.md",
+      "origin": "REF-2",
+      "bytes": 12656,
+      "sha256": "1765bc2f72e4108d7506c587595a3f596d8c9de01416cbc48fef1255f166d90d"
+    },
+    {
+      "file": "tasks/TASK-0029-control-versioned-recovery/QA_RESULT.md",
+      "origin": "REF-2",
+      "bytes": 2079,
+      "sha256": "cc4fb8c9d71b73b9904a321af37ece963e6a6d4055254156b39e0b2c02005734"
+    },
+    {
+      "file": "tasks/TASK-0029-control-versioned-recovery/REVIEW_RESULT.md",
+      "origin": "REF-2",
+      "bytes": 1965,
+      "sha256": "429b16dfb6ca682574256cd0369bdaa509aefa3e0833ca4a0ffdc0afa59d2b68"
+    },
+    {
+      "file": "tasks/TASK-0029-control-versioned-recovery/TASK.md",
+      "origin": "REF-2",
+      "bytes": 5663,
+      "sha256": "0e1b053aa268eb5c3aee242f8bc1078a2b42a007cfc9975e1a1757556367b726"
+    },
+    {
+      "file": "tasks/TASK-0030-lean-planning-contract/HANDOVER.md",
+      "origin": "REF-2",
+      "bytes": 1334,
+      "sha256": "78deee7a0ccad3e3abca131af599ab381c1865bd9902e8292cc98116d86151ab"
+    },
+    {
+      "file": "tasks/TASK-0030-lean-planning-contract/PLAN.md",
+      "origin": "REF-2",
+      "bytes": 7408,
+      "sha256": "90a20ba8355509b6025cf754c3b7a1f66d389d68a86c3ebdeb40bbb0d0aaf342"
+    },
+    {
+      "file": "tasks/TASK-0030-lean-planning-contract/QA_PLAN.md",
+      "origin": "REF-2",
+      "bytes": 9967,
+      "sha256": "92ef25a42b75a02d28adcb8af52aea948dcad6862499ecbc5fa6ab51837ac1be"
+    },
+    {
+      "file": "tasks/TASK-0030-lean-planning-contract/QA_RESULT.md",
+      "origin": "REF-2",
+      "bytes": 157,
+      "sha256": "5acca0ac3e8e01375365f0385e149ca003320f1f7395ce74c340ebeb202371cb"
+    },
+    {
+      "file": "tasks/TASK-0030-lean-planning-contract/REVIEW_RESULT.md",
+      "origin": "REF-2",
+      "bytes": 215,
+      "sha256": "d27e37c1675523cdd3f9c0d252ca0b8ed608663cad83fb83632a6f8207d5a4ff"
+    },
+    {
+      "file": "tasks/TASK-0030-lean-planning-contract/TASK.md",
+      "origin": "REF-2",
+      "bytes": 3539,
+      "sha256": "95d342854982a78d5fc6fcb8ceaabdd988e9e5d51aa54bd2298b1e5bf92aabd8"
+    },
+    {
+      "file": "tasks/TASK-0031-safety-completion-preflight/HANDOVER.md",
+      "origin": "REF-2",
+      "bytes": 1659,
+      "sha256": "5ad4b025d6ef26bf20efa4d0598940ca20deec8ed0ad03d953f15a777856eb46"
+    },
+    {
+      "file": "tasks/TASK-0031-safety-completion-preflight/PLAN.md",
+      "origin": "REF-2",
+      "bytes": 5647,
+      "sha256": "30d12f78781f260291a817f1724687c2758147231971785ce4634e1422c74c1a"
+    },
+    {
+      "file": "tasks/TASK-0031-safety-completion-preflight/QA_PLAN.md",
+      "origin": "REF-2",
+      "bytes": 6815,
+      "sha256": "4f81323662ee2274f36cc0af281ccb5d6695caba56c36264f3ed686bcf2ed864"
+    },
+    {
+      "file": "tasks/TASK-0031-safety-completion-preflight/QA_RESULT.md",
+      "origin": "REF-2",
+      "bytes": 847,
+      "sha256": "fd87d8700b72360f14cfc911641e2a047b57f0761ccef47e5927c77db47a530a"
+    },
+    {
+      "file": "tasks/TASK-0031-safety-completion-preflight/REVIEW_RESULT.md",
+      "origin": "REF-2",
+      "bytes": 647,
+      "sha256": "7022bc6ce9e26d5ae8f796a01f2bbd2627bd953c8e2f186e870edeb05e486a79"
+    },
+    {
+      "file": "tasks/TASK-0031-safety-completion-preflight/TASK.md",
+      "origin": "REF-2",
+      "bytes": 3014,
+      "sha256": "7299186e56151819f9335ae547f990b2ce4f41e92635c36d962c3a513fd87a93"
+    },
+    {
+      "file": "tasks/TASK-0032-reset-default-agent-config/HANDOVER.md",
+      "origin": "REF-2",
+      "bytes": 10733,
+      "sha256": "2ce029d3b1292af7f26a243c8dee875968a05486d06f6350c550fb6bd40e36a4"
+    },
+    {
+      "file": "tasks/TASK-0032-reset-default-agent-config/PLAN.md",
+      "origin": "REF-2",
+      "bytes": 15199,
+      "sha256": "1112c880b97f7c166ff9bfe5c6f67c557c0940f1aab8a92b662a424147eca527"
+    },
+    {
+      "file": "tasks/TASK-0032-reset-default-agent-config/QA_PLAN.md",
+      "origin": "REF-2",
+      "bytes": 14126,
+      "sha256": "9503c56d1aeb0993eabf5ba3c5ca994bf2e92168ffb8a62c57f58b80210ba7a8"
+    },
+    {
+      "file": "tasks/TASK-0032-reset-default-agent-config/QA_RESULT.md",
+      "origin": "REF-2",
+      "bytes": 7560,
+      "sha256": "c1b3127f2e42acae2b38199ac5e0b238911e5b4acf677a4ee1830e2e1334cc1c"
+    },
+    {
+      "file": "tasks/TASK-0032-reset-default-agent-config/REVIEW_RESULT.md",
+      "origin": "REF-2",
+      "bytes": 3991,
+      "sha256": "360ae1fa1226f7885aa6181a2ba7ccb8ec27ba321be4fa9ba80ac2524f727142"
+    },
+    {
+      "file": "tasks/TASK-0032-reset-default-agent-config/TASK.md",
+      "origin": "REF-2",
+      "bytes": 8640,
+      "sha256": "154fed09507338c5986fce3d86fe0c98b95ed1f730a541cda9b00f574c7ec629"
+    },
+    {
+      "file": "tasks/TASK-0033-unify-work-repository/HANDOVER.md",
+      "origin": "TASK-0033-evidence",
+      "bytes": 10717,
+      "sha256": "e57d6d50afd0b93dece606872d55418bec43707d99f8ea7a77d00ab018137f60"
+    },
+    {
+      "file": "tasks/TASK-0033-unify-work-repository/PLAN.md",
+      "origin": "TASK-0033-evidence",
+      "bytes": 14852,
+      "sha256": "5039543ee782b1cd612481159ab19481d5014bfed41f65b4099b53ce63cfceee"
+    },
+    {
+      "file": "tasks/TASK-0033-unify-work-repository/QA_PLAN.md",
+      "origin": "TASK-0033-evidence",
+      "bytes": 14707,
+      "sha256": "da5391e632f332a0997d595397f8be950fdf31a925557f72fd67f05e89d13af4"
+    },
+    {
+      "file": "tasks/TASK-0033-unify-work-repository/QA_RESULT.md",
+      "origin": "TASK-0033-evidence",
+      "bytes": 2643,
+      "sha256": "636d8da839c8a837d081dc359cf5d3bffcf7af633c684ecda2d4c76806df8c42"
+    },
+    {
+      "file": "tasks/TASK-0033-unify-work-repository/REVIEW_RESULT.md",
+      "origin": "TASK-0033-evidence",
+      "bytes": 1082,
+      "sha256": "8763595ecb622f57558dd83711fe7e0881109da839de61dfe4fedd71429546e5"
+    },
+    {
+      "file": "tasks/TASK-0033-unify-work-repository/TASK.md",
+      "origin": "TASK-0033-evidence",
+      "bytes": 14870,
+      "sha256": "5d25305d75791407747a9f4aab937c649bddd10f561b69fe3c9a96157efe8b42"
+    },
+    {
+      "file": "wiki/AGENTS.md",
+      "origin": "REF-2",
+      "bytes": 1999,
+      "sha256": "bf98143047baac29f08c7086dea75113f78249c1b5721d2c7c498e268bdca3be"
+    },
+    {
+      "file": "wiki/decisions/DECISION-0001-plan-dev-qa-process.md",
+      "origin": "REF-2",
+      "bytes": 1174,
+      "sha256": "223fede8f14d27478dbf601785a94fd64a573a48363b2b6c8f106c80950135ac"
+    },
+    {
+      "file": "wiki/decisions/DECISION-0002-work-repository-and-wiki-ownership.md",
+      "origin": "REF-2",
+      "bytes": 1238,
+      "sha256": "21b8d7fa6fa6eb5d385db3a2eba29030a3f4f4f1dfc75530f157350b1a7243af"
+    },
+    {
+      "file": "wiki/decisions/DECISION-0003-codex-agent-model-routing.md",
+      "origin": "REF-2",
+      "bytes": 1593,
+      "sha256": "ef9bbf2a0e317a52c7eb442c2c805ff7b0839329c5e3dc71efff20a109601b48"
+    },
+    {
+      "file": "wiki/decisions/DECISION-0004-multiagentv2-role-startup.md",
+      "origin": "REF-2",
+      "bytes": 1784,
+      "sha256": "6817f894e311f504dd930a16511d0185d5d19ad3c9e589022335ade9baea2a5a"
+    },
+    {
+      "file": "wiki/index.json",
+      "origin": "REF-2",
+      "bytes": 4489,
+      "sha256": "8f7f59f2e08c89e3e84eaa30c3e871b8a937f966835fdce9c4284508e26099ad"
+    },
+    {
+      "file": "wiki/ingestions/TASK-0001.json",
+      "origin": "REF-2",
+      "bytes": 248,
+      "sha256": "edbd6d7d9f3dee1e263f6154876b1e6be868b32a22d29e867c7d37865a66f4e9"
+    },
+    {
+      "file": "wiki/ingestions/TASK-0002.json",
+      "origin": "REF-2",
+      "bytes": 533,
+      "sha256": "51cc02d723bbbd2d7f50b1a44515b64eeec42853f49053bc53a3e650f9394fc7"
+    },
+    {
+      "file": "wiki/ingestions/TASK-0003.json",
+      "origin": "REF-2",
+      "bytes": 331,
+      "sha256": "df0072ffa23e7a0f569706605821414563a556ff36066d9c4a8e1a6b082340ad"
+    },
+    {
+      "file": "wiki/ingestions/TASK-0004.json",
+      "origin": "REF-2",
+      "bytes": 308,
+      "sha256": "4639b315e363a0bbfd36f08ae2bb141d544b9faa44f2b6425ce98cbf116d9fde"
+    },
+    {
+      "file": "wiki/ingestions/TASK-0005.json",
+      "origin": "REF-2",
+      "bytes": 462,
+      "sha256": "87e7e747827a7b46dcf0b21b0c39879dbcb5204c95311e4266e9b0709f52a256"
+    },
+    {
+      "file": "wiki/ingestions/TASK-0006.json",
+      "origin": "REF-2",
+      "bytes": 368,
+      "sha256": "434a478d7d60de20e5d79d673f1f6d9e2fa604f50d1273763f6ed3ff2d593bd4"
+    },
+    {
+      "file": "wiki/ingestions/TASK-0025.json",
+      "origin": "REF-2",
+      "bytes": 435,
+      "sha256": "765f5847668a64db9fd45e993dc08bccdef7a566aaf68ee46f6ec54882d4124a"
+    },
+    {
+      "file": "wiki/ingestions/TASK-0027.json",
+      "origin": "REF-2",
+      "bytes": 304,
+      "sha256": "7bd8c75a7d2892807db024b7015d33edb8ed8de036c55d084be58172277beb82"
+    },
+    {
+      "file": "wiki/ingestions/TASK-0028.json",
+      "origin": "REF-2",
+      "bytes": 304,
+      "sha256": "3c65e9d087da9d4fb228ab54060b9efb4b2ff6cf45f7d5a462942bc391d7901f"
+    },
+    {
+      "file": "wiki/ingestions/TASK-0029.json",
+      "origin": "REF-2",
+      "bytes": 304,
+      "sha256": "eaa3405bc580cd83063b60606ce702e497aab90f275b61056e9ca43f0a0b9341"
+    },
+    {
+      "file": "wiki/ingestions/TASK-0031.json",
+      "origin": "REF-2",
+      "bytes": 319,
+      "sha256": "1f09fb07b538b8b0be6b31c5dc52e24aa756ac27ee44601ff47514f023800ad3"
+    },
+    {
+      "file": "wiki/ingestions/TASK-0032.json",
+      "origin": "REF-2",
+      "bytes": 308,
+      "sha256": "54a8fdcf7fe00c20d89feb1b2aa7e6a18d27e10c676ea7cdfba4091fdc20bb87"
+    },
+    {
+      "file": "wiki/SCHEMA.md",
+      "origin": "REF-2",
+      "bytes": 1310,
+      "sha256": "bc5b5edf1eefe32be7b761fd0bc1098473f6af85693224b5bb68a05b5847aa70"
+    },
+    {
+      "file": "wiki/semantic/case-patterns/qa-fail-attribution.md",
+      "origin": "REF-2",
+      "bytes": 1349,
+      "sha256": "c82cd5edeff2a3695b33e3265eb183ab7ade4cbf27f486c4e1ef1a1e56350268"
+    },
+    {
+      "file": "wiki/semantic/case-patterns/schema-artifact-digest-drift.md",
+      "origin": "REF-2",
+      "bytes": 1905,
+      "sha256": "f55ff0188809caa7401c61ada498e84090cf401a739f6dfc57df9631990469a4"
+    },
+    {
+      "file": "wiki/semantic/concepts/development-task.md",
+      "origin": "REF-2",
+      "bytes": 1148,
+      "sha256": "22e6e7263946be2962d9fc0351ebc780afce298628dc0c93a634988286db22b3"
+    },
+    {
+      "file": "wiki/semantic/schemas/codex-agent-model-routing.md",
+      "origin": "REF-2",
+      "bytes": 5852,
+      "sha256": "6f9f242a12bd840ec6798bc2a12a42486e8e077c00587319c6daee275624c548"
+    },
+    {
+      "file": "wiki/semantic/schemas/control-durable-store.md",
+      "origin": "REF-2",
+      "bytes": 5470,
+      "sha256": "11edbd8fd3c36e32a13bd3fe676405b01cec17ef5cb83f406abf8850babfc820"
+    },
+    {
+      "file": "wiki/semantic/schemas/mvp-wire-contracts.md",
+      "origin": "REF-2",
+      "bytes": 2814,
+      "sha256": "134c02a9d6d4058c3f181ad50e7c0bc4aa9408061f4349cfb1154918262f57be"
+    },
+    {
+      "file": "wiki/semantic/schemas/safety-contract-completion-preflight.md",
+      "origin": "REF-2",
+      "bytes": 1650,
+      "sha256": "199c1c15a8ed0b7e802f45bb273655368760a0b029b124d4a0cf9021ab54938d"
+    },
+    {
+      "file": "wiki/semantic/schemas/work-repository-boundary.md",
+      "origin": "REF-2",
+      "bytes": 1163,
+      "sha256": "b153df6d91a25db21c3a07e5b0f74eb6f24b33c29c1603770540bbd73db4c965"
+    },
+    {
+      "file": "wiki/semantic/scripts/task-delivery.md",
+      "origin": "REF-2",
+      "bytes": 1977,
+      "sha256": "298de4cb28e94925ad60215a660445e13e24f9ba2c73c854c6509fff48f22797"
+    },
+    {
+      "file": "wiki/semantic/scripts/wiki-ingestion.md",
+      "origin": "REF-2",
+      "bytes": 858,
+      "sha256": "bd7ed5012fb216391fd1478455410bd3c385de746b7dec2eef91263ea80274e0"
+    }
+  ],
+  "manifest_sha256": "279dc69dba63337208ac4d0dd065db8055e7bb0b00fb8df5e0f9024d9f283329"
+}

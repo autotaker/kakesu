@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "task_id": "TASK-0032",
+  "handover_sha256": "2ce029d3b1292af7f26a243c8dee875968a05486d06f6350c550fb6bd40e36a4",
+  "ingested_at": "2026-07-22T08:55:17+10:00",
+  "updated_pages": [
+    "wiki/semantic/schemas/codex-agent-model-routing.md"
+  ],
+  "created_decisions": [],
+  "deferred": []
+}

@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "task_id": "TASK-0006",
+  "handover_sha256": "0d9a7e0a5f5fc7f7b298c0fa2dfd2d65022196a19558432b6e2e4552cd038c40",
+  "ingested_at": "2026-07-18T12:54:13+09:00",
+  "updated_pages": [
+    "wiki/semantic/schemas/mvp-wire-contracts.md",
+    "wiki/semantic/case-patterns/schema-artifact-digest-drift.md"
+  ],
+  "created_decisions": [],
+  "deferred": []
+}

@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "task_id": "TASK-0005",
+  "handover_sha256": "4661c4e390edd48ffabbf553c31fbc28ddf6c03280f374bc92bd218c991fde9b",
+  "ingested_at": "2026-07-15T00:00:00+10:00",
+  "updated_pages": [
+    "wiki/semantic/scripts/task-delivery.md"
+  ],
+  "created_decisions": [],
+  "deferred": [
+    "The cumulative-token interpretation is supported by a single TASK-0003 retrospective; retain it in the task skill reference until corroborated across tasks."
+  ]
+}

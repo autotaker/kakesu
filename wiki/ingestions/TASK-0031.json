@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "task_id": "TASK-0031",
+  "handover_sha256": "5ad4b025d6ef26bf20efa4d0598940ca20deec8ed0ad03d953f15a777856eb46",
+  "ingested_at": "2026-07-20T10:17:14+09:00",
+  "updated_pages": [
+    "wiki/semantic/schemas/safety-contract-completion-preflight.md"
+  ],
+  "created_decisions": [],
+  "deferred": []
+}

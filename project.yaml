@@ -1,0 +1,15 @@
+version: 2
+project_id: agent-harness
+repository_path: .
+evidence_root: .
+default_branch: main
+timezone: Pacific/Guam
+worktree_root: worktrees
+task_branch_pattern: task/{task_id}-{slug}
+merge_strategy: merge-commit
+evidence_authority: product-main
+bootstrap:
+  source_repository: autotaker/kakesu-work
+  source_ref: d030db5dc2974056387616d047197823b94602ce
+  manifest: tasks/TASK-0033-unify-work-repository/BOOTSTRAP_MANIFEST.json
+  freeze_marker: agent-harness-evidence-frozen

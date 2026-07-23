@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "task_id": "TASK-0025",
+  "handover_sha256": "1d05c4d1ed0a4bf606e7fc3fea53ab80e5c77101a8d5120bd0ee22a2d86351f0",
+  "ingested_at": "2026-07-20T03:31:17+09:00",
+  "updated_pages": [],
+  "created_decisions": [],
+  "deferred": [
+    "The HANDOVER identifies no reusable knowledge, counterexample, or update candidate; its task-specific implementation and validation summary is not promoted to the Semantic Wiki."
+  ]
+}

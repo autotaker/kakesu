@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "task_id": "TASK-0028",
+  "handover_sha256": "9de6bb3c0828e7645ca3317874daecaf62f0d9512959bc02b273eaf1aa4f909d",
+  "ingested_at": "2026-07-20T04:45:40+09:00",
+  "updated_pages": [
+    "wiki/semantic/schemas/control-durable-store.md"
+  ],
+  "created_decisions": [],
+  "deferred": []
+}

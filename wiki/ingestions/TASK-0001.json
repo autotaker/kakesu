@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "task_id": "TASK-0001",
+  "handover_sha256": "18d290c1c1899d65d37af783ccf337ba0596add7f2a9237662e44423c9e7fc90",
+  "ingested_at": "2026-07-14T09:09:28+10:00",
+  "updated_pages": [],
+  "created_decisions": [],
+  "deferred": []
+}

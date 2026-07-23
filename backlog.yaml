@@ -1,0 +1,589 @@
+version: 1
+project: agent-harness
+epics:
+  - id: EPIC-001
+    title: 開発プロセスと品質ガバナンス
+    target_start: 2026-07-14
+    target_end: 2026-07-31
+  - id: EPIC-002
+    title: Kakesu Linux-only MVP実装
+    target_start: 2026-07-16
+    target_end: 2026-10-31
+tasks:
+  - id: TASK-0001
+    title: 開発プロセスとガイドラインを整備する
+    type: chore
+    epic: EPIC-001
+    status: done
+    priority: P1
+    estimate_points: 8
+    task_dir: tasks/TASK-0001-development-process-foundation
+    depends_on: []
+    assignees:
+      main: main-agent
+      planner: main-agent-bootstrap
+      dev: main-agent-bootstrap
+      reviewer: bootstrap-reviewer
+      qa: main-agent-bootstrap
+    bootstrap_exception: true
+    merged_commit: 2af86dd51c7a29c828247f043ca600882bc41ea9
+  - id: TASK-0002
+    title: Codex Agentのモデルルーティングを導入する
+    type: chore
+    epic: EPIC-001
+    status: done
+    priority: P1
+    estimate_points: 8
+    task_dir: tasks/TASK-0002-codex-agent-model-routing
+    depends_on: []
+    assignees:
+      main: main-agent-sol-high
+      planner: planner-agent-terra-medium
+      dev: dev-agent-sol-high
+      reviewer: reviewer-agent-terra-medium
+      qa: qa-agent-terra-medium
+    merged_commit: a0661057b56461c1a0e0f01a326d487b094e5ea1
+  - id: TASK-0003
+    title: MultiAgentV2の内部Spawn Agentを標準起動経路にする
+    type: chore
+    epic: EPIC-001
+    status: done
+    priority: P1
+    estimate_points: 2
+    task_dir: tasks/TASK-0003-multi-agent-v2-nested-explorer
+    depends_on: []
+    assignees:
+      main: main-agent-sol-high
+      planner: planner-agent-terra-medium
+      dev: dev-agent-luna-xhigh
+      reviewer: reviewer-agent-terra-medium
+      qa: qa-agent-terra-medium
+    merged_commit: e106a1eb2efe018a19ec18a3f5c7fc9a1a3bac78
+  - id: TASK-0004
+    title: 通常Agentの重複した深度上限を削除しExplorerの再委譲禁止を維持する
+    type: chore
+    epic: EPIC-001
+    status: done
+    priority: P1
+    estimate_points: 3
+    task_dir: tasks/TASK-0004-remove-redundant-agent-depth-limits
+    depends_on: []
+    assignees:
+      main: main-agent-sol-high
+      planner: planner-agent-terra-medium
+      dev: dev-agent-sol-high
+      reviewer: reviewer-agent-terra-medium
+      qa: qa-agent-terra-medium
+    merged_commit: 514facbb461927c0e5fc376a56ab8f975c054940
+  - id: TASK-0005
+    title: main AgentのTask実行効率化スキルを整備する
+    type: chore
+    epic: EPIC-001
+    status: done
+    priority: P1
+    estimate_points: 1
+    task_dir: tasks/TASK-0005-main-agent-efficient-delivery
+    depends_on: []
+    assignees:
+      main: main-agent-sol-high
+      planner: planner-agent-terra-medium
+      dev: dev-agent-luna-xhigh
+      reviewer: reviewer-agent-terra-medium
+      qa: qa-agent-terra-medium
+    merged_commit: d3b620343c805b7d6aec39aa57c1b60f73d7b33f
+  - id: TASK-0006
+    title: MVP通信契約とローカル設定を確立する
+    type: feature
+    epic: EPIC-002
+    status: done
+    priority: P1
+    estimate_points: 5
+    task_dir: tasks/TASK-0006-mvp-wire-contracts
+    depends_on: []
+    assignees:
+      main: main-agent-sol-high
+      planner: planner-agent-terra-medium
+      dev: dev-agent-sol-high
+      reviewer: reviewer-agent-terra-medium
+      qa: qa-agent-terra-medium
+    merged_commit: 2a80256510901acbb063f12396fde152f5348de7
+  - id: TASK-0007
+    title: Control Planeの永続Taskストアとライフサイクルを実装する
+    type: feature
+    epic: EPIC-002
+    status: cancelled
+    priority: P1
+    estimate_points: 8
+    task_dir: tasks/TASK-0007-control-durable-task-store
+    depends_on:
+      - TASK-0006
+    assignees:
+      main: main-agent-sol-high
+      planner: planner-agent-terra-medium
+      dev: dev-agent-sol-high
+      reviewer: reviewer-agent-terra-medium
+      qa: qa-agent-terra-medium
+  - id: TASK-0008
+    title: Plane間の永続メッセージ配送とサービス監督を実装する
+    type: feature
+    epic: EPIC-002
+    status: plan
+    priority: P1
+    estimate_points: 8
+    task_dir: tasks/TASK-0008-cross-plane-transport
+    depends_on:
+      - TASK-0006
+      - TASK-0029
+    assignees:
+      main: main-agent-sol-high
+      planner: planner-agent-terra-medium
+      dev: dev-agent-sol-high
+      reviewer: reviewer-agent-terra-medium
+      qa: qa-agent-terra-medium
+  - id: TASK-0009
+    title: Linux Workspace namespace・cgroup・process identity/lifecycle基盤を実装する
+    type: feature
+    epic: EPIC-002
+    status: plan
+    priority: P1
+    estimate_points: 5
+    task_dir: tasks/TASK-0009-linux-workspace-isolation
+    depends_on:
+      - TASK-0006
+    assignees:
+      main: main-agent-sol-high
+      planner: planner-agent-terra-medium
+      dev: dev-agent-sol-high
+      reviewer: reviewer-agent-terra-medium
+      qa: qa-agent-terra-medium
+  - id: TASK-0010
+    title: ルートTask CLIとOwner・Workspace割当を実装する
+    type: feature
+    epic: EPIC-002
+    status: plan
+    priority: P1
+    estimate_points: 5
+    task_dir: tasks/TASK-0010-root-task-cli
+    depends_on:
+      - TASK-0029
+      - TASK-0009
+      - TASK-0022
+    assignees:
+      main: main-agent-sol-high
+      planner: planner-agent-terra-medium
+      dev: dev-agent-luna-xhigh
+      reviewer: reviewer-agent-terra-medium
+      qa: qa-agent-terra-medium
+  - id: TASK-0011
+    title: Work Agent Responses APIランタイムを実装する
+    type: feature
+    epic: EPIC-002
+    status: plan
+    priority: P1
+    estimate_points: 8
+    task_dir: tasks/TASK-0011-work-agent-runtime
+    depends_on:
+      - TASK-0029
+      - TASK-0008
+      - TASK-0010
+    assignees:
+      main: main-agent-sol-high
+      planner: planner-agent-terra-medium
+      dev: dev-agent-sol-high
+      reviewer: reviewer-agent-terra-medium
+      qa: qa-agent-terra-medium
+  - id: TASK-0012
+    title: terminalツールと永続非同期操作を実装する
+    type: feature
+    epic: EPIC-002
+    status: plan
+    priority: P1
+    estimate_points: 8
+    task_dir: tasks/TASK-0012-terminal-async-operations
+    depends_on:
+      - TASK-0009
+      - TASK-0011
+    assignees:
+      main: main-agent-sol-high
+      planner: planner-agent-terra-medium
+      dev: dev-agent-sol-high
+      reviewer: reviewer-agent-terra-medium
+      qa: qa-agent-terra-medium
+  - id: TASK-0013
+    title: Mailbox待機とTask再開を実装する
+    type: feature
+    epic: EPIC-002
+    status: plan
+    priority: P1
+    estimate_points: 8
+    task_dir: tasks/TASK-0013-mailbox-task-resume
+    depends_on:
+      - TASK-0029
+      - TASK-0011
+      - TASK-0012
+    assignees:
+      main: main-agent-sol-high
+      planner: planner-agent-terra-medium
+      dev: dev-agent-sol-high
+      reviewer: reviewer-agent-terra-medium
+      qa: qa-agent-terra-medium
+  - id: TASK-0014
+    title: 子Task委譲と直接キャンセルを実装する
+    type: feature
+    epic: EPIC-002
+    status: plan
+    priority: P1
+    estimate_points: 8
+    task_dir: tasks/TASK-0014-child-task-delegation
+    depends_on:
+      - TASK-0029
+      - TASK-0010
+      - TASK-0011
+      - TASK-0013
+    assignees:
+      main: main-agent-sol-high
+      planner: planner-agent-terra-medium
+      dev: dev-agent-sol-high
+      reviewer: reviewer-agent-terra-medium
+      qa: qa-agent-terra-medium
+  - id: TASK-0015
+    title: 完了候補と独立Acceptance Reviewを実装する
+    type: feature
+    epic: EPIC-002
+    status: plan
+    priority: P1
+    estimate_points: 8
+    task_dir: tasks/TASK-0015-completion-review
+    depends_on:
+      - TASK-0029
+      - TASK-0011
+      - TASK-0013
+      - TASK-0014
+    assignees:
+      main: main-agent-sol-high
+      planner: planner-agent-terra-medium
+      dev: dev-agent-sol-high
+      reviewer: reviewer-agent-terra-medium
+      qa: qa-agent-terra-medium
+  - id: TASK-0016
+    title: Governance永続ポリシーストアとfail-closed判断を実装する
+    type: feature
+    epic: EPIC-002
+    status: plan
+    priority: P1
+    estimate_points: 8
+    task_dir: tasks/TASK-0016-governance-policy-store
+    depends_on:
+      - TASK-0006
+      - TASK-0008
+    assignees:
+      main: main-agent-sol-high
+      planner: planner-agent-terra-medium
+      dev: dev-agent-sol-high
+      reviewer: reviewer-agent-terra-medium
+      qa: qa-agent-terra-medium
+  - id: TASK-0017
+    title: Linux外向き通信強制ブリッジを実装する
+    type: feature
+    epic: EPIC-002
+    status: plan
+    priority: P1
+    estimate_points: 8
+    task_dir: tasks/TASK-0017-linux-egress-enforcement
+    depends_on:
+      - TASK-0009
+      - TASK-0016
+      - TASK-0023
+    assignees:
+      main: main-agent-sol-high
+      planner: planner-agent-terra-medium
+      dev: dev-agent-sol-high
+      reviewer: reviewer-agent-terra-medium
+      qa: qa-agent-terra-medium
+  - id: TASK-0018
+    title: 一時許可申請とone-use有効化を実装する
+    type: feature
+    epic: EPIC-002
+    status: plan
+    priority: P1
+    estimate_points: 8
+    task_dir: tasks/TASK-0018-grant-activation
+    depends_on:
+      - TASK-0011
+      - TASK-0013
+      - TASK-0016
+      - TASK-0017
+    assignees:
+      main: main-agent-sol-high
+      planner: planner-agent-terra-medium
+      dev: dev-agent-sol-high
+      reviewer: reviewer-agent-terra-medium
+      qa: qa-agent-terra-medium
+  - id: TASK-0019
+    title: Taskエピソード取込と編纂を実装する
+    type: feature
+    epic: EPIC-002
+    status: plan
+    priority: P1
+    estimate_points: 8
+    task_dir: tasks/TASK-0019-memory-episode
+    depends_on:
+      - TASK-0006
+      - TASK-0008
+      - TASK-0015
+      - TASK-0018
+    assignees:
+      main: main-agent-sol-high
+      planner: planner-agent-terra-medium
+      dev: dev-agent-sol-high
+      reviewer: reviewer-agent-terra-medium
+      qa: qa-agent-terra-medium
+  - id: TASK-0020
+    title: 意味Wiki照会とWork Agent強制注入を実装する
+    type: feature
+    epic: EPIC-002
+    status: plan
+    priority: P1
+    estimate_points: 8
+    task_dir: tasks/TASK-0020-wiki-context-injection
+    depends_on:
+      - TASK-0008
+      - TASK-0010
+      - TASK-0011
+      - TASK-0014
+      - TASK-0018
+      - TASK-0019
+    assignees:
+      main: main-agent-sol-high
+      planner: planner-agent-terra-medium
+      dev: dev-agent-sol-high
+      reviewer: reviewer-agent-terra-medium
+      qa: qa-agent-terra-medium
+  - id: TASK-0021
+    title: Linux-only MVP E2Eと再起動復旧を完成する
+    type: feature
+    epic: EPIC-002
+    status: plan
+    priority: P1
+    estimate_points: 5
+    task_dir: tasks/TASK-0021-mvp-e2e-release
+    depends_on:
+      - TASK-0012
+      - TASK-0013
+      - TASK-0014
+      - TASK-0015
+      - TASK-0018
+      - TASK-0020
+    assignees:
+      main: main-agent-sol-high
+      planner: planner-agent-terra-medium
+      dev: dev-agent-sol-high
+      reviewer: reviewer-agent-terra-medium
+      qa: qa-agent-terra-medium
+  - id: TASK-0022
+    title: Linux P0 Landlock/LSM多層ファイルシステム隔離を実装する
+    type: feature
+    epic: EPIC-002
+    status: plan
+    priority: P1
+    estimate_points: 8
+    task_dir: tasks/TASK-0022-linux-filesystem-isolation
+    depends_on:
+      - TASK-0006
+      - TASK-0009
+    assignees:
+      main: main-agent-sol-high
+      planner: planner-agent-terra-medium
+      dev: dev-agent-sol-high
+      reviewer: reviewer-agent-terra-medium
+      qa: qa-agent-terra-medium
+  - id: TASK-0023
+    title: P0 HTTPS傍受・正規化プロキシを実装する
+    type: feature
+    epic: EPIC-002
+    status: plan
+    priority: P1
+    estimate_points: 8
+    task_dir: tasks/TASK-0023-https-interception-proxy
+    depends_on:
+      - TASK-0006
+      - TASK-0008
+      - TASK-0009
+      - TASK-0016
+      - TASK-0022
+    assignees:
+      main: main-agent-sol-high
+      planner: planner-agent-terra-medium
+      dev: dev-agent-sol-high
+      reviewer: reviewer-agent-terra-medium
+      qa: qa-agent-terra-medium
+  - id: TASK-0024
+    title: QAを証跡監査とリスク別再実行へ変更する
+    type: chore
+    epic: EPIC-001
+    status: done
+    change_class: safety_contract
+    priority: P1
+    estimate_points: 1
+    task_dir: tasks/TASK-0024-risk-based-qa-evidence
+    depends_on: []
+    assignees:
+      main: main-agent-sol-high
+      planner: planner-agent-terra-medium
+      dev: dev-agent-sol-high
+      reviewer: reviewer-agent-terra-medium
+      qa: qa-agent-terra-medium
+    merged_commit: 9b7e8beb68c91204f5529fa297fb3385d5f05350
+  - id: TASK-0025
+    title: task-checkを安全契約変更の軽量経路へ対応させる
+    type: chore
+    epic: EPIC-001
+    status: done
+    priority: P1
+    estimate_points: 1
+    task_dir: tasks/TASK-0025-safety-contract-task-check
+    depends_on: []
+    assignees:
+      main: main-agent-sol-high
+      planner: planner-agent-terra-medium
+      dev: dev-agent-sol-high
+      reviewer: reviewer-agent-terra-medium
+      qa: qa-agent-terra-medium
+    merged_commit: 53542a8d30b08cb9609dc9d93a4d6553aba9d00a
+  - id: TASK-0026
+    title: ReviewerとQAの軽微修正コミットを許可する
+    type: chore
+    epic: EPIC-001
+    status: done
+    change_class: safety_contract
+    priority: P1
+    estimate_points: 1
+    task_dir: tasks/TASK-0026-trusted-nit-fix-commits
+    depends_on: []
+    assignees:
+      main: main-agent-sol-high
+      planner: planner-agent-terra-medium
+      dev: dev-agent-sol-high
+      reviewer: reviewer-agent-terra-medium
+      qa: qa-agent-terra-medium
+    merged_commit: c541dde2d6fb2c4c2c6abacb18a46daf65c55527
+  - id: TASK-0027
+    title: Control永続ストア基盤と原子的Task作成を実装する
+    type: feature
+    epic: EPIC-002
+    status: done
+    priority: P1
+    estimate_points: 2
+    task_dir: tasks/TASK-0027-control-durable-foundation
+    depends_on:
+      - TASK-0006
+    assignees:
+      main: main-agent-sol-high
+      planner: planner-agent-terra-medium
+      dev: dev-agent-sol-high
+      reviewer: reviewer-agent-terra-medium
+      qa: qa-agent-terra-medium
+    merged_commit: cb31790b7eebdff70038daa9e087a2a8eb80c9e1
+  - id: TASK-0028
+    title: Control owner排他とTaskライフサイクルを実装する
+    type: feature
+    epic: EPIC-002
+    status: done
+    priority: P1
+    estimate_points: 2
+    task_dir: tasks/TASK-0028-control-ownership-lifecycle
+    depends_on:
+      - TASK-0027
+    assignees:
+      main: main-agent-sol-high
+      planner: planner-agent-terra-medium
+      dev: dev-agent-sol-high
+      reviewer: reviewer-agent-terra-medium
+      qa: qa-agent-terra-medium
+    merged_commit: 63ffb0e48e89342e7dca931890f806218ac9cd8b
+  - id: TASK-0029
+    title: Control versioned状態とクラッシュ復旧を実装する
+    type: feature
+    epic: EPIC-002
+    status: done
+    priority: P1
+    estimate_points: 3
+    task_dir: tasks/TASK-0029-control-versioned-recovery
+    depends_on:
+      - TASK-0028
+    assignees:
+      main: main-agent-sol-high
+      planner: planner-agent-terra-medium
+      dev: dev-agent-sol-high
+      reviewer: reviewer-agent-terra-medium
+      qa: qa-agent-terra-medium
+    merged_commit: a908567d08f5f1db0c3c1258c9560af45953d9cc
+  - id: TASK-0030
+    title: PLAN入力契約とLap計測を軽量化する
+    type: chore
+    epic: EPIC-001
+    status: done
+    change_class: safety_contract
+    priority: P1
+    estimate_points: 1
+    task_dir: tasks/TASK-0030-lean-planning-contract
+    depends_on: []
+    assignees:
+      main: main-agent-sol-high
+      planner: planner-agent-terra-medium
+      dev: dev-agent-sol-high
+      reviewer: reviewer-agent-terra-medium
+      qa: qa-agent-terra-medium
+    merged_commit: b9cb877fda35cbf428f04e09c2175f34387298a4
+  - id: TASK-0031
+    title: 安全契約の完了経路をDEV前検査可能にする
+    type: chore
+    epic: EPIC-001
+    status: done
+    change_class: product
+    priority: P1
+    estimate_points: 1
+    task_dir: tasks/TASK-0031-safety-completion-preflight
+    depends_on: []
+    assignees:
+      main: main-agent-sol-high
+      planner: planner-agent-terra-medium
+      dev: dev-agent-sol-high
+      reviewer: reviewer-agent-terra-medium
+      qa: qa-agent-terra-medium
+    merged_commit: b60e691182127de73fff36660f7d3cfe26bc01e9
+  - id: TASK-0032
+    title: Agent設定をデフォルト値へ戻す
+    type: chore
+    epic: EPIC-001
+    status: done
+    change_class: product
+    priority: P1
+    estimate_points: 1
+    task_dir: tasks/TASK-0032-reset-default-agent-config
+    depends_on: []
+    assignees:
+      main: main-agent-sol-high
+      planner: planner-agent-terra-medium
+      dev: dev-agent-sol-high
+      reviewer: reviewer-agent-terra-medium
+      qa: qa-agent-terra-medium
+    merged_commit: e3f6da75b597372db484ff722c2ccb414bf802fa
+  - id: TASK-0033
+    title: 運用リポジトリを製品リポジトリへ統合する
+    type: chore
+    epic: EPIC-001
+    status: dev
+    change_class: product
+    priority: P1
+    estimate_points: 8
+    task_dir: tasks/TASK-0033-unify-work-repository
+    depends_on: []
+    assignees:
+      main: main-agent-sol-high
+      planner: planner-agent-terra-medium
+      dev: dev-agent-sol-high
+      reviewer: reviewer-agent-terra-medium
+      qa: qa-agent-terra-medium
+    branch: task/TASK-0033-unify-work-repository
+    worktree: worktrees/TASK-0033-unify-work-repository
