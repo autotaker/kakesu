@@ -6,7 +6,7 @@ import { spawnSync } from "node:child_process";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 import { workRepoLockDir } from "./lib.mjs";
-import { assertComposite, createSparseWorktree, evidenceCommit, managedDigest, scopeCheck, sparsePatterns, syncMain, taskStart } from "./unified-lifecycle.mjs";
+import { assertComposite, createSparseWorktree, evidenceCommit, managedDigest, resolveOperationsValidation, scopeCheck, sparsePatterns, syncMain, taskStart } from "./unified-lifecycle.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 
@@ -18,12 +18,16 @@ function command(program, argv, cwd, expected = 0) {
 
 function git(root, ...argv) { return command("git", argv, root).stdout.trim(); }
 
+function writeProject(file) {
+  fs.writeFileSync(file, "version: 2\nproject_id: agent-harness\nrepository_path: .\nevidence_root: .\ndefault_branch: main\ntimezone: Pacific/Guam\nworktree_root: worktrees\n");
+}
+
 function initRepository() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "unified-lifecycle-"));
   git(root, "init", "-b", "main");
   git(root, "config", "user.name", "Fixture");
   git(root, "config", "user.email", "fixture@example.invalid");
-  fs.writeFileSync(path.join(root, ".gitignore"), ".locks/\nworktrees/\n");
+  fs.writeFileSync(path.join(root, ".gitignore"), ".locks/\nworktrees/\nnode_modules/\n");
   fs.writeFileSync(path.join(root, "project.yaml"), "version: 2\nrepository_path: .\nevidence_root: .\ndefault_branch: main\n");
   fs.mkdirSync(path.join(root, "tasks/TASK-9000-fixture"), { recursive: true });
   for (const file of ["TASK.md", "PLAN.md", "QA_PLAN.md", "REVIEW_RESULT.md", "QA_RESULT.md", "HANDOVER.md"]) {
@@ -74,9 +78,12 @@ function initMigrationSource() {
 function initTaskStartRepository() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "task-start-"));
   git(root, "init", "-b", "main"); git(root, "config", "user.name", "Fixture"); git(root, "config", "user.email", "fixture@example.invalid");
-  fs.writeFileSync(path.join(root, ".gitignore"), ".locks/\nworktrees/\n");
-  fs.copyFileSync(path.join(ROOT, "project.yaml"), path.join(root, "project.yaml"));
+  fs.writeFileSync(path.join(root, ".gitignore"), ".locks/\nworktrees/\nnode_modules/\n");
+  writeProject(path.join(root, "project.yaml"));
   fs.cpSync(path.join(ROOT, "schemas/operations"), path.join(root, "schemas/operations"), { recursive: true });
+  fs.mkdirSync(path.join(root, "scripts"), { recursive: true });
+  fs.cpSync(path.join(ROOT, "scripts/task"), path.join(root, "scripts/task"), { recursive: true });
+  fs.symlinkSync(path.join(ROOT, "node_modules"), path.join(root, "node_modules"), "dir");
   fs.writeFileSync(path.join(root, "backlog.yaml"), ["version: 1", "project: agent-harness", "epics:", "  - id: EPIC-001", "    title: fixture", "    target_start: '2026-01-01'", "    target_end: '2026-12-31'", "tasks: []", ""].join("\n"));
   fs.mkdirSync(path.join(root, "wiki"));
   fs.writeFileSync(path.join(root, "wiki/index.json"), `${JSON.stringify({ version: 1, pages: [] }, null, 2)}\n`);
@@ -89,7 +96,7 @@ function initTaskStartRepository() {
 test("migration binds REF-2, 32 historical tasks, TASK-0033 overlay, and target digests", () => {
   const { source, ref } = initMigrationSource();
   const target = fs.mkdtempSync(path.join(os.tmpdir(), "bootstrap-target-"));
-  fs.copyFileSync(path.join(ROOT, "project.yaml"), path.join(target, "project.yaml"));
+  writeProject(path.join(target, "project.yaml"));
   const apply = command(process.execPath, [path.join(ROOT, "scripts/task/migrate-operations.mjs"), "--mode", "apply", "--source", source, "--source-ref", ref, "--target", target, "--fixture", "true"], ROOT);
   const manifest = JSON.parse(apply.stdout);
   assert.equal(manifest.category_counts.historical_tasks, 32);
@@ -103,7 +110,7 @@ test("migration binds REF-2, 32 historical tasks, TASK-0033 overlay, and target 
 test("migration rejects a source revision other than the fixed full commit", () => {
   const { source } = initMigrationSource();
   const target = fs.mkdtempSync(path.join(os.tmpdir(), "bootstrap-ref-"));
-  fs.copyFileSync(path.join(ROOT, "project.yaml"), path.join(target, "project.yaml"));
+  writeProject(path.join(target, "project.yaml"));
   command(process.execPath, [path.join(ROOT, "scripts/task/migrate-operations.mjs"), "--mode", "plan", "--source", source, "--source-ref", "HEAD", "--target", target], ROOT, 1);
 });
 
@@ -181,6 +188,41 @@ test("task-start publish failure removes invocation-created state and leaves rem
   assert.notEqual(spawnSync("git", ["show-ref", "--verify", "refs/heads/task/TASK-9003-publish"], { cwd: root }).status, 0);
   assert.equal(git(root, "status", "--porcelain"), "");
   assert.equal(git(root, "ls-remote", "origin", "refs/heads/main").split("\t")[0], remoteBefore);
+});
+
+test("pre-merge evidence uses the bound candidate validator while post-merge uses main", () => {
+  const root = initTaskStartRepository();
+  const started = taskStart({ id: "TASK-9004", slug: "candidate-schema", title: "candidate schema fixture", epic: "EPIC-001", push: "true" }, root);
+  const candidate = started.worktree;
+
+  fs.rmSync(path.join(root, "schemas"), { recursive: true });
+  fs.rmSync(path.join(root, "scripts"), { recursive: true });
+  git(root, "add", "-A"); git(root, "commit", "-m", "simulate pre-merge main without schemas");
+  const candidateCommit = git(candidate, "rev-parse", "HEAD");
+  const candidateTree = git(candidate, "rev-parse", "HEAD^{tree}");
+  const base = git(root, "merge-base", "main", candidateCommit);
+  const digest = managedDigest(root, base, candidateCommit);
+  const handover = path.join(root, "tasks/TASK-9004-candidate-schema/HANDOVER.md");
+  const bound = fs.readFileSync(handover, "utf8")
+    .replace(/^candidate_commit: ""$/m, `candidate_commit: "${candidateCommit}"`)
+    .replace(/^candidate_tree: ""$/m, `candidate_tree: "${candidateTree}"`)
+    .replace(/^managed_path_digest: ""$/m, `managed_path_digest: "${digest}"`)
+    .replace(/^bootstrap_evidence_commit: ""$/m, `bootstrap_evidence_commit: "${"a".repeat(40)}"`)
+    .replace(/^bootstrap_evidence_digest: ""$/m, `bootstrap_evidence_digest: "${"b".repeat(64)}"`);
+  fs.writeFileSync(handover, bound);
+  const selected = resolveOperationsValidation(root, "handover", "TASK-9004", candidate);
+  assert.equal(selected.mode, "pre-merge-candidate");
+  assert.equal(selected.validatorRoot, candidate);
+  const committed = evidenceCommit({ root, action: "handover", taskId: "TASK-9004", message: "candidate-bound evidence", push: false, candidateRoot: candidate });
+  assert.deepEqual(committed.changed, ["tasks/TASK-9004-candidate-schema/HANDOVER.md"]);
+
+  fs.cpSync(path.join(candidate, "schemas"), path.join(root, "schemas"), { recursive: true });
+  fs.mkdirSync(path.join(root, "scripts"), { recursive: true });
+  fs.cpSync(path.join(candidate, "scripts/task"), path.join(root, "scripts/task"), { recursive: true });
+  git(root, "add", "schemas", "scripts/task"); git(root, "commit", "-m", "simulate merged validator");
+  fs.rmSync(path.join(candidate, "schemas/operations/backlog.schema.json"));
+  const mergedSelection = resolveOperationsValidation(root, "handover", "TASK-9004", candidate);
+  assert.deepEqual(mergedSelection, { mode: "main", validatorRoot: root, schemaRoot: root });
 });
 
 test("evidence push attempts stop after two non-fast-forward retry cycles", () => {

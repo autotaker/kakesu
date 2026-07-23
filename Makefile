@@ -111,7 +111,7 @@ task-preflight: node-deps
 	$(NODE) scripts/task/check-task.mjs --work-root "$(MAIN_ROOT)" --task "$(TASK)" --phase preflight
 
 work-check: node-deps
-	$(NODE) scripts/task/validate-work.mjs --work-root "$(MAIN_ROOT)"
+	$(NODE) scripts/task/validate-work.mjs --work-root "$(MAIN_ROOT)" --schema-root "$(CURDIR)"
 
 backlog-view: node-deps work-check
 	$(NODE) scripts/task/build-backlog-viewer.mjs --work-root "$(MAIN_ROOT)"

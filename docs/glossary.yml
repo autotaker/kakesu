@@ -11,6 +11,8 @@ scope:
   - .build/**
   - .pytest_cache/**
   - node_modules/**
+  - tasks/**
+  - wiki/**
   - '**/.venv/**'
   - '**/target/**'
 categories:

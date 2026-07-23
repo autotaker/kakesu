@@ -9,6 +9,7 @@ import { buildWikiIndex } from "./wiki-index.mjs";
 
 const args = parseArgs(process.argv.slice(2));
 const root = workRoot(args.work_root);
+const schemaRoot = workRoot(args.schema_root ?? args.work_root);
 const errors = [];
 const projectFile = path.join(root, "project.yaml");
 const backlogFile = path.join(root, "backlog.yaml");
@@ -18,7 +19,7 @@ const validators = new Map();
 
 function validateSchema(schemaFile, value, label) {
   if (!fs.existsSync(schemaFile)) {
-    errors.push(`missing ${path.relative(root, schemaFile)}`);
+    errors.push(`missing ${path.relative(schemaRoot, schemaFile)}`);
     return;
   }
   let validate = validators.get(schemaFile);
@@ -38,7 +39,7 @@ if (!fs.existsSync(backlogFile)) errors.push("missing backlog.yaml");
 
 const project = fs.existsSync(projectFile) ? readYaml(projectFile) : {};
 const backlog = fs.existsSync(backlogFile) ? readYaml(backlogFile) : {};
-validateSchema(path.join(root, "schemas", "operations", "backlog.schema.json"), backlog, "backlog.yaml");
+validateSchema(path.join(schemaRoot, "schemas", "operations", "backlog.schema.json"), backlog, "backlog.yaml");
 
 function markdownFiles(directory) {
   if (!fs.existsSync(directory)) return [];
@@ -131,7 +132,7 @@ for (const page of wikiIndex.pages) {
   }
   if (page.path.startsWith("wiki/decisions/")) {
     const metadata = parseFrontmatter(path.join(root, page.path));
-    validateSchema(path.join(root, "schemas", "operations", "decision.schema.json"), metadata, page.path);
+    validateSchema(path.join(schemaRoot, "schemas", "operations", "decision.schema.json"), metadata, page.path);
     decisions.push({ ...metadata, path: page.path });
     if (page.kind !== "decision" || !/^DECISION-\d{4}$/.test(page.decision_id ?? "")) {
       errors.push(`${page.path}: invalid Decision metadata`);
@@ -180,7 +181,7 @@ if (fs.existsSync(ingestionDir)) {
       errors.push(`wiki/ingestions/${entry}: invalid JSON: ${error.message}`);
       continue;
     }
-    validateSchema(path.join(root, "schemas", "operations", "ingestion-receipt.schema.json"), receipt, `wiki/ingestions/${entry}`);
+    validateSchema(path.join(schemaRoot, "schemas", "operations", "ingestion-receipt.schema.json"), receipt, `wiki/ingestions/${entry}`);
     if (!/^TASK-\d{4}$/.test(receipt.task_id ?? "") || !/^[a-f0-9]{64}$/.test(receipt.handover_sha256 ?? "")) {
       errors.push(`wiki/ingestions/${entry}: invalid task_id or handover_sha256`);
     }
@@ -222,7 +223,7 @@ const bootstrapManifest = path.join(root, "tasks", "TASK-0033-unify-work-reposit
 if (fs.existsSync(bootstrapManifest)) {
   try {
     const manifest = JSON.parse(fs.readFileSync(bootstrapManifest, "utf8"));
-    validateSchema(path.join(root, "schemas", "operations", "bootstrap-manifest.schema.json"), manifest, "BOOTSTRAP_MANIFEST.json");
+    validateSchema(path.join(schemaRoot, "schemas", "operations", "bootstrap-manifest.schema.json"), manifest, "BOOTSTRAP_MANIFEST.json");
     const { manifest_sha256: recorded, ...body } = manifest;
     const actual = crypto.createHash("sha256").update(`${JSON.stringify(body)}\n`).digest("hex");
     if (recorded !== actual) errors.push("BOOTSTRAP_MANIFEST.json: self-digest mismatch");

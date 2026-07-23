@@ -69,11 +69,47 @@ function assertMain(root) {
   if (fs.realpathSync(registered) !== fs.realpathSync(root)) throw new Error(`Explicit root is not the registered main worktree: ${root}`);
 }
 
-function validateOperations(root) {
-  run(process.execPath, [path.join(REPO_ROOT, "scripts/task/validate-work.mjs"), "--work-root", root], { cwd: root });
+const OPERATION_SCHEMAS = ["backlog", "decision", "ingestion-receipt", "bootstrap-manifest"];
+const PRE_MERGE_EVIDENCE_ACTIONS = new Set(["handover", "review", "qa-result"]);
+
+function hasOperationSchemas(root) {
+  return OPERATION_SCHEMAS.every((name) => fs.existsSync(path.join(root, "schemas", "operations", `${name}.schema.json`)));
 }
 
-function validateEvidenceAction(root, action) {
+export function resolveOperationsValidation(root, action, taskId, candidateRoot = REPO_ROOT) {
+  if (hasOperationSchemas(root)) return { mode: "main", validatorRoot: root, schemaRoot: root };
+  if (!PRE_MERGE_EVIDENCE_ACTIONS.has(action)) {
+    throw new Error(`main operations schemas are unavailable for ${action}`);
+  }
+  if (!hasOperationSchemas(candidateRoot)) throw new Error("candidate operations schemas are incomplete");
+  const { task, taskDir } = taskContext(root, taskId);
+  const handover = parseFrontmatter(path.join(root, taskDir, "HANDOVER.md"));
+  const candidateCommit = git(candidateRoot, ["rev-parse", "HEAD"]);
+  const candidateTree = git(candidateRoot, ["rev-parse", "HEAD^{tree}"]);
+  if (git(candidateRoot, ["branch", "--show-current"]) !== task.branch) throw new Error("validator must run from the recorded candidate branch");
+  if (git(root, ["rev-parse", task.branch]) !== candidateCommit) throw new Error("validator candidate differs from the recorded branch head");
+  if (git(candidateRoot, ["status", "--porcelain"])) throw new Error("validator candidate worktree must be clean");
+  const base = git(root, ["merge-base", "main", candidateCommit]);
+  const digest = managedDigest(root, base, candidateCommit);
+  if (handover.candidate_commit !== candidateCommit || handover.candidate_tree !== candidateTree || handover.managed_path_digest !== digest) {
+    throw new Error(`validator candidate is not bound by HANDOVER: commit=${handover.candidate_commit ?? "missing"}/${candidateCommit}, tree=${handover.candidate_tree ?? "missing"}/${candidateTree}, digest=${handover.managed_path_digest ?? "missing"}/${digest}`);
+  }
+  if (!/^[0-9a-f]{40}$/.test(handover.bootstrap_evidence_commit ?? "") || !/^[0-9a-f]{64}$/.test(handover.bootstrap_evidence_digest ?? "")) {
+    throw new Error("HANDOVER is missing the bootstrap evidence binding");
+  }
+  return { mode: "pre-merge-candidate", validatorRoot: candidateRoot, schemaRoot: candidateRoot };
+}
+
+function validateOperations(root, action, taskId, candidateRoot = REPO_ROOT) {
+  const validation = resolveOperationsValidation(root, action, taskId, candidateRoot);
+  run(process.execPath, [
+    path.join(validation.validatorRoot, "scripts/task/validate-work.mjs"),
+    "--work-root", root,
+    "--schema-root", validation.schemaRoot,
+  ], { cwd: root });
+}
+
+function validateEvidenceAction(root, action, taskId, candidateRoot = REPO_ROOT) {
   if (action === "bootstrap") {
     run(process.execPath, [
       path.join(REPO_ROOT, "scripts/task/migrate-operations.mjs"),
@@ -82,10 +118,10 @@ function validateEvidenceAction(root, action) {
     ], { cwd: root });
     return;
   }
-  validateOperations(root);
+  validateOperations(root, action, taskId, candidateRoot);
 }
 
-export function evidenceCommit({ root, action, taskId, message, push = true, validate = true }) {
+export function evidenceCommit({ root, action, taskId, message, push = true, validate = true, candidateRoot = REPO_ROOT }) {
   assertMain(root);
   const rules = allowedFor(root, action, taskId);
   const release = acquireWorkRepoLock(root, { requireClean: false });
@@ -97,7 +133,7 @@ export function evidenceCommit({ root, action, taskId, message, push = true, val
     if (forbidden.length) throw new Error(`Evidence scope violation for ${action}: ${forbidden.join(", ")}`);
     // Bootstrap runs before this product change is merged, so its verifier and
     // schemas must come from the approved Task worktree, not the old main tree.
-    if (validate) validateEvidenceAction(root, action);
+    if (validate) validateEvidenceAction(root, action, taskId, candidateRoot);
     git(root, ["add", "--", ...changed]);
     git(root, ["commit", "-m", message], { env: {
       ...process.env, WORK_REPO_LOCK_HELD: "1", WORK_PARENT_COMMIT: "1", WORK_ACTION: action,
@@ -115,7 +151,7 @@ export function evidenceCommit({ root, action, taskId, message, push = true, val
         output("git", ["rebase", "--abort"], root, true);
         throw new Error(`Evidence rebase conflict; manual reconciliation required: ${(rebase.stderr || rebase.stdout).trim()}`);
       }
-      if (validate) validateEvidenceAction(root, action);
+      if (validate) validateEvidenceAction(root, action, taskId, candidateRoot);
       commit = git(root, ["rev-parse", "HEAD"]);
     }
   } catch (error) {
