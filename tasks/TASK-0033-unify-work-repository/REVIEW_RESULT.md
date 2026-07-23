@@ -1,16 +1,16 @@
 ---
 task_id: "TASK-0033"
-status: fail
+status: pass
 reviewer_agent: "reviewer-agent-terra-medium"
-reviewed_commit: "bcc46d67408164945112000156c384f8977f4307"
-candidate_commit: "bcc46d67408164945112000156c384f8977f4307"
-candidate_tree: "d62531f2aaeeb05360c7b7aeab6c528f67d01757"
-managed_path_digest: "8b96db42ceba409999a34bd068dea69504d78f9e8c213a181678cf50ef0d52b6"
+reviewed_commit: "b892dd5883f28cb9a7e7ac82ca132202c26d00fb"
+candidate_commit: "b892dd5883f28cb9a7e7ac82ca132202c26d00fb"
+candidate_tree: "6ce6716159f853cd9d510be5675910f016688215"
+managed_path_digest: "39f46ea2e905dd6989ffb6cc3e36bbf134113835ea421f2a068070b8bfc0d88d"
 bootstrap_evidence_commit: "a063f6d461bbc6ce752d93306f83e4939e299d1e"
 bootstrap_evidence_digest: "279dc69dba63337208ac4d0dd065db8055e7bb0b00fb8df5e0f9024d9f283329"
-decision: fail
+decision: pass
 make_check: pass
-reviewed_at: "2026-07-23T11:11:01+1000"
+reviewed_at: "2026-07-23T11:37:20+1000"
 ---
 
 # TASK-0033 REVIEW RESULT
@@ -18,8 +18,8 @@ reviewed_at: "2026-07-23T11:11:01+1000"
 ## 対象
 
 - ブランチ: `task/TASK-0033-unify-work-repository`
-- code candidate: `bcc46d67408164945112000156c384f8977f4307` / `d62531f2aaeeb05360c7b7aeab6c528f67d01757`
-- managed path digest: `8b96db42ceba409999a34bd068dea69504d78f9e8c213a181678cf50ef0d52b6`
+- code candidate: `b892dd5883f28cb9a7e7ac82ca132202c26d00fb` / `6ce6716159f853cd9d510be5675910f016688215`
+- managed path digest: `39f46ea2e905dd6989ffb6cc3e36bbf134113835ea421f2a068070b8bfc0d88d`
 - bootstrap evidence: `a063f6d461bbc6ce752d93306f83e4939e299d1e` / `279dc69dba63337208ac4d0dd065db8055e7bb0b00fb8df5e0f9024d9f283329`
 - 入力: `TASK.md`、承認済み `PLAN.md`、独立 `QA_PLAN.md`、candidate-bound `HANDOVER.md`。
 
@@ -27,41 +27,44 @@ reviewed_at: "2026-07-23T11:11:01+1000"
 
 | コマンド | 結果 | 備考 |
 |---|---|---|
-| `make check` | `pass` | candidate worktreeで実行。94 process testsを含め成功。 |
-| candidate/tree/digest binding | `pass` | `HEAD`、tree、`managedDigest(merge-base(main, HEAD), HEAD)`、bootstrap manifest self-digestを照合。 |
-| diff / safety-boundary review | `fail` | 下記重大指摘 3件。 |
+| `make check` | `pass` | candidate worktreeで成功。Go、memory 20 tests、Rust、Tabletop、terminology、docs lint、process 97 tests を含む。初回はsandboxのPyPI DNS制限で失敗したため、network許可環境で同一candidateを再実行した。 |
+| `scope-check --event pr` | `pass` | bootstrap commitからcandidateへのPR差分にmain管理pathはない。 |
+| candidate/tree/digest/binding | `pass` | 指定commit/tree/managed digest、bootstrap commitの祖先関係、manifest自己digestを照合した。 |
+| diff / fail-closed boundary review | `pass` | R-001〜R-003の修正と回帰fixtureを独立に確認した。 |
 
 ## 受け入れ条件の確認
 
 | 条件 | 結果 | 根拠 |
 |---|---|---|
-| AC-1 / migration | `not blocked by reviewed diff` | single-root設定、固定REF-2 manifest、sparse除外を確認。 |
-| AC-2 | `fail` | 初回publish後のallocation失敗で、訂正publishも失敗すると未割当Taskがremote mainに残る。 |
-| AC-3 | `fail` | retired sourceのfreezeはclient-side pre-commit hookだけであり、`--no-verify`等で回避できる。 |
-| AC-4 | `fail` | main push scope checkerは任意の二親mergeを無検査で許可する。 |
-| AC-5--AC-9 | `not passed` | 上記fail-closed境界が未達のため、残りの受入条件をPASS判定しない。live-e2eは本レビューの入力にしていない。 |
+| AC-1 | `pass (code review)` | 外部`WORK_ROOT`/`agent-harness-work`の実行時参照を除去し、固定REF-2 migrationと単一root validatorを実装している。 |
+| AC-2 | `pass (code review)` | `task-start`はsparse branch/worktreeを先に確保し、publish失敗かつremote不変時にはallocationと未公開ローカル証跡を回収する。 |
+| AC-3 | `pass (code review)` | main明示routing、allowlist、common-dir lock、sparse除外、bootstrap sourceのGit metadata quarantineを確認した。R-001の`--no-verify`/`commit-tree`回避はfixtureで拒否される。 |
+| AC-4 | `pass (code review)` | main CIはread-onlyで、direct push scopeとmerge commitをHANDOVER candidate/tree/digest/bootstrap manifestへ束縛する。R-002の任意二親mergeは拒否される。 |
+| AC-5 | `pass (code review)` | review/QA/HANDOVERのcomposite binding、PR main-managed path拒否、merge-commit auto-mergeの実装を確認した。 |
+| AC-6 | `pass (code review)` | PR workflowは`Full check`、`Task check`、`Scope check`を実行する。required rulesetの実環境確認はQA live-e2eに残る。 |
+| AC-7 | `pass (code review)` | merged `pull_request.closed`だけがidempotentなpost-merge記録を行い、candidate merge parent/digestを再照合する。 |
+| AC-8 | `pass (code review)` | `sync`はclean/CI/receipt/worktree guardを持ち、`FAST=1`は取込・done化を行わない。実Wiki取込はQA live-e2eに残る。 |
+| AC-9 | `pass (code review)` | REF-2固定、32 historical + TASK-0033 overlay、manifest entry/project digest、archive前のfreeze/rollback経路を確認した。実archiveはQA live-e2eに残る。 |
 
 ## QAとの独立性
 
-- QAと同一composite candidateから評価を開始した: `yes`
-- QA結果を開始条件または入力にした: `no`
-- 案またはbootstrap bindingが変わる場合: REVIEWを新しいcomposite candidateへ再束縛して再実施する。
+- 同一composite candidateから評価を開始した: `yes`
+- QA結果またはPASSを開始条件・根拠にした: `no`
+- candidateまたはbootstrap bindingが変わる場合: 新しいcomposite candidateへ再束縛して再REVIEWする。
 
 ## 指摘
 
-軽微指摘をレビュアーが直接修正した場合は、修正コミットとTask ブランチへの取り込みを記録する。取り込み後は解消済みとしてPASSにでき、再レビューを要求しない。
-
 | ID | 重大度 | 状態 | 内容 | 根拠 |
 |---|---|---|---|---|
-| R-001 | 重大 | open | `bootstrap-freeze` が旧repositoryへの証跡書込みを確実に止めない。設定するのはローカル `core.hooksPath` の `pre-commit` hookだけで、Gitの `--no-verify`、hook無効化、低水準Git操作を防止しない。AC-3、PLAN step 3、HANDOVERはいずれもfreeze後の新規証跡書込みをfail-closedに止めることを要求するため、旧正本と新正本が再び分岐しうる。 | candidate `scripts/task/migrate-operations.mjs:139-172`。freezeはhook作成・`core.hooksPath`設定だけで、server-side receive protectionまたはGit書込みを強制拒否する境界がない。 |
-| R-002 | 重大 | open | main evidence CIのscope検査が、二親commitなら変更pathを検査せず成功する。`--allow-merge true` はworkflowから常時渡されるため、mainへ直接pushされた任意のmerge commitが製品pathを含んでもAC-4の「製品path混入をFAIL」を回避できる。 | candidate `scripts/task/unified-lifecycle.mjs:309-321` は二親commitで即returnし、`.github/workflows/main-evidence.yml:30-31` が常に `--allow-merge true` を渡す。 |
-| R-003 | 重大 | open | `task-start` はTask/backlogをremote mainへ先にpublishし、その後でsparse worktreeをallocateする。allocation失敗時の補償publishが失敗すると、catchは「reconciliationが必要」と返すだけで、remoteにはbranch/worktreeを伴わないTask evidenceが残る。これはAC-2とPLAN step 5のall-or-stop / non-published recoveryに反する。 | candidate `scripts/task/unified-lifecycle.mjs:221-253`。テストは通常の補償publish成功しか確認せず、最初のpush成功後に補償pushが失敗する経路を検証していない。 |
+| R-001 | 重大 | resolved | source freezeをhook依存からGit metadata quarantineへ変更し、通常Git discovery、`--no-verify`、`commit-tree`を停止する。 | `migrate-operations.mjs` とfreeze/unfreeze negative fixture。 |
+| R-002 | 重大 | resolved | main merge scopeを、first-parentの単一HANDOVER candidate、tree、managed digest、bootstrap manifestへ束縛した。 | `scopeCheck` とbound/unbound merge fixture。 |
+| R-003 | 重大 | resolved | `task-start`はallocate後にpublishし、publish失敗・remote不変時はbranch/worktree/local evidenceを回収する。 | `taskStart` とallocation/commit/publish-failure fixture。 |
+| - | - | - | 新規ブロッキング指摘なし。 | - |
 
 ## 残存リスク
 
-- `make check` は成功したが、上記はexternal writer権限、mainへのdirect merge push、または補償publish障害で顕在化するfail-closed境界の欠陥であり、hermetic test PASSでは解消されない。
-- GitHub ruleset、auto-merge、post-merge、sync/archiveのlive-e2eは本独立REVIEWの開始条件・判断材料に含めていない。
+- GitHub ruleset/required checks、実auto-merge、post-merge event、実Wiki取込、archiveは`live-e2e`であり、QAが承認済み実環境で確認するまで未完了である。本REVIEW PASSはそれらを代替しない。
 
 ## 結論
 
-`fail` — 重大指摘 R-001--R-003 が未解消のため、このcomposite candidateはPASSできない。
+`pass` — 指定composite candidateは独立REVIEWを通過した。QAは同一candidateから独立に継続できる。
