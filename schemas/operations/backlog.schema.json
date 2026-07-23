@@ -1,0 +1,69 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:agent-harness:operations:backlog:v2",
+  "x-schema-version": 2,
+  "x-schema-revision": 1,
+  "x-stability": "stable",
+  "title": "Agent Harness Development Backlog",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "project", "epics", "tasks"],
+  "properties": {
+    "version": { "const": 1 },
+    "project": { "const": "agent-harness" },
+    "epics": { "type": "array", "items": { "$ref": "#/$defs/epic" } },
+    "tasks": { "type": "array", "items": { "$ref": "#/$defs/task" } }
+  },
+  "$defs": {
+    "id": { "type": "string", "pattern": "^TASK-[0-9]{4}$" },
+    "epic": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title", "target_start", "target_end"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^EPIC-[0-9]{3}$" },
+        "title": { "type": "string", "minLength": 1 },
+        "target_start": { "type": "string", "format": "date" },
+        "target_end": { "type": "string", "format": "date" }
+      }
+    },
+    "task": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title", "type", "epic", "status", "priority", "estimate_points", "task_dir", "depends_on"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "title": { "type": "string", "minLength": 1 },
+        "type": { "enum": ["feature", "bug", "chore", "research"] },
+        "epic": { "type": "string", "pattern": "^EPIC-[0-9]{3}$" },
+        "status": { "enum": ["backlog", "plan", "dev", "qa", "blocked", "done", "cancelled"] },
+        "change_class": { "enum": ["product", "safety_contract"] },
+        "resume_status": { "enum": ["plan", "dev", "qa"] },
+        "priority": { "enum": ["P0", "P1", "P2", "P3"] },
+        "estimate_points": { "enum": [1, 2, 3, 5, 8, 13] },
+        "task_dir": { "type": "string", "pattern": "^tasks/TASK-[0-9]{4}-[a-z0-9]+(?:-[a-z0-9]+)*$" },
+        "depends_on": { "type": "array", "items": { "$ref": "#/$defs/id" }, "uniqueItems": true },
+        "assignees": {
+          "type": "object", "additionalProperties": false,
+          "properties": {
+            "main": { "type": "string", "minLength": 1 }, "planner": { "type": "string", "minLength": 1 },
+            "dev": { "type": "string", "minLength": 1 }, "reviewer": { "type": "string", "minLength": 1 }, "qa": { "type": "string", "minLength": 1 }
+          }
+        },
+        "branch": { "type": "string", "pattern": "^task/TASK-[0-9]{4}-[a-z0-9]+(?:-[a-z0-9]+)*$" },
+        "worktree": { "type": "string", "pattern": "^worktrees/TASK-[0-9]{4}-[a-z0-9]+(?:-[a-z0-9]+)*$" },
+        "bootstrap_exception": { "type": "boolean" },
+        "merged_commit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+        "merge_pr": { "type": "integer", "minimum": 1 },
+        "origin_task": { "$ref": "#/$defs/id" },
+        "target_end": { "type": "string", "format": "date" }
+      },
+      "allOf": [
+        { "if": { "properties": { "type": { "const": "bug" } }, "required": ["type"] }, "then": { "required": ["origin_task"] } },
+        { "if": { "properties": { "status": { "const": "blocked" } }, "required": ["status"] }, "then": { "required": ["resume_status"] }, "else": { "not": { "required": ["resume_status"] } } },
+        { "if": { "properties": { "status": { "const": "done" } }, "required": ["status"] }, "then": { "required": ["merged_commit"] } },
+        { "if": { "properties": { "bootstrap_exception": { "const": true } }, "required": ["bootstrap_exception"] }, "then": { "properties": { "id": { "const": "TASK-0001" } } } }
+      ]
+    }
+  }
+}

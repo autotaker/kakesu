@@ -1,0 +1,49 @@
+name: PR CI
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-ci-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  full:
+    name: Full check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.2
+      - run: make check
+  task:
+    name: Task check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.2
+      - name: Validate target Task
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+        run: |
+          task=$(printf '%s' "$HEAD_REF" | sed -nE 's#^task/(TASK-[0-9]{4})-.+$#\1#p')
+          test -n "$task"
+          make task-check TASK="$task"
+  scope:
+    name: Scope check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Reject main-managed paths
+        run: node scripts/task/unified-lifecycle.mjs --action scope-check --main-root "$GITHUB_WORKSPACE" --event pr --base "${{ github.event.pull_request.base.sha }}" --head "${{ github.event.pull_request.head.sha }}"
+

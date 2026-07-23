@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:agent-harness:operations:decision:v1",
+  "x-schema-version": 1,
+  "x-schema-revision": 1,
+  "x-stability": "stable",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["kind", "decision_id", "title", "status", "decided_at", "supersedes"],
+  "properties": {
+    "kind": { "const": "decision" },
+    "decision_id": { "type": "string", "pattern": "^DECISION-[0-9]{4}$" },
+    "title": { "type": "string", "minLength": 1 },
+    "status": { "enum": ["accepted", "superseded"] },
+    "decided_at": { "type": "string", "format": "date" },
+    "supersedes": { "type": "array", "items": { "type": "string", "pattern": "^DECISION-[0-9]{4}$" }, "uniqueItems": true }
+  }
+}

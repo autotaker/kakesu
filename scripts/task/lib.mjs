@@ -15,6 +15,18 @@ export const REQUIRED_TASK_FILES = [
 ];
 export const TASK_STATUSES = new Set(["backlog", "plan", "dev", "qa", "blocked", "done", "cancelled"]);
 export const POINT_SCALE = [1, 2, 3, 5, 8, 13];
+export const MAIN_MANAGED_PATHS = [
+  "backlog.yaml",
+  "project.yaml",
+  "tasks/",
+  "wiki/",
+  "lap30/",
+  "viewer/index.html",
+];
+
+export function isMainManagedPath(file) {
+  return MAIN_MANAGED_PATHS.some((entry) => entry.endsWith("/") ? file.startsWith(entry) : file === entry);
+}
 
 export function parseArgs(argv) {
   const args = {};
@@ -35,7 +47,7 @@ export function parseArgs(argv) {
 }
 
 export function workRoot(explicitRoot) {
-  return path.resolve(explicitRoot || process.env.WORK_ROOT || path.join(REPO_ROOT, "../agent-harness-work"));
+  return path.resolve(explicitRoot || REPO_ROOT);
 }
 
 export function assertTaskId(taskId) {
@@ -89,9 +101,14 @@ export function git(root, args, options = {}) {
   return result.stdout?.trim() ?? "";
 }
 
+export function workRepoLockDir(root) {
+  const commonDir = git(root, ["rev-parse", "--path-format=absolute", "--git-common-dir"]);
+  return path.join(commonDir, "agent-harness-locks", "work-repository.lock");
+}
+
 export function acquireWorkRepoLock(root, { requireClean = true, requireMain = true } = {}) {
-  const lockRoot = path.join(root, ".locks");
-  const lockDir = path.join(lockRoot, "work-repository.lock");
+  const lockDir = workRepoLockDir(root);
+  const lockRoot = path.dirname(lockDir);
   fs.mkdirSync(lockRoot, { recursive: true });
   const createLock = () => {
     try {
@@ -135,6 +152,17 @@ export function acquireWorkRepoLock(root, { requireClean = true, requireMain = t
     release();
     throw error;
   }
+}
+
+export function findMainWorktree(root = REPO_ROOT) {
+  const records = git(root, ["worktree", "list", "--porcelain"]).split("\n\n");
+  for (const record of records) {
+    const lines = record.split("\n");
+    if (!lines.includes("branch refs/heads/main")) continue;
+    const location = lines.find((line) => line.startsWith("worktree "))?.slice("worktree ".length);
+    if (location) return path.resolve(location);
+  }
+  throw new Error("The repository has no registered main worktree");
 }
 
 export function parseFrontmatter(file) {

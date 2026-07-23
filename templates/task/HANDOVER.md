@@ -11,6 +11,11 @@ safety_checked_at: ""
 safety_check_digest: ""
 safety_candidate_tree: ""
 safety_merge_tree: ""
+candidate_commit: ""
+candidate_tree: ""
+managed_path_digest: ""
+bootstrap_evidence_commit: ""
+bootstrap_evidence_digest: ""
 ---
 
 # {{TASK_ID}} HANDOVER
@@ -23,6 +28,8 @@ safety_merge_tree: ""
 
 - `candidate_commit`:
 - `candidate_tree`:
+- `managed_path_digest`:
+- `bootstrap_evidence_commit` / `bootstrap_evidence_digest`:
 
 | ケース ID | コマンド/テスト | 環境/フィクスチャ | cache条件 | exit | 成果物 ダイジェスト | 未実施理由 |
 |---|---|---|---:|---:|---|---|

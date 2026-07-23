@@ -58,7 +58,8 @@ const emit = (fields) => process.stdout.write(`${JSON.stringify(buildLaunchEvide
 if (args.dry_run === "true") {
   emit({ childResult: null, commit: null });
 } else {
-  const release = acquireWorkRepoLock(root);
+  const editOnly = args.commit === "false";
+  const release = acquireWorkRepoLock(root, { requireClean: !editOnly });
   let childResult = null;
   let beforeHead = null;
   try {
@@ -77,16 +78,20 @@ if (args.dry_run === "true") {
       if (!changed.length) throw new Error("WIKI_INGEST_NO_CHANGES");
       const forbidden = changed.filter((file) => !matchesAllowed(file));
       if (forbidden.length) throw new Error(`WORK_SCOPE_VIOLATION:${forbidden.join(",")}`);
-      git(root, ["add", "--", ...changed]);
-      validateWork();
-      git(root, ["commit", "-m", `wiki: ${action} ${taskId}`], { env: {
-        ...process.env, WORK_REPO_LOCK_HELD: "1", WORK_PARENT_COMMIT: "1", WIKI_ACTION: action, WIKI_TARGET: target,
-      } });
-      const commit = git(root, ["rev-parse", "HEAD"]);
       validateWork();
       if (action === "ingest" && !fs.existsSync(path.join(root, "wiki", "ingestions", `${taskId}.json`))) throw new Error("WIKI_RECEIPT_MISSING");
-      if (changedFiles().length) throw new Error("WORK_PARENT_LEFT_DIRTY");
-      emit({ childResult, commit });
+      if (editOnly) {
+        emit({ childResult, commit: null });
+      } else {
+        git(root, ["add", "--", ...changed]);
+        git(root, ["commit", "-m", `wiki: ${action} ${taskId}`], { env: {
+          ...process.env, WORK_REPO_LOCK_HELD: "1", WORK_PARENT_COMMIT: "1", WIKI_ACTION: action, WIKI_TARGET: target,
+        } });
+        const commit = git(root, ["rev-parse", "HEAD"]);
+        validateWork();
+        if (changedFiles().length) throw new Error("WORK_PARENT_LEFT_DIRTY");
+        emit({ childResult, commit });
+      }
     }
   } catch (error) {
     let failure = error;

@@ -30,6 +30,11 @@ const SAFETY_CONTRACT_EXCLUSION = /製品コード[^\n]*(?:test|テスト)[^\n]*
 const LEGACY_TASK_0024_EXCLUSION = /製品コード、製品test、runtime\/build設定、製品Schema、製品依存、製品挙動/;
 const SAFETY_CHECK_KEYS = ["process_tests", "contract_scope", "docs_lint", "make_check"];
 
+function repositoryFor(root) {
+  const configured = readYaml(path.join(root, "project.yaml")).repository_path;
+  return configured === "." || !configured ? root : path.resolve(root, configured);
+}
+
 function isTimestamp(value) {
   return typeof value === "string" && value.trim() !== "" && !Number.isNaN(Date.parse(value));
 }
@@ -163,7 +168,7 @@ function checkSafetyContractDone({ root, taskDir, task, taskId, planContract }) 
   }
   try {
     const project = readYaml(path.join(root, "project.yaml"));
-    const repository = path.resolve(root, project.repository_path);
+    const repository = repositoryFor(root);
     git(repository, ["cat-file", "-e", `${task.merged_commit}^{commit}`]);
     git(repository, ["merge-base", "--is-ancestor", task.merged_commit, project.default_branch]);
     const [merge, firstParent, secondParent, ...extraParents] = git(repository, ["rev-list", "--parents", "-n", "1", task.merged_commit]).split(" ");
@@ -304,10 +309,10 @@ export function checkTask(root, backlog, taskId, { phase = "full" } = {}) {
           const validWorktree = new RegExp(`^worktrees/${taskId}-[a-z0-9]+(?:-[a-z0-9]+)*$`).test(task.worktree ?? "");
           if (!validBranch) errors.push(`${taskId}: DEV gate requires a task branch`);
           if (!validWorktree) errors.push(`${taskId}: DEV gate requires a task worktree`);
-          if (validBranch && validWorktree) {
+          if (validBranch && validWorktree && process.env.CI !== "true") {
             try {
               const project = readYaml(path.join(root, "project.yaml"));
-              const repository = path.resolve(root, project.repository_path);
+              const repository = repositoryFor(root);
               const assignedWorktree = resolveInside(root, task.worktree, `${taskId} worktree`);
               git(repository, ["show-ref", "--verify", `refs/heads/${task.branch}`]);
               const records = git(repository, ["worktree", "list", "--porcelain"]);
@@ -345,10 +350,9 @@ export function checkTask(root, backlog, taskId, { phase = "full" } = {}) {
       if (qaPlan.expectation_changed && qaPlan.expectation_change_approved_by !== task.assignees?.main) {
         errors.push(`${taskId}: changed QA expectations require approval by the assigned main Agent`);
       }
-      if (!task.merged_commit) errors.push(`${taskId}: QA gate requires merged_commit`);
       const project = readYaml(path.join(root, "project.yaml"));
-      const repository = path.resolve(root, project.repository_path);
-      for (const [label, commit] of [["reviewed_commit", review.reviewed_commit], ["merged_commit", task.merged_commit]]) {
+      const repository = repositoryFor(root);
+      for (const [label, commit] of [["reviewed_commit", review.reviewed_commit]]) {
         if (!commit) continue;
         try {
           git(repository, ["cat-file", "-e", `${commit}^{commit}`]);
@@ -356,7 +360,7 @@ export function checkTask(root, backlog, taskId, { phase = "full" } = {}) {
           errors.push(`${taskId}: ${label} is not a product repository commit`);
         }
       }
-      if (review.reviewed_commit && task.merged_commit) {
+      if (task.status === "done" && review.reviewed_commit && task.merged_commit) {
         try {
           git(repository, ["merge-base", "--is-ancestor", task.merged_commit, project.default_branch]);
           if (task.bootstrap_exception) {
@@ -392,7 +396,7 @@ export function checkTask(root, backlog, taskId, { phase = "full" } = {}) {
           errors.push(`${taskId}: done requires QA agent identity, tested commit, and tested_at`);
         } else {
           const project = readYaml(path.join(root, "project.yaml"));
-          const repository = path.resolve(root, project.repository_path);
+          const repository = repositoryFor(root);
           try {
             git(repository, ["cat-file", "-e", `${qa.tested_commit}^{commit}`]);
             git(repository, ["merge-base", "--is-ancestor", task.merged_commit, qa.tested_commit]);

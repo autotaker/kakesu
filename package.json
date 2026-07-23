@@ -7,7 +7,9 @@
   "scripts": {
     "lint:docs": "node scripts/lint-docs.mjs",
     "test:terminology": "node scripts/test-kakesu-glossary.mjs",
-    "test:process": "node --test scripts/task/agent-routing.test.mjs scripts/task/development-process.test.mjs"
+    "test:process": "node --test scripts/task/agent-routing.test.mjs scripts/task/development-process.test.mjs scripts/task/unified-lifecycle.test.mjs",
+    "validate:operations": "node scripts/task/validate-work.mjs",
+    "validate:bootstrap": "node scripts/task/migrate-operations.mjs --mode verify"
   },
   "devDependencies": {
     "ajv": "^8",

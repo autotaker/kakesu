@@ -5,6 +5,10 @@ import { REPO_ROOT, git, parseArgs, parseFrontmatter, workRoot } from "./lib.mjs
 
 const args = parseArgs(process.argv.slice(2));
 const root = workRoot(args.work_root);
+const gitDir = path.resolve(root, git(root, ["rev-parse", "--git-dir"]));
+if (fs.existsSync(path.join(gitDir, "agent-harness-evidence-frozen"))) {
+  throw new Error(`Evidence writes are frozen in the retired repository: ${root}`);
+}
 const staged = git(root, ["diff", "--cached", "--name-only", "--diff-filter=ACMRD"]).split("\n").filter(Boolean);
 const action = process.env.WIKI_ACTION;
 const target = process.env.WIKI_TARGET;
@@ -20,7 +24,7 @@ if (workAction) {
     throw new Error(`Work evidence commits must be created by the lock-owning launcher parent for ${workAction}`);
   }
   if (!Array.isArray(workAllowed) || !workAllowed.length) throw new Error(`Missing allowed paths for ${workAction}`);
-  const matchesAllowed = (file) => workAllowed.some((rule) => rule.endsWith("/**") ? file.startsWith(rule.slice(0, -2)) : file === rule);
+  const matchesAllowed = (file) => workAllowed.some((rule) => rule.endsWith("/**") ? file.startsWith(rule.slice(0, -2)) : rule.endsWith("/") || rule.endsWith("-") ? file.startsWith(rule) : file === rule);
   const forbidden = staged.filter((file) => !matchesAllowed(file));
   if (forbidden.length) throw new Error(`Work Agent staged files outside ${workAction}: ${forbidden.join(", ")}`);
 }
@@ -79,11 +83,11 @@ for (const file of staged.filter((candidate) => candidate.startsWith("wiki/decis
   }
 }
 
-const validation = spawnSync(
+const validation = fs.existsSync(path.join(root, "backlog.yaml")) ? spawnSync(
   process.execPath,
   [path.join(REPO_ROOT, "scripts", "task", "validate-work.mjs"), "--work-root", root],
   { cwd: REPO_ROOT, encoding: "utf8" },
-);
+) : { status: 0, stdout: "" };
 if (validation.status !== 0) {
   process.stderr.write(validation.stderr);
   process.exit(1);

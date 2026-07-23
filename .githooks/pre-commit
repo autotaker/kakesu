@@ -1,0 +1,5 @@
+#!/bin/sh
+set -eu
+
+root=$(git rev-parse --show-toplevel)
+exec node "$root/scripts/task/work-pre-commit.mjs" --work-root "$root"

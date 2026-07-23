@@ -38,7 +38,7 @@ if (!fs.existsSync(backlogFile)) errors.push("missing backlog.yaml");
 
 const project = fs.existsSync(projectFile) ? readYaml(projectFile) : {};
 const backlog = fs.existsSync(backlogFile) ? readYaml(backlogFile) : {};
-validateSchema(path.join(root, "schemas", "backlog.schema.json"), backlog, "backlog.yaml");
+validateSchema(path.join(root, "schemas", "operations", "backlog.schema.json"), backlog, "backlog.yaml");
 
 function markdownFiles(directory) {
   if (!fs.existsSync(directory)) return [];
@@ -60,13 +60,11 @@ function validateLinks(file) {
     }
   }
 }
-if (project.version !== 1) errors.push("project.yaml version must be 1");
+if (project.version !== 2) errors.push("project.yaml version must be 2");
 if (backlog.version !== 1) errors.push("backlog.yaml version must be 1");
 if (project.default_branch !== "main") errors.push("project default_branch must be main");
-if (project.repository_path) {
-  const repositoryPath = path.resolve(root, project.repository_path);
-  if (!fs.existsSync(path.join(repositoryPath, ".git"))) errors.push(`repository_path is not a Git repository: ${repositoryPath}`);
-}
+if (project.repository_path !== "." || project.evidence_root !== ".") errors.push("project repository_path and evidence_root must be the unified root");
+if (!fs.existsSync(path.join(root, ".git"))) errors.push(`unified root is not a Git worktree: ${root}`);
 
 const epics = backlog.epics ?? [];
 const tasks = backlog.tasks ?? [];
@@ -133,7 +131,7 @@ for (const page of wikiIndex.pages) {
   }
   if (page.path.startsWith("wiki/decisions/")) {
     const metadata = parseFrontmatter(path.join(root, page.path));
-    validateSchema(path.join(root, "schemas", "decision.schema.json"), metadata, page.path);
+    validateSchema(path.join(root, "schemas", "operations", "decision.schema.json"), metadata, page.path);
     decisions.push({ ...metadata, path: page.path });
     if (page.kind !== "decision" || !/^DECISION-\d{4}$/.test(page.decision_id ?? "")) {
       errors.push(`${page.path}: invalid Decision metadata`);
@@ -182,7 +180,7 @@ if (fs.existsSync(ingestionDir)) {
       errors.push(`wiki/ingestions/${entry}: invalid JSON: ${error.message}`);
       continue;
     }
-    validateSchema(path.join(root, "schemas", "ingestion-receipt.schema.json"), receipt, `wiki/ingestions/${entry}`);
+    validateSchema(path.join(root, "schemas", "operations", "ingestion-receipt.schema.json"), receipt, `wiki/ingestions/${entry}`);
     if (!/^TASK-\d{4}$/.test(receipt.task_id ?? "") || !/^[a-f0-9]{64}$/.test(receipt.handover_sha256 ?? "")) {
       errors.push(`wiki/ingestions/${entry}: invalid task_id or handover_sha256`);
     }
@@ -217,6 +215,19 @@ if (fs.existsSync(ingestionDir)) {
     for (const decisionId of receipt.created_decisions ?? []) {
       if (!decisionIds.has(decisionId)) errors.push(`wiki/ingestions/${entry}: unknown Decision ${decisionId}`);
     }
+  }
+}
+
+const bootstrapManifest = path.join(root, "tasks", "TASK-0033-unify-work-repository", "BOOTSTRAP_MANIFEST.json");
+if (fs.existsSync(bootstrapManifest)) {
+  try {
+    const manifest = JSON.parse(fs.readFileSync(bootstrapManifest, "utf8"));
+    validateSchema(path.join(root, "schemas", "operations", "bootstrap-manifest.schema.json"), manifest, "BOOTSTRAP_MANIFEST.json");
+    const { manifest_sha256: recorded, ...body } = manifest;
+    const actual = crypto.createHash("sha256").update(`${JSON.stringify(body)}\n`).digest("hex");
+    if (recorded !== actual) errors.push("BOOTSTRAP_MANIFEST.json: self-digest mismatch");
+  } catch (error) {
+    errors.push(`BOOTSTRAP_MANIFEST.json: invalid JSON: ${error.message}`);
   }
 }
 

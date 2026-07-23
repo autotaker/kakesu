@@ -5,6 +5,9 @@ reviewer_agent: ""
 reviewed_commit: ""
 candidate_commit: ""
 candidate_tree: ""
+managed_path_digest: ""
+bootstrap_evidence_commit: ""
+bootstrap_evidence_digest: ""
 decision: pending
 make_check: pending
 reviewed_at: ""
