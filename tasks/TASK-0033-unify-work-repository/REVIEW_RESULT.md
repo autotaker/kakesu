@@ -2,15 +2,15 @@
 task_id: "TASK-0033"
 status: pass
 reviewer_agent: "reviewer-agent-terra-medium"
-reviewed_commit: "b892dd5883f28cb9a7e7ac82ca132202c26d00fb"
-candidate_commit: "b892dd5883f28cb9a7e7ac82ca132202c26d00fb"
-candidate_tree: "6ce6716159f853cd9d510be5675910f016688215"
-managed_path_digest: "39f46ea2e905dd6989ffb6cc3e36bbf134113835ea421f2a068070b8bfc0d88d"
+reviewed_commit: "20f29abf663409f6d8d9f0d2cd1203e5ba0f6669"
+candidate_commit: "20f29abf663409f6d8d9f0d2cd1203e5ba0f6669"
+candidate_tree: "a54bab2cf40ec7ffa9009b0b99388730927bbdbe"
+managed_path_digest: "dab9deccbc8884fadf604bca1653e3af6ee1cead333fb418fc900404a6053fc4"
 bootstrap_evidence_commit: "a063f6d461bbc6ce752d93306f83e4939e299d1e"
 bootstrap_evidence_digest: "279dc69dba63337208ac4d0dd065db8055e7bb0b00fb8df5e0f9024d9f283329"
 decision: pass
 make_check: pass
-reviewed_at: "2026-07-23T11:37:20+1000"
+reviewed_at: "2026-07-23T12:08:00+1000"
 ---
 
 # TASK-0033 REVIEW RESULT
@@ -18,8 +18,8 @@ reviewed_at: "2026-07-23T11:37:20+1000"
 ## 対象
 
 - ブランチ: `task/TASK-0033-unify-work-repository`
-- code candidate: `b892dd5883f28cb9a7e7ac82ca132202c26d00fb` / `6ce6716159f853cd9d510be5675910f016688215`
-- managed path digest: `39f46ea2e905dd6989ffb6cc3e36bbf134113835ea421f2a068070b8bfc0d88d`
+- code candidate: `20f29abf663409f6d8d9f0d2cd1203e5ba0f6669` / `a54bab2cf40ec7ffa9009b0b99388730927bbdbe`
+- managed path digest: `dab9deccbc8884fadf604bca1653e3af6ee1cead333fb418fc900404a6053fc4`
 - bootstrap evidence: `a063f6d461bbc6ce752d93306f83e4939e299d1e` / `279dc69dba63337208ac4d0dd065db8055e7bb0b00fb8df5e0f9024d9f283329`
 - 入力: `TASK.md`、承認済み `PLAN.md`、独立 `QA_PLAN.md`、candidate-bound `HANDOVER.md`。
 
@@ -27,10 +27,13 @@ reviewed_at: "2026-07-23T11:37:20+1000"
 
 | コマンド | 結果 | 備考 |
 |---|---|---|
-| `make check` | `pass` | candidate worktreeで成功。Go、memory 20 tests、Rust、Tabletop、terminology、docs lint、process 97 tests を含む。初回はsandboxのPyPI DNS制限で失敗したため、network許可環境で同一candidateを再実行した。 |
+| `make check` | `pass` | candidate worktreeで成功。Go、memory 20 tests、Rust、Tabletop、terminology、docs lint、process 97 tests を含む。 |
 | `scope-check --event pr` | `pass` | bootstrap commitからcandidateへのPR差分にmain管理pathはない。 |
+| `git diff --check a063f6d..20f29ab` | `pass` | base bootstrap commitからcandidateへの全差分に空白エラーなし。 |
+| `make task-check TASK=TASK-0033` | `pass` | main証跡を対象にTask contractを検査した。 |
+| `node --test scripts/task/unified-lifecycle.test.mjs` | `pass` | lifecycle、scope、binding、rollbackの18 fixtureが成功。 |
 | candidate/tree/digest/binding | `pass` | 指定commit/tree/managed digest、bootstrap commitの祖先関係、manifest自己digestを照合した。 |
-| diff / fail-closed boundary review | `pass` | R-001〜R-003の修正と回帰fixtureを独立に確認した。 |
+| diff / fail-closed boundary review | `pass` | baseからの全差分、R-001〜R-003の修正、回帰fixture、および直前candidateからの`pr-ci.yml`末尾空行削除を独立に確認した。 |
 
 ## 受け入れ条件の確認
 
@@ -59,7 +62,7 @@ reviewed_at: "2026-07-23T11:37:20+1000"
 | R-001 | 重大 | resolved | source freezeをhook依存からGit metadata quarantineへ変更し、通常Git discovery、`--no-verify`、`commit-tree`を停止する。 | `migrate-operations.mjs` とfreeze/unfreeze negative fixture。 |
 | R-002 | 重大 | resolved | main merge scopeを、first-parentの単一HANDOVER candidate、tree、managed digest、bootstrap manifestへ束縛した。 | `scopeCheck` とbound/unbound merge fixture。 |
 | R-003 | 重大 | resolved | `task-start`はallocate後にpublishし、publish失敗・remote不変時はbranch/worktree/local evidenceを回収する。 | `taskStart` とallocation/commit/publish-failure fixture。 |
-| - | - | - | 新規ブロッキング指摘なし。 | - |
+| - | - | - | 新candidateでの新規P0/P1指摘なし。 | 直前candidateとの差分は`.github/workflows/pr-ci.yml`の末尾空行削除だけであり、workflow意味・required check名・scope境界を変えない。 |
 
 ## 残存リスク
 
@@ -67,4 +70,4 @@ reviewed_at: "2026-07-23T11:37:20+1000"
 
 ## 結論
 
-`pass` — 指定composite candidateは独立REVIEWを通過した。QAは同一candidateから独立に継続できる。
+`pass` — 指定composite candidateは独立REVIEWを通過した。QA FAIL後の全面再REVIEWとして実施し、QAの結果・PASSを開始条件または根拠にしていない。QAは同一candidateから独立に継続できる。
