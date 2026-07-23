@@ -11,9 +11,9 @@ safety_checked_at: ""
 safety_check_digest: ""
 safety_candidate_tree: ""
 safety_merge_tree: ""
-candidate_commit: "20f29abf663409f6d8d9f0d2cd1203e5ba0f6669"
-candidate_tree: "a54bab2cf40ec7ffa9009b0b99388730927bbdbe"
-managed_path_digest: "dab9deccbc8884fadf604bca1653e3af6ee1cead333fb418fc900404a6053fc4"
+candidate_commit: "07a82f534dbff3497c27683f11689531ed2d77b3"
+candidate_tree: "c4e71d322381475dbee1a4ad47681ecf4954bbd0"
+managed_path_digest: "a6636f9d23d74c9ed81351bf432bd6d10fbde7c352b4f3edc0761c567e8a03d9"
 bootstrap_evidence_commit: "a063f6d461bbc6ce752d93306f83e4939e299d1e"
 bootstrap_evidence_digest: "279dc69dba63337208ac4d0dd065db8055e7bb0b00fb8df5e0f9024d9f283329"
 ---
@@ -27,9 +27,9 @@ bootstrap_evidence_digest: "279dc69dba63337208ac4d0dd065db8055e7bb0b00fb8df5e0f9
 
 ## candidate-bound DEV証跡
 
-- `candidate_commit`: `20f29abf663409f6d8d9f0d2cd1203e5ba0f6669`
-- `candidate_tree`: `a54bab2cf40ec7ffa9009b0b99388730927bbdbe`
-- `managed_path_digest`: `dab9deccbc8884fadf604bca1653e3af6ee1cead333fb418fc900404a6053fc4`。DEV初回working-tree manifestは33ファイル、SHA-256 `77dcb2599590fb8ab78a101de7addc403811e797844cdc1ceec8ac8b6c9fcdaa`。
+- `candidate_commit`: `07a82f534dbff3497c27683f11689531ed2d77b3`
+- `candidate_tree`: `c4e71d322381475dbee1a4ad47681ecf4954bbd0`
+- `managed_path_digest`: `a6636f9d23d74c9ed81351bf432bd6d10fbde7c352b4f3edc0761c567e8a03d9`。DEV初回working-tree manifestは33ファイル、SHA-256 `77dcb2599590fb8ab78a101de7addc403811e797844cdc1ceec8ac8b6c9fcdaa`。
 - `bootstrap_evidence_commit` / `bootstrap_evidence_digest`: `a063f6d461bbc6ce752d93306f83e4939e299d1e` / `279dc69dba63337208ac4d0dd065db8055e7bb0b00fb8df5e0f9024d9f283329`。
 
 | ケース ID | コマンド/テスト | 環境/フィクスチャ | cache条件 | exit | 成果物 ダイジェスト | 未実施理由 |
@@ -95,7 +95,7 @@ bootstrap_evidence_digest: "279dc69dba63337208ac4d0dd065db8055e7bb0b00fb8df5e0f9
 
 - 選択: `full-rerun`（candidate固定済み。carry-forward不可のsecurity/workflow/schema/lifecycle変更）。
 - 選択: `not-applicable | qa_carry_forward | focused-rerun | full-rerun`
-- Main判断の旧新コミット/tree、全差分とダイジェスト、影響ケース集合、レビュアー/`make check`証拠、理由: candidate `20f29abf663409f6d8d9f0d2cd1203e5ba0f6669` / tree `a54bab2cf40ec7ffa9009b0b99388730927bbdbe` / managed digest `dab9deccbc8884fadf604bca1653e3af6ee1cead333fb418fc900404a6053fc4`、bootstrap `a063f6d461bbc6ce752d93306f83e4939e299d1e` / digest `279dc69dba63337208ac4d0dd065db8055e7bb0b00fb8df5e0f9024d9f283329`。直前candidate `b892dd5883f28cb9a7e7ac82ca132202c26d00fb`からの差分はQA-004で検出された`pr-ci.yml`末尾空行1行の削除だけである。QA FAIL後のためcarry-forwardせず、独立REVIEW/QAを新しい同一composite candidateから全面再実行する。
+- Main判断の旧新コミット/tree、全差分とダイジェスト、影響ケース集合、レビュアー/`make check`証拠、理由: candidate `07a82f534dbff3497c27683f11689531ed2d77b3` / tree `c4e71d322381475dbee1a4ad47681ecf4954bbd0` / managed digest `a6636f9d23d74c9ed81351bf432bd6d10fbde7c352b4f3edc0761c567e8a03d9`、bootstrap `a063f6d461bbc6ce752d93306f83e4939e299d1e` / digest `279dc69dba63337208ac4d0dd065db8055e7bb0b00fb8df5e0f9024d9f283329`。実PR run `29972848738`でFull checkの`uv`未導入とScope checkのNode依存未導入を検出したため、公式`setup-uv`、locked pnpm install、欠落を検出するworkflow contract testを追加した。CI設定変更を含むためcarry-forwardせず、独立REVIEW/QAを新しい同一composite candidateから全面再実行する。
 - carry-forward時の`QA_RESULT.md` `CF-1`から`CF-7`: `not-applicable | complete | incomplete`
 - 影響QAケース集合が空でない場合の再実行証拠: TODO
 - `merge_tree`と案 treeの比較: `pending`
