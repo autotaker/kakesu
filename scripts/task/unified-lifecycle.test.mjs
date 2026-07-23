@@ -405,7 +405,7 @@ test("workflow responsibilities are disjoint and required check names are stable
   assert.match(main, /permissions:\n  contents: read/);
   assert.doesNotMatch(main, /git push|evidence-commit/);
   for (const name of ["Full check", "Task check", "Scope check"]) assert.match(pr, new RegExp(`name: ${name}`));
-  assert.ok(fullSteps.some((step) => step.uses === "astral-sh/setup-uv@v9"), "Full check must set up uv with the supported action major");
+  assert.ok(fullSteps.some((step) => step.uses === "astral-sh/setup-uv@v9.0.0"), "Full check must set up uv with the supported action tag");
   assert.ok(scopeSteps.some((step) => /^pnpm\/action-setup@/.test(step.uses ?? "")), "Scope check must set up pnpm");
   assert.ok(scopeSteps.some((step) => /\bpnpm install --frozen-lockfile\b/.test(step.run ?? "")), "Scope check must install locked Node dependencies");
   assert.match(post, /types: \[closed\]/);
