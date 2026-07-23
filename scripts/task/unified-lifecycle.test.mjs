@@ -6,6 +6,7 @@ import path from "node:path";
 import { spawnSync } from "node:child_process";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
+import { parse as parseYaml } from "yaml";
 import { workRepoLockDir } from "./lib.mjs";
 import { assertComposite, createSparseWorktree, evidenceCommit, managedDigest, resolveOperationsValidation, scopeCheck, sparsePatterns, syncMain, taskStart } from "./unified-lifecycle.mjs";
 
@@ -379,9 +380,15 @@ test("workflow responsibilities are disjoint and required check names are stable
   const main = fs.readFileSync(path.join(ROOT, ".github/workflows/main-evidence.yml"), "utf8");
   const pr = fs.readFileSync(path.join(ROOT, ".github/workflows/pr-ci.yml"), "utf8");
   const post = fs.readFileSync(path.join(ROOT, ".github/workflows/post-merge.yml"), "utf8");
+  const prWorkflow = parseYaml(pr);
+  const fullSteps = prWorkflow.jobs.full.steps;
+  const scopeSteps = prWorkflow.jobs.scope.steps;
   assert.match(main, /permissions:\n  contents: read/);
   assert.doesNotMatch(main, /git push|evidence-commit/);
   for (const name of ["Full check", "Task check", "Scope check"]) assert.match(pr, new RegExp(`name: ${name}`));
+  assert.ok(fullSteps.some((step) => /^astral-sh\/setup-uv@/.test(step.uses ?? "")), "Full check must set up uv");
+  assert.ok(scopeSteps.some((step) => /^pnpm\/action-setup@/.test(step.uses ?? "")), "Scope check must set up pnpm");
+  assert.ok(scopeSteps.some((step) => /\bpnpm install --frozen-lockfile\b/.test(step.run ?? "")), "Scope check must install locked Node dependencies");
   assert.match(post, /types: \[closed\]/);
   assert.match(post, /merged == true/);
   assert.match(post, /group: post-merge-/);
