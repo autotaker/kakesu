@@ -46,4 +46,3 @@ jobs:
           fetch-depth: 0
       - name: Reject main-managed paths
         run: node scripts/task/unified-lifecycle.mjs --action scope-check --main-root "$GITHUB_WORKSPACE" --event pr --base "${{ github.event.pull_request.base.sha }}" --head "${{ github.event.pull_request.head.sha }}"
-
