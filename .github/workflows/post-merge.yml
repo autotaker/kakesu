@@ -26,6 +26,10 @@ jobs:
         with:
           version: 9.15.2
       - run: pnpm install --frozen-lockfile
+      - name: Configure repository author
+        run: |
+          git config --local user.name "github-actions[bot]"
+          git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
       - name: Record merge once
         env:
           HEAD_REF: ${{ github.event.pull_request.head.ref }}
