@@ -10,3 +10,5 @@ node_modules/
 memory/dist/
 memory/.venv/
 governance/target/
+worktrees/
+.locks/

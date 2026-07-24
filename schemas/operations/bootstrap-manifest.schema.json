@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:agent-harness:operations:bootstrap-manifest:v1",
+  "x-schema-version": 1,
+  "x-schema-revision": 1,
+  "x-stability": "stable",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "task_id", "source_ref", "source_tree", "target_repository", "project_sha256", "category_counts", "entries", "manifest_sha256"],
+  "properties": {
+    "version": { "const": 1 }, "task_id": { "const": "TASK-0033" },
+    "source_ref": { "type": "string", "pattern": "^[0-9a-f]{40}$" }, "source_tree": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "target_repository": { "type": "string", "minLength": 1 }, "project_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "category_counts": { "type": "object" },
+    "entries": { "type": "array", "items": { "type": "object", "required": ["file", "origin", "bytes", "sha256"], "properties": { "file": { "type": "string" }, "origin": { "type": "string" }, "bytes": { "type": "integer", "minimum": 0 }, "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" } }, "additionalProperties": false } },
+    "manifest_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+  }
+}

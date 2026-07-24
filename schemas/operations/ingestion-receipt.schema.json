@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:agent-harness:operations:wiki-ingestion-receipt:v1",
+  "x-schema-version": 1,
+  "x-schema-revision": 1,
+  "x-stability": "stable",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "task_id", "handover_sha256", "ingested_at", "updated_pages", "created_decisions", "deferred"],
+  "properties": {
+    "version": { "const": 1 },
+    "task_id": { "type": "string", "pattern": "^TASK-[0-9]{4}$" },
+    "handover_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "ingested_at": { "type": "string", "format": "date-time" },
+    "updated_pages": { "type": "array", "items": { "type": "string", "pattern": "^wiki/semantic/.+\\.md$" }, "uniqueItems": true },
+    "created_decisions": { "type": "array", "items": { "type": "string", "pattern": "^DECISION-[0-9]{4}$" }, "uniqueItems": true },
+    "deferred": { "type": "array", "items": { "type": "string" } }
+  }
+}

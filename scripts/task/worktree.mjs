@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import {
@@ -20,7 +21,7 @@ const backlogFile = path.join(root, "backlog.yaml");
 const backlog = readYaml(backlogFile);
 const project = readYaml(path.join(root, "project.yaml"));
 const task = taskById(backlog, args.task);
-const product = path.resolve(root, project.repository_path);
+const product = root;
 const slug = task.task_dir.replace(new RegExp(`^tasks/${task.id}-`), "");
 const branch = `task/${task.id}-${slug}`;
 const relativeWorktree = path.posix.join(project.worktree_root || "worktrees", `${task.id}-${slug}`);
@@ -46,6 +47,11 @@ if (args.dry_run === "true") {
       }
       git(product, ["worktree", "add", "-b", branch, absoluteWorktree, project.default_branch]);
       created = true;
+      git(absoluteWorktree, ["sparse-checkout", "init", "--no-cone"]);
+      const patterns = ["/*", "!/backlog.yaml", "!/project.yaml", "!/tasks/", "!/wiki/", "!/lap30/", "!/viewer/index.html"];
+      const sparseFile = path.join(git(absoluteWorktree, ["rev-parse", "--git-path", "info/sparse-checkout"]));
+      fs.writeFileSync(sparseFile, `${patterns.join("\n")}\n`, "utf8");
+      git(absoluteWorktree, ["read-tree", "-mu", "HEAD"]);
       task.branch = branch;
       task.worktree = relativeWorktree;
       task.status = "dev";

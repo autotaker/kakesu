@@ -6,7 +6,7 @@ import test from "node:test";
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { checkTask } from "./check-task.mjs";
-import { acquireWorkRepoLock, dateInTimezone, estimatePoints, git, replaceTemplate, resolveInside } from "./lib.mjs";
+import { acquireWorkRepoLock, dateInTimezone, estimatePoints, git, replaceTemplate, resolveInside, workRepoLockDir } from "./lib.mjs";
 import { rollbackWorkRepository, validateDevSelection } from "./agent-routing.mjs";
 import { runWorkConfigSync } from "./run-work-config-sync.mjs";
 
@@ -465,10 +465,11 @@ test("replaceTemplate rejects unknown placeholders", () => {
 
 test("work repository lock rejects active owners and recovers stale owners", () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "work-lock-"));
+  git(root, ["init", "-b", "main"]);
   const release = acquireWorkRepoLock(root, { requireClean: false, requireMain: false });
   assert.throws(() => acquireWorkRepoLock(root, { requireClean: false, requireMain: false }), /Another work repository writer/);
   release();
-  const lock = path.join(root, ".locks", "work-repository.lock");
+  const lock = workRepoLockDir(root);
   fs.mkdirSync(lock, { recursive: true });
   fs.writeFileSync(path.join(lock, "owner.json"), '{"pid":99999999}\n');
   const releaseRecovered = acquireWorkRepoLock(root, { requireClean: false, requireMain: false });
@@ -528,7 +529,7 @@ test "\${WORK_REPO_LOCK_HELD:-}" = "1"
 test "\${WORK_PARENT_COMMIT:-}" = "1"
 test "\${WORK_ACTION:-}" = "work-config-sync"
 test "\${WORK_ALLOWED_PATHS:-}" = '[".codex/config.toml"]'
-test -d .locks/work-repository.lock
+test -d "$(git rev-parse --git-common-dir)/agent-harness-locks/work-repository.lock"
 test "$(git diff --cached --name-only)" = ".codex/config.toml"
 printf 'invoked\\n' >> hook.log
 exit ${hookExit}
@@ -555,7 +556,7 @@ test("work config sync owns lock, hook, commit, post-check, and concise evidence
       adapterRoot: root,
       validateWork() {
         validations += 1;
-        assert.equal(fs.existsSync(path.join(root, ".locks", "work-repository.lock")), true);
+        assert.equal(fs.existsSync(workRepoLockDir(root)), true);
       },
       emit: (entry) => evidence.push(entry),
     });
@@ -569,7 +570,7 @@ test("work config sync owns lock, hook, commit, post-check, and concise evidence
     assert.equal(git(root, ["show", "--format=", "--name-only", "HEAD"]), ".codex/config.toml");
     assert.equal(fs.readFileSync(path.join(root, "hook.log"), "utf8"), "invoked\n");
     assert.equal(git(root, ["status", "--porcelain"]), "");
-    assert.equal(fs.existsSync(path.join(root, ".locks", "work-repository.lock")), false);
+    assert.equal(fs.existsSync(workRepoLockDir(root)), false);
     assert.equal(evidence.length, 1);
     assert.ok(JSON.stringify(evidence[0]).length < 1000);
 
@@ -597,7 +598,7 @@ test("work config sync rolls back hook and post-check failures", async (t) => {
       assert.equal(git(root, ["rev-parse", "HEAD"]), beforeHead);
       assert.equal(git(root, ["status", "--porcelain"]), "");
       assert.equal(fs.existsSync(path.join(root, ".codex", "config.toml")), false);
-      assert.equal(fs.existsSync(path.join(root, ".locks", "work-repository.lock")), false);
+      assert.equal(fs.existsSync(workRepoLockDir(root)), false);
       assert.equal(evidence.length, 1);
       assert.equal(evidence[0].commit, null);
       assert.notEqual(evidence[0].error, null);
@@ -616,7 +617,7 @@ test("work config sync rolls back hook and post-check failures", async (t) => {
         adapterRoot: root,
         validateWork() {
           validations += 1;
-          assert.equal(fs.existsSync(path.join(root, ".locks", "work-repository.lock")), true);
+          assert.equal(fs.existsSync(workRepoLockDir(root)), true);
           if (validations === 2) throw new Error("POST_CHECK_FAILED");
         },
         emit: (entry) => evidence.push(entry),
@@ -625,7 +626,7 @@ test("work config sync rolls back hook and post-check failures", async (t) => {
       assert.equal(git(root, ["rev-parse", "HEAD"]), beforeHead);
       assert.equal(git(root, ["status", "--porcelain"]), "");
       assert.equal(fs.existsSync(path.join(root, ".codex", "config.toml")), false);
-      assert.equal(fs.existsSync(path.join(root, ".locks", "work-repository.lock")), false);
+      assert.equal(fs.existsSync(workRepoLockDir(root)), false);
       assert.equal(evidence.length, 1);
       assert.equal(evidence[0].commit, null);
       assert.match(evidence[0].error, /POST_CHECK_FAILED/);
@@ -647,14 +648,14 @@ test("work config check detects committed drift while holding the common lock", 
         assert.fail("repository validation must not mask adapter drift");
       },
       emit: (entry) => {
-        assert.equal(fs.existsSync(path.join(root, ".locks", "work-repository.lock")), true);
+        assert.equal(fs.existsSync(workRepoLockDir(root)), true);
         evidence.push(entry);
       },
     }), /ROUTING_ADAPTER_DRIFT/);
     assert.equal(git(root, ["rev-parse", "HEAD"]), beforeHead);
     assert.equal(git(root, ["status", "--porcelain"]), "");
     assert.equal(fs.readFileSync(path.join(root, ".codex", "config.toml"), "utf8"), "# committed drift\n");
-    assert.equal(fs.existsSync(path.join(root, ".locks", "work-repository.lock")), false);
+    assert.equal(fs.existsSync(workRepoLockDir(root)), false);
     assert.equal(evidence.length, 1);
     assert.equal(evidence[0].mode, "check");
     assert.equal(evidence[0].commit, null);
@@ -727,7 +728,7 @@ test("failure rollback restores HEAD, index, worktree, untracked files, and lock
       }
       const releaseAgain = acquireWorkRepoLock(root);
       releaseAgain();
-      assert.equal(fs.existsSync(path.join(root, ".locks", "work-repository.lock")), false);
+      assert.equal(fs.existsSync(workRepoLockDir(root)), false);
       fs.rmSync(root, { recursive: true, force: true });
     });
   }

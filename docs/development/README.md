@@ -1,6 +1,6 @@
 # 開発ガイドライン
 
-このディレクトリはKakesuの開発プロセスと品質ゲートの正本である。Task、バックログ、実行証跡、開発用Wikiは製品コードと分離した`agent-harness-work`リポジトリで管理する。
+このディレクトリはKakesuの開発プロセスと品質ゲートの正本である。Task、バックログ、実行証跡、開発用Wikiは製品と同じリポジトリのmain ワークツリーで管理する。
 
 ## 文書一覧
 
@@ -17,12 +17,12 @@
 ## リポジトリ境界
 
 ```text
-agent-harness/       製品コード、開発規約、再利用可能なツール
-agent-harness-work/  バックログ、Task証跡、Wiki、Decision
+agent-harness/main                 製品とmain管理証跡の正本
+agent-harness/worktrees/TASK-...   main管理証跡を除外した製品変更用ワークツリー
 ```
 
-運用リポジトリは独立したGitリポジトリとし、`main`一本で運用する。製品リポジトリのトピックブランチとワークツリーは運用リポジトリの`worktrees/`に置くが、運用リポジトリ自身のGit管理対象にはしない。
+`backlog.yaml`、`tasks/`、`wiki/`、`lap30/`、運用viewerはmainだけで更新する。製品変更用ワークツリーはリポジトリ直下の`worktrees/`に置き、このディレクトリとmain管理証跡をGit管理対象の作業領域から除外する。
 
-cloneまたは初期作成後に`make work-init`を一度実行し、共有`.githooks/pre-commit`を有効にする。子Agentの標準経路は内部の`agents.spawn_agent`であり、`task_name`（識別子）と`agent_type`（ロール選択）を分離し、異種ロールには`fork_turns="none"`を明示する。ロール対応と`model/effort`の照合、異常時の停止・証跡化、`Explorer`の一問・`read-only`・再委譲禁止の契約は[Agent責務](agent-roles.md)を参照する。案/treeの固定とQA モードの割当は[QA](qa.md)を参照する。
+clone後は`core.hooksPath=.githooks`を設定する。子Agentの標準経路は内部の`agents.spawn_agent`であり、`task_name`（識別子）と`agent_type`（ロール選択）を分離し、異種ロールには`fork_turns="none"`を明示する。ロール対応と`model/effort`の照合、異常時の停止・証跡化、`Explorer`の一問・`read-only`・再委譲禁止の契約は[Agent責務](agent-roles.md)を参照する。案/treeの固定とQA モードの割当は[QA](qa.md)を参照する。
 
-`agent_type`または内部`Spawn Agent`が利用できない場合、または起動後の`model/effort`が契約と不一致の場合だけ、親は原因を記録し、（不一致なら子の成果を採用せず停止・証跡化した後に）`fallback`可否を判断する。選択した場合に限り、親が`make work-agent`（`Explorer`は一問専用の`make explorer-agent`）を`fallback`として使う。運用リポジトリへ証跡を書く場合、ネイティブ/`fallback`を問わず親が共通ロックを保持し、スコープ検査、`hook`、`stage`、`commit`、事後検査を所有する。`fallback`ランチャーはこのロックを編集開始からコミット後検査まで保持し、フックがSchema、フェーズゲート、action別変更範囲を検証する。生成アダプターの`make work-config-sync`はAgentを起動しない専用の親所有経路であり、同じロックとフックを使って生成、コミット、事後検査を一続きで行う。PLAN→DEVの後、レビュアーとQAは同一案から独立かつ並行に評価する。DEVとレビュアー/QAの分離、レビュアー/QAが自ら軽微と判断した指摘をTask ワークツリーで修正・ステージ・コミットする場合を除く子のGit禁止、Main所有の承認・統合は起動方式によらず不変である。マージ後は`merge_tree`と案 treeを比較し、環境依存ケースだけを確認する。
+`agent_type`または内部`Spawn Agent`が利用できない場合、または起動後の`model/effort`が契約と不一致の場合、親は原因を記録して停止する。main管理証跡は親が`make evidence-commit TASK=... ACTION=...`で公開し、共通ロック、action別スコープ、hook、最大2回のリモート 再試行を一続きで所有する。PLAN→DEVの後、レビュアーとQAは同一composite 案から独立かつ並行に評価する。両PASS後にMainが`make task-pr`を実行し、必須 check付きmerge コミット auto-mergeを有効にする。

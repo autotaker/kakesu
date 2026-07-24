@@ -7,7 +7,9 @@ UV ?= uv
 NODE ?= node
 PNPM ?= pnpm
 PRODUCT_ROOT ?= $(abspath $(dir $(shell git rev-parse --path-format=absolute --git-common-dir)))
-WORK_ROOT ?= $(abspath $(PRODUCT_ROOT)/../agent-harness-work)
+MAIN_ROOT ?= $(PRODUCT_ROOT)
+SOURCE_REF ?= d030db5dc2974056387616d047197823b94602ce
+SOURCE_HEAD ?= a49338d5013f8e54f72a9c7cc4f92c4a76c52d91
 WIKI_CONTEXT_TARGET ?= task
 WIKI_PROFILE ?=
 WIKI_MODEL ?= gpt-5.6-terra
@@ -17,7 +19,8 @@ UV_ENV := UV_CACHE_DIR=$(CURDIR)/.build/uv-cache
 .PHONY: build build-core build-memory build-governance node-deps
 .PHONY: test test-core test-memory test-governance test-tabletop test-docs test-process
 .PHONY: lint lint-core lint-memory lint-governance lint-docs
-.PHONY: check clean work-init work-agent explorer-agent work-config-sync task-create task-check task-preflight work-check backlog-view worktree-create worktree-remove wiki-index wiki-context wiki-ingest
+.PHONY: check clean explorer-agent task-start task-check task-preflight work-check backlog-view wiki-index wiki-context wiki-ingest
+.PHONY: evidence-commit task-pr task-scope-check sync bootstrap-plan bootstrap-apply bootstrap-verify bootstrap-freeze bootstrap-unfreeze
 
 build: build-core build-memory build-governance
 
@@ -81,61 +84,63 @@ check: build test lint
 	$(NODE) scripts/build-tabletop-viewer-data.mjs
 	git diff --check
 
-work-init: node-deps
-	$(NODE) scripts/task/init-work.mjs --work-root "$(WORK_ROOT)"
-
-work-agent: node-deps
-	@test -n "$(TASK)" || (echo "TASK is required" >&2; exit 1)
-	@test -n "$(ACTION)" || (echo "ACTION is required" >&2; exit 1)
-	$(NODE) scripts/task/run-work-agent.mjs --work-root "$(WORK_ROOT)" --task "$(TASK)" --action "$(ACTION)" $(if $(PROFILE),--profile "$(PROFILE)",) $(if $(MODEL),--model "$(MODEL)",) $(if $(EFFORT),--effort "$(EFFORT)",)
-
 explorer-agent: node-deps
 	@test -n "$$QUESTION" || (echo "QUESTION is required" >&2; exit 1)
 	$(NODE) scripts/task/run-explorer-agent.mjs --root "$(if $(EXPLORER_ROOT),$$EXPLORER_ROOT,$(CURDIR))" --question "$$QUESTION" $(if $(DRY_RUN),--dry-run "$$DRY_RUN",)
 
-work-config-sync: node-deps
-	$(NODE) scripts/task/run-work-config-sync.mjs --work-root "$(WORK_ROOT)" --mode "$(if $(CHECK),check,sync)"
-
-task-create: node-deps
+task-start: node-deps
 	@test -n "$(ID)" || (echo "ID is required" >&2; exit 1)
 	@test -n "$(SLUG)" || (echo "SLUG is required" >&2; exit 1)
 	@test -n "$(TITLE)" || (echo "TITLE is required" >&2; exit 1)
-	@test -n "$(EPIC)" || (echo "EPIC is required" >&2; exit 1)
-	$(NODE) scripts/task/create-task.mjs --work-root "$(WORK_ROOT)" --id "$(ID)" --slug "$(SLUG)" --title "$(TITLE)" --epic "$(EPIC)" --type "$(or $(TYPE),feature)" --priority "$(or $(PRIORITY),P2)"
+	$(NODE) scripts/task/unified-lifecycle.mjs --action task-start --main-root "$(MAIN_ROOT)" --id "$(ID)" --slug "$(SLUG)" --title "$(TITLE)" --epic "$(or $(EPIC),EPIC-001)" --type "$(or $(TYPE),feature)" --priority "$(or $(PRIORITY),P2)" --push "$(if $(NO_PUSH),false,true)"
+
+evidence-commit: node-deps
+	@test -n "$(TASK)" || (echo "TASK is required" >&2; exit 1)
+	@test -n "$(ACTION)" || (echo "ACTION is required" >&2; exit 1)
+	$(NODE) scripts/task/unified-lifecycle.mjs --action evidence-commit --main-root "$(MAIN_ROOT)" --task "$(TASK)" --evidence-action "$(ACTION)" --message "$(or $(MESSAGE),task: $(ACTION) $(TASK))" --push "$(if $(NO_PUSH),false,true)"
+
+task-pr: node-deps
+	@test -n "$(TASK)" || (echo "TASK is required" >&2; exit 1)
+	$(NODE) scripts/task/unified-lifecycle.mjs --action task-pr --main-root "$(MAIN_ROOT)" --task "$(TASK)" --repo "$(or $(REPO),autotaker/kakesu)" --dry-run "$(if $(DRY_RUN),true,false)"
 
 task-check: node-deps
 	@test -n "$(TASK)" || (echo "TASK is required" >&2; exit 1)
-	$(NODE) scripts/task/check-task.mjs --work-root "$(WORK_ROOT)" --task "$(TASK)"
+	$(NODE) scripts/task/check-task.mjs --work-root "$(MAIN_ROOT)" --task "$(TASK)"
 
 task-preflight: node-deps
 	@test -n "$(TASK)" || (echo "TASK is required" >&2; exit 1)
-	$(NODE) scripts/task/check-task.mjs --work-root "$(WORK_ROOT)" --task "$(TASK)" --phase preflight
+	$(NODE) scripts/task/check-task.mjs --work-root "$(MAIN_ROOT)" --task "$(TASK)" --phase preflight
 
 work-check: node-deps
-	$(NODE) scripts/task/validate-work.mjs --work-root "$(WORK_ROOT)"
+	$(NODE) scripts/task/validate-work.mjs --work-root "$(MAIN_ROOT)" --schema-root "$(CURDIR)"
 
 backlog-view: node-deps work-check
-	$(NODE) scripts/task/build-backlog-viewer.mjs --work-root "$(WORK_ROOT)"
-
-worktree-create: node-deps
-	@test -n "$(TASK)" || (echo "TASK is required" >&2; exit 1)
-	$(NODE) scripts/task/worktree.mjs --work-root "$(WORK_ROOT)" --task "$(TASK)" --action create
-
-worktree-remove: node-deps
-	@test -n "$(TASK)" || (echo "TASK is required" >&2; exit 1)
-	$(NODE) scripts/task/worktree.mjs --work-root "$(WORK_ROOT)" --task "$(TASK)" --action remove
+	$(NODE) scripts/task/build-backlog-viewer.mjs --work-root "$(MAIN_ROOT)"
 
 wiki-index: node-deps
-	$(NODE) scripts/task/wiki-index.mjs --work-root "$(WORK_ROOT)"
+	$(NODE) scripts/task/wiki-index.mjs --work-root "$(MAIN_ROOT)"
 
 wiki-context: node-deps
 	@test -n "$(TASK)" || (echo "TASK is required" >&2; exit 1)
 	@test "$(WIKI_CONTEXT_TARGET)" = "task" -o "$(WIKI_CONTEXT_TARGET)" = "plan" || (echo "WIKI_CONTEXT_TARGET must be task or plan" >&2; exit 1)
-	$(NODE) scripts/task/run-wiki-agent.mjs --work-root "$(WORK_ROOT)" --task "$(TASK)" --action "context-$(WIKI_CONTEXT_TARGET)" $(if $(WIKI_PROFILE),--profile "$(WIKI_PROFILE)",) $(if $(WIKI_MODEL),--model "$(WIKI_MODEL)",) $(if $(WIKI_EFFORT),--effort "$(WIKI_EFFORT)",)
+	$(NODE) scripts/task/run-wiki-agent.mjs --work-root "$(MAIN_ROOT)" --task "$(TASK)" --action "context-$(WIKI_CONTEXT_TARGET)" $(if $(WIKI_PROFILE),--profile "$(WIKI_PROFILE)",) $(if $(WIKI_MODEL),--model "$(WIKI_MODEL)",) $(if $(WIKI_EFFORT),--effort "$(WIKI_EFFORT)",)
 
 wiki-ingest: node-deps
 	@test -n "$(TASK)" || (echo "TASK is required" >&2; exit 1)
-	$(NODE) scripts/task/run-wiki-agent.mjs --work-root "$(WORK_ROOT)" --task "$(TASK)" --action ingest $(if $(WIKI_PROFILE),--profile "$(WIKI_PROFILE)",) $(if $(WIKI_MODEL),--model "$(WIKI_MODEL)",) $(if $(WIKI_EFFORT),--effort "$(WIKI_EFFORT)",)
+	$(NODE) scripts/task/run-wiki-agent.mjs --work-root "$(MAIN_ROOT)" --task "$(TASK)" --action ingest $(if $(WIKI_PROFILE),--profile "$(WIKI_PROFILE)",) $(if $(WIKI_MODEL),--model "$(WIKI_MODEL)",) $(if $(WIKI_EFFORT),--effort "$(WIKI_EFFORT)",)
+
+task-scope-check: node-deps
+	$(NODE) scripts/task/unified-lifecycle.mjs --action scope-check --main-root "$(MAIN_ROOT)" --event "$(EVENT)" --base "$(BASE)" --head "$(HEAD)"
+
+sync: node-deps
+	$(NODE) scripts/task/unified-lifecycle.mjs --action sync --main-root "$(MAIN_ROOT)" --fast "$(or $(FAST),0)" --repo "$(or $(REPO),autotaker/kakesu)" --push "$(if $(NO_PUSH),false,true)"
+
+bootstrap-plan bootstrap-apply bootstrap-freeze bootstrap-unfreeze: node-deps
+	@test -n "$(SOURCE_ROOT)" || (echo "SOURCE_ROOT is required" >&2; exit 1)
+	$(NODE) scripts/task/migrate-operations.mjs --mode "$(patsubst bootstrap-%,%,$@)" --source "$(SOURCE_ROOT)" --source-ref "$(SOURCE_REF)" --expected-head "$(SOURCE_HEAD)" --target "$(MAIN_ROOT)"
+
+bootstrap-verify: node-deps
+	$(NODE) scripts/task/migrate-operations.mjs --mode verify --target "$(MAIN_ROOT)"
 
 clean:
 	rm -rf .build memory/dist memory/.venv governance/target

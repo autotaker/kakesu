@@ -4,17 +4,17 @@
 
 - Task ID: `TASK-NNNN`
 - ブランチ: `task/TASK-NNNN-short-slug`
-- ワークツリー: `../agent-harness-work/worktrees/TASK-NNNN-short-slug`
+- ワークツリー: `worktrees/TASK-NNNN-short-slug`
 
 ## 作成
 
-ワークツリーはPLAN承認後にmain Agentが作成する。開始点は最新の`main`とし、同じTask IDのブランチまたはワークツリーが既にある場合は自動上書きしない。
+main Agentはcleanかつ最新の`main`からTask起票と同じトランザクションでワークツリーを作成する。同じTask IDのブランチまたはワークツリーが既にある場合は自動上書きしない。DEVはPLANとQA_PLANの承認まで開始しない。
 
 ```sh
-make worktree-create TASK=TASK-0001
+make task-start ID=TASK-0001 SLUG=short-slug TITLE='title'
 ```
 
-このコマンドは運用リポジトリの共通ロックを取り、登録済みAgentの分離、承認済みPLANとQA計画を検査してから、ブランチとワークツリーを作成する。バックログの割り当ても同じ操作で`main`へコミットする。
+このコマンドはmain管理証跡の共通ロックを取り、Taskとバックログを検査・公開してから、ブランチとsparse ワークツリーを作成する。作成失敗時は今回作成した証跡だけを訂正し、既存資源を削除しない。
 
 ## DEV中
 
@@ -44,4 +44,4 @@ git merge --no-ff task/TASK-0001-example
 - revertしてDEVへ戻す: 同じワークツリーとブランチを再利用する。
 - QAまたはPLANへ戻す: 製品変更が必要になるまでワークツリーを保持する。
 
-終了後は`make worktree-remove TASK=TASK-0001`を使う。`done`ではブランチが製品`main`へマージ済みであることを検査してから削除する。
+終了後は`make sync`がmerged済みでcleanなワークツリー/ブランチだけを削除する。dirty、競合、赤CIでは削除前に停止する。

@@ -1,0 +1,33 @@
+name: Main evidence
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: main-evidence-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  evidence:
+    name: Evidence check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Reject product paths on direct main push
+        run: node scripts/task/unified-lifecycle.mjs --action scope-check --main-root "$GITHUB_WORKSPACE" --event main --base "${{ github.event.before }}" --head "${{ github.sha }}" --allow-merge true
+      - name: Validate evidence
+        run: make work-check
