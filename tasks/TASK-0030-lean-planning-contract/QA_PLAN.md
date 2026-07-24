@@ -16,7 +16,7 @@ expectation_change_approved_by: ""
 ## TASK-first baseline
 
 この初版はTASK.mdだけから作成した。`qa` roleの正規契約
-`gpt-5.6-terra` / `medium` は[`.codex/agents/qa.toml`](../../../agent-harness/.codex/agents/qa.toml)
+`gpt-5.6-terra` / `medium` は[`.codex/agents/qa.toml`](../../.codex/agents/qa.toml)
 と現在のQA割当で一致する。これは製品artifactを変更しない
 `safety_contract`であり、製品DEV、製品candidate、`QA_RESULT.md`の製品PASSは対象外である。
 TASK修正により、運用リポジトリの`run-lap30`と外部pathはこの製品merge treeで完成を検証できない

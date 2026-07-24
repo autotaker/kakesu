@@ -19,8 +19,8 @@ Wiki本文とDecisionの保守はWiki Agentの責任である。人間またはm
 4. 一Taskだけの事情、未確認の主張、単なる作業要約をSemantic Wikiへ昇格させない。
 5. Decisionを置換する場合、旧Decision本文を改変せず、新Decisionから`supersedes`で参照する。
 6. `ingestions/TASK-NNNN.json`を作成する。
-7. `make -C ../agent-harness WORK_ROOT="$PWD" wiki-index`を実行する。
-8. `make -C ../agent-harness WORK_ROOT="$PWD" work-check`を実行する。
+7. repository rootで`make wiki-index`を実行する。
+8. repository rootで`make work-check`を実行する。
 9. 許可範囲だけが変更されたことを確認し、`wiki: ingest TASK-NNNN`で`main`へ直接コミットする。pre-commit hookを迂回してはならない。
 
 Wiki Agent起動ラッパーが共通書き込みロックを保持する。`.githooks/pre-commit`はコミット前に許可パス、Decision不変条件、Schema、Taskゲート、HANDOVER digestを検査する。
