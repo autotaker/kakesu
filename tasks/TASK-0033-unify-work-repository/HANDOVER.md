@@ -11,9 +11,9 @@ safety_checked_at: ""
 safety_check_digest: ""
 safety_candidate_tree: ""
 safety_merge_tree: ""
-candidate_commit: "d23493c9cf45cefc3f9b8374300f21581273e97e"
-candidate_tree: "d17ec40bc4b89089d87ef99eb1be1c5d64cb7cd2"
-managed_path_digest: "b68fe3d559749808d8a28137b9c54a7474705e0a2f8140a7c8db29194fe43a14"
+candidate_commit: "4773e2e2a70eda651cec953be6110d7d491dc600"
+candidate_tree: "5b2ede5d0a02777b59e8302024757c72bf43320a"
+managed_path_digest: "1725dcebeadaabf38a49f1bfb3cb28c9749b8c68a9f2fef78636e6c0fe033822"
 bootstrap_evidence_commit: "a063f6d461bbc6ce752d93306f83e4939e299d1e"
 bootstrap_evidence_digest: "279dc69dba63337208ac4d0dd065db8055e7bb0b00fb8df5e0f9024d9f283329"
 ---
@@ -27,9 +27,9 @@ bootstrap_evidence_digest: "279dc69dba63337208ac4d0dd065db8055e7bb0b00fb8df5e0f9
 
 ## candidate-bound DEV証跡
 
-- `candidate_commit`: `d23493c9cf45cefc3f9b8374300f21581273e97e`
-- `candidate_tree`: `d17ec40bc4b89089d87ef99eb1be1c5d64cb7cd2`
-- `managed_path_digest`: `b68fe3d559749808d8a28137b9c54a7474705e0a2f8140a7c8db29194fe43a14`。DEV初回working-tree manifestは33ファイル、SHA-256 `77dcb2599590fb8ab78a101de7addc403811e797844cdc1ceec8ac8b6c9fcdaa`。
+- `candidate_commit`: `4773e2e2a70eda651cec953be6110d7d491dc600`
+- `candidate_tree`: `5b2ede5d0a02777b59e8302024757c72bf43320a`
+- `managed_path_digest`: `1725dcebeadaabf38a49f1bfb3cb28c9749b8c68a9f2fef78636e6c0fe033822`。DEV初回working-tree manifestは33ファイル、SHA-256 `77dcb2599590fb8ab78a101de7addc403811e797844cdc1ceec8ac8b6c9fcdaa`。
 - `bootstrap_evidence_commit` / `bootstrap_evidence_digest`: `a063f6d461bbc6ce752d93306f83e4939e299d1e` / `279dc69dba63337208ac4d0dd065db8055e7bb0b00fb8df5e0f9024d9f283329`。
 
 | ケース ID | コマンド/テスト | 環境/フィクスチャ | cache条件 | exit | 成果物 ダイジェスト | 未実施理由 |
@@ -95,7 +95,7 @@ bootstrap_evidence_digest: "279dc69dba63337208ac4d0dd065db8055e7bb0b00fb8df5e0f9
 
 - 選択: `full-rerun`（candidate固定済み。carry-forward不可のsecurity/workflow/schema/lifecycle変更）。
 - 選択: `not-applicable | qa_carry_forward | focused-rerun | full-rerun`
-- Main判断の旧新コミット/tree、全差分とダイジェスト、影響ケース集合、レビュアー/`make check`証拠、理由: candidate `d23493c9cf45cefc3f9b8374300f21581273e97e` / tree `d17ec40bc4b89089d87ef99eb1be1c5d64cb7cd2` / managed digest `b68fe3d559749808d8a28137b9c54a7474705e0a2f8140a7c8db29194fe43a14`、bootstrap `a063f6d461bbc6ce752d93306f83e4939e299d1e` / digest `279dc69dba63337208ac4d0dd065db8055e7bb0b00fb8df5e0f9024d9f283329`。初回merge `bacb76c77810b60c5d831f150f2f64f034e3e18f`後のPost merge evidence run `30090409426`でNode依存未導入を検出したため、record jobにlocked pnpm installを追加し、structured workflow contract testで欠落を拒否する。CI設定変更のためcarry-forwardせず、独立REVIEW/QAを新しい同一composite candidateから全面再実行する。
+- Main判断の旧新コミット/tree、全差分とダイジェスト、影響ケース集合、レビュアー/`make check`証拠、理由: candidate `4773e2e2a70eda651cec953be6110d7d491dc600` / tree `5b2ede5d0a02777b59e8302024757c72bf43320a` / managed digest `1725dcebeadaabf38a49f1bfb3cb28c9749b8c68a9f2fef78636e6c0fe033822`、bootstrap `a063f6d461bbc6ce752d93306f83e4939e299d1e` / digest `279dc69dba63337208ac4d0dd065db8055e7bb0b00fb8df5e0f9024d9f283329`。PR #2 merge `6028c6c959aca4e9bf1c78bf98963587de39a8b9`後のPost merge evidence run `30090962922` attempt 2でGit author identity未設定を検出したため、repository-local GitHub Actions bot identityを設定し、exact commandsをstructured workflow contract testで必須化する。CI設定変更のためcarry-forwardせず、独立REVIEW/QAを新しい同一composite candidateから全面再実行する。
 - carry-forward時の`QA_RESULT.md` `CF-1`から`CF-7`: `not-applicable | complete | incomplete`
 - 影響QAケース集合が空でない場合の再実行証拠: TODO
 - `merge_tree`と案 treeの比較: `pending`
