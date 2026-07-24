@@ -415,5 +415,10 @@ test("workflow responsibilities are disjoint and required check names are stable
   assert.match(post, /group: post-merge-/);
   assert.ok(postSteps.some((step) => step.uses === "pnpm/action-setup@v4" && step.with?.version === "9.15.2"), "Post merge evidence must set up the declared pnpm version");
   assert.ok(postSteps.some((step) => /\bpnpm install --frozen-lockfile\b/.test(step.run ?? "")), "Post merge evidence must install locked Node dependencies");
+  const authorStep = postSteps.find((step) => step.name === "Configure repository author");
+  assert.deepEqual(authorStep?.run.trim().split(/\r?\n/), [
+    'git config --local user.name "github-actions[bot]"',
+    'git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"',
+  ]);
   assert.doesNotMatch(`${main}\n${pr}\n${post}`, /workflow_run|auth\.json|CODEX_HOME/);
 });
