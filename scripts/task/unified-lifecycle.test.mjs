@@ -400,8 +400,10 @@ test("workflow responsibilities are disjoint and required check names are stable
   const pr = fs.readFileSync(path.join(ROOT, ".github/workflows/pr-ci.yml"), "utf8");
   const post = fs.readFileSync(path.join(ROOT, ".github/workflows/post-merge.yml"), "utf8");
   const prWorkflow = parseYaml(pr);
+  const postWorkflow = parseYaml(post);
   const fullSteps = prWorkflow.jobs.full.steps;
   const scopeSteps = prWorkflow.jobs.scope.steps;
+  const postSteps = postWorkflow.jobs.record.steps;
   assert.match(main, /permissions:\n  contents: read/);
   assert.doesNotMatch(main, /git push|evidence-commit/);
   for (const name of ["Full check", "Task check", "Scope check"]) assert.match(pr, new RegExp(`name: ${name}`));
@@ -411,5 +413,7 @@ test("workflow responsibilities are disjoint and required check names are stable
   assert.match(post, /types: \[closed\]/);
   assert.match(post, /merged == true/);
   assert.match(post, /group: post-merge-/);
+  assert.ok(postSteps.some((step) => step.uses === "pnpm/action-setup@v4" && step.with?.version === "9.15.2"), "Post merge evidence must set up the declared pnpm version");
+  assert.ok(postSteps.some((step) => /\bpnpm install --frozen-lockfile\b/.test(step.run ?? "")), "Post merge evidence must install locked Node dependencies");
   assert.doesNotMatch(`${main}\n${pr}\n${post}`, /workflow_run|auth\.json|CODEX_HOME/);
 });
