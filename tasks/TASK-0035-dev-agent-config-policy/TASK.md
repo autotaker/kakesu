@@ -52,7 +52,7 @@ created_at: "2026-08-01"
 |---|---|---|---|
 | REF-1 | `docs/development/development-agent-harness.md` | commit `14af73e`時点 | 外部開発基盤、fail-closed、段階導入、配置境界 |
 | REF-2 | `tools/dev-agent-harness` scaffold | commit `14af73e` | 既存CLI、設定例、configure/make install契約 |
-| REF-3 | `tools/dev-agent-harness/go.mod` | `go 1.22`、外部module依存なし | 実装言語と標準libraryのみの依存境界 |
+| REF-3 | `tools/dev-agent-harness/go.mod` | commit `14af73e`の`go 1.24`、外部module依存なし | 実装言語と標準libraryのみの依存境界 |
 
 ### 依存状態
 
