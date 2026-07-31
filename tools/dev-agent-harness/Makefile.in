@@ -1,0 +1,130 @@
+PACKAGE_NAME = @PACKAGE_NAME@
+PACKAGE_VERSION = @PACKAGE_VERSION@
+
+prefix = @prefix@
+exec_prefix = @exec_prefix@
+bindir = @bindir@
+sbindir = @sbindir@
+libexecdir = @libexecdir@
+sysconfdir = @sysconfdir@
+localstatedir = @localstatedir@
+runstatedir = @runstatedir@
+datarootdir = @datarootdir@
+datadir = @datadir@
+
+systemd_unit_dir = @systemd_unit_dir@
+sysusers_dir = @sysusers_dir@
+tmpfiles_dir = @tmpfiles_dir@
+enable_live_tests = @enable_live_tests@
+
+GO = @GO@
+GOFLAGS ?=
+INSTALL = @INSTALL@
+INSTALL_PROGRAM = @INSTALL_PROGRAM@
+INSTALL_DATA = @INSTALL_DATA@
+MKDIR_P = @MKDIR_P@
+
+BUILD_DIR = .build
+GOCACHE = $(CURDIR)/$(BUILD_DIR)/go-cache
+DIST_DIR = .dist
+PACKAGE_TARNAME = dev-agent-harness-$(PACKAGE_VERSION)
+MODULE = github.com/autotaker/kakesu/tools/dev-agent-harness
+LDFLAGS = -X $(MODULE)/internal/command.Version=$(PACKAGE_VERSION)
+
+LIBEXEC_PROGRAMS = dev-agent-approval dev-agent-broker dev-agent-egress dev-agent-launcher
+BIN_PROGRAMS = git-credential-dev-agent
+SBIN_PROGRAMS = dev-agent-harness-setup
+PROGRAMS = $(LIBEXEC_PROGRAMS) $(BIN_PROGRAMS) $(SBIN_PROGRAMS)
+PROGRAM_TARGETS = $(PROGRAMS:%=$(BUILD_DIR)/%)
+SYSTEMD_UNITS = dev-agent-approval.service dev-agent-broker.service dev-agent-egress.service
+GO_SOURCES = $(shell find cmd internal -type f -name '*.go' | sort) go.mod
+DIST_FILES = .gitignore README.md Makefile.in configure configure.ac go.mod build-aux/install-sh m4/.gitkeep \
+	$(shell find cmd internal -type f | sort) \
+	$(shell find config deploy -type f -name '*.in' | sort)
+
+.PHONY: all check check-unit check-binaries check-live install install-exec install-data install-strip uninstall clean distclean dist distcheck
+
+all: $(PROGRAM_TARGETS)
+
+$(BUILD_DIR)/%: $(GO_SOURCES)
+	$(MKDIR_P) $(BUILD_DIR) $(GOCACHE)
+	GOCACHE=$(GOCACHE) CGO_ENABLED=0 $(GO) build $(GOFLAGS) -ldflags '$(LDFLAGS)' -o $@ ./cmd/$*
+
+check: check-unit check-binaries check-live
+
+check-unit:
+	GOCACHE=$(GOCACHE) $(GO) test ./...
+	GOCACHE=$(GOCACHE) $(GO) vet ./...
+
+check-binaries: all
+	@for program in $(PROGRAMS); do \
+		$(BUILD_DIR)/$$program --version >/dev/null || exit 1; \
+		if $(BUILD_DIR)/$$program >/dev/null 2>&1; then \
+			echo "$$program must fail closed until implemented" >&2; exit 1; \
+		fi; \
+	done
+
+check-live:
+	@if test "$(enable_live_tests)" = yes; then \
+		echo "live tests are not implemented in the scaffold" >&2; exit 1; \
+	else \
+		echo "SKIP live tests (configure with --enable-live-tests on an isolated Ubuntu host)"; \
+	fi
+
+install: install-exec install-data
+
+install-exec: all
+	$(MKDIR_P) $(DESTDIR)$(libexecdir)/dev-agent-harness $(DESTDIR)$(bindir) $(DESTDIR)$(sbindir)
+	@for program in $(LIBEXEC_PROGRAMS); do \
+		$(INSTALL_PROGRAM) $(BUILD_DIR)/$$program $(DESTDIR)$(libexecdir)/dev-agent-harness/$$program; \
+	done
+	@for program in $(BIN_PROGRAMS); do \
+		$(INSTALL_PROGRAM) $(BUILD_DIR)/$$program $(DESTDIR)$(bindir)/$$program; \
+	done
+	@for program in $(SBIN_PROGRAMS); do \
+		$(INSTALL_PROGRAM) $(BUILD_DIR)/$$program $(DESTDIR)$(sbindir)/$$program; \
+	done
+
+install-data:
+	$(MKDIR_P) $(DESTDIR)$(sysconfdir)/dev-agent-harness $(DESTDIR)$(systemd_unit_dir) $(DESTDIR)$(sysusers_dir) $(DESTDIR)$(tmpfiles_dir)
+	$(INSTALL_DATA) config/harness.json.example $(DESTDIR)$(sysconfdir)/dev-agent-harness/harness.json.example
+	@for unit in $(SYSTEMD_UNITS); do \
+		$(INSTALL_DATA) deploy/systemd/$$unit $(DESTDIR)$(systemd_unit_dir)/$$unit; \
+	done
+	$(INSTALL_DATA) deploy/sysusers/dev-agent-harness.conf $(DESTDIR)$(sysusers_dir)/dev-agent-harness.conf
+	$(INSTALL_DATA) deploy/tmpfiles/dev-agent-harness.conf $(DESTDIR)$(tmpfiles_dir)/dev-agent-harness.conf
+
+install-strip:
+	$(MAKE) clean
+	$(MAKE) GOFLAGS='$(GOFLAGS) -trimpath' LDFLAGS='$(LDFLAGS) -s -w' install
+
+uninstall:
+	@for program in $(LIBEXEC_PROGRAMS); do rm -f $(DESTDIR)$(libexecdir)/dev-agent-harness/$$program; done
+	@for program in $(BIN_PROGRAMS); do rm -f $(DESTDIR)$(bindir)/$$program; done
+	@for program in $(SBIN_PROGRAMS); do rm -f $(DESTDIR)$(sbindir)/$$program; done
+	@for unit in $(SYSTEMD_UNITS); do rm -f $(DESTDIR)$(systemd_unit_dir)/$$unit; done
+	rm -f $(DESTDIR)$(sysconfdir)/dev-agent-harness/harness.json.example
+	rm -f $(DESTDIR)$(sysusers_dir)/dev-agent-harness.conf $(DESTDIR)$(tmpfiles_dir)/dev-agent-harness.conf
+
+clean:
+	rm -rf $(BUILD_DIR)
+
+distclean: clean
+	rm -f Makefile config.log config.status config/harness.json.example
+	rm -f $(SYSTEMD_UNITS:%=deploy/systemd/%) deploy/sysusers/dev-agent-harness.conf deploy/tmpfiles/dev-agent-harness.conf
+
+dist:
+	rm -rf $(DIST_DIR)
+	$(MKDIR_P) $(DIST_DIR)/$(PACKAGE_TARNAME)
+	@for file in $(DIST_FILES); do \
+		$(MKDIR_P) $(DIST_DIR)/$(PACKAGE_TARNAME)/`dirname $$file`; \
+		cp -p $$file $(DIST_DIR)/$(PACKAGE_TARNAME)/$$file; \
+	done
+	tar -czf $(DIST_DIR)/$(PACKAGE_TARNAME).tar.gz -C $(DIST_DIR) $(PACKAGE_TARNAME)
+	rm -rf $(DIST_DIR)/$(PACKAGE_TARNAME)
+
+distcheck: dist
+	rm -rf $(DIST_DIR)/check
+	$(MKDIR_P) $(DIST_DIR)/check
+	tar -xzf $(DIST_DIR)/$(PACKAGE_TARNAME).tar.gz -C $(DIST_DIR)/check
+	cd $(DIST_DIR)/check/$(PACKAGE_TARNAME) && ./configure && $(MAKE) && $(MAKE) check

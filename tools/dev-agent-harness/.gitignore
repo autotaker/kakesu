@@ -1,0 +1,11 @@
+/.build/
+/.dist/
+/Makefile
+/config.log
+/config.status
+/configure~
+/autom4te.cache/
+/config/harness.json.example
+/deploy/systemd/*.service
+/deploy/sysusers/dev-agent-harness.conf
+/deploy/tmpfiles/dev-agent-harness.conf

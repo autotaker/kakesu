@@ -1,0 +1,18 @@
+[Unit]
+Description=Development Agent Harness credential broker
+After=network.target
+
+[Service]
+Type=simple
+User=@broker_user@
+Group=@broker_user@
+ExecStart=@harness_libexecdir@/dev-agent-harness/dev-agent-broker
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectHome=yes
+ProtectSystem=strict
+ReadWritePaths=@localstatedir@/lib/dev-agent-harness @runstatedir@/dev-agent-harness
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

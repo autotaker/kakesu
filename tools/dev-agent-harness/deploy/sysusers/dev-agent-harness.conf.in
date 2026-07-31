@@ -1,0 +1,3 @@
+u @agent_user@ - "Development Agent Harness untrusted command user" /nonexistent
+u @runtime_user@ - "Development Agent Harness trusted runtime user" /nonexistent
+u @broker_user@ - "Development Agent Harness broker user" /nonexistent

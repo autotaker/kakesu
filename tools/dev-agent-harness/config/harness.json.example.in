@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "paths": {
+    "config_dir": "@sysconfdir@/dev-agent-harness",
+    "state_dir": "@localstatedir@/lib/dev-agent-harness",
+    "runtime_dir": "@runstatedir@/dev-agent-harness"
+  },
+  "users": {
+    "agent": "@agent_user@",
+    "runtime": "@runtime_user@",
+    "broker": "@broker_user@"
+  },
+  "network": {
+    "default": "deny"
+  }
+}

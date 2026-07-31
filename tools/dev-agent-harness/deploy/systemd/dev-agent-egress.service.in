@@ -1,0 +1,19 @@
+[Unit]
+Description=Development Agent Harness egress proxy
+After=network.target dev-agent-broker.service
+Requires=dev-agent-broker.service
+
+[Service]
+Type=simple
+User=@broker_user@
+Group=@broker_user@
+ExecStart=@harness_libexecdir@/dev-agent-harness/dev-agent-egress
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectHome=yes
+ProtectSystem=strict
+ReadWritePaths=@runstatedir@/dev-agent-harness
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

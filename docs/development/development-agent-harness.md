@@ -151,7 +151,7 @@ Approval UI、ブローカー管理ソケット、Tailscale LocalAPIへ経路を
 
 実認証情報はオーナーがprovisionするが、Agent workspaceやリポジトリには置かない。ブローカー専用の
 `0600` ファイル、kernel keyring、または外部秘密情報 マネージャーのいずれかを後続Taskで選ぶ。選択にかかわらず、
-平文秘密情報をコマンド line、job-wide environment、unit 状態、journal、監査 ログへ出してはならない。
+平文秘密情報をコマンド line、job-wide environment、ユニット状態、journal、監査 ログへ出してはならない。
 
 ブローカーはプロバイダー トークンを必要時に生成・取得し記憶に短時間だけ保持する。GitHubはリポジトリを限定した
 GitHub App installation 認証情報を第一候補とし、恒久PATを通常経路にしない。OpenAI API キーはブローカーの
@@ -433,7 +433,7 @@ live テストが失敗した場合、それ以降の権限を開かない。
 
 ## 16. 後続Taskの分割
 
-1. Ubuntu 識別情報、systemd unit、マウント/PID/ネットワーク 名前空間、deny-all 外向き通信の実装とネガティブ テスト。
+1. Ubuntu 識別情報、systemdユニット、マウント/PID/ネットワーク 名前空間、deny-all 外向き通信の実装とネガティブ テスト。
 2. ブローカー/外向き通信 プロキシ、ケイパビリティ スキーマ、CA ライフサイクル、監査/秘匿化の実装。
 3. GitHub App、`gh`限定REST、OpenAI API、Git Smart HTTP readと認証情報 helperの実装。
 4. Approval 状態 ストア、Tailscale Serve/`Tailscale Grant`、Passkey、通知の実装。
@@ -441,12 +441,36 @@ live テストが失敗した場合、それ以降の権限を開かない。
 6. 対象Codex バージョン/surfaceを固定したauth例外の可否検証。
 7. さくらのVPSの隔離環境でのlive E2E、ロールバック、運用runbook。
 
-各Taskはこの文書を製品仕様として扱わず、外部開発基盤リポジトリまたは明示的に分離したディレクトリで実施する。
-Kakesu リポジトリへ実装を置く必要が生じた時点で、製品変更か開発toolingかを再分類する。
+各Taskはこの文書を製品仕様として扱わず、同一リポジトリ内でKakesu本体から分離した
+`tools/dev-agent-harness/`だけで実施する。Kakesu本体のGo workspace、build、ランタイム、配布物からは参照しない。
 
-## 17. 未決の実装判断
+## 17. 実装配置と配布契約
 
-- ブローカー、プロキシ、Approval サービスの実装言語と、単一プロセス/分離プロセスの選択。
+実装ソースはKakesuと同じGitリポジトリの`tools/dev-agent-harness/`へ置く。別リポジトリには分けない。
+このディレクトリは独立したGoモジュール、`configure`、`Makefile`、テスト、配布物生成を所有する。
+
+利用者向けbuild/install契約は次で固定する。
+
+```sh
+cd tools/dev-agent-harness
+./configure --prefix=/usr/local --sysconfdir=/etc --localstatedir=/var --runstatedir=/run
+make
+make check
+sudo make install
+```
+
+- 実装言語はGoとし、ブローカー、外向き通信プロキシ、Approvalサービス、ランチャー、Git認証情報ヘルパー、
+  初期設定ツールを別バイナリにする。
+- リリースtarballは生成済み`configure`を含み、利用者へ`Autoconf`を要求しない。Git checkoutで`configure`を
+  再生成する開発者だけ`Autoconf`を使う。
+- `DESTDIR`、`make install-strip`、`make uninstall`、`make dist`、`make distcheck`を提供する。
+- `make install`はバイナリ、設定例、systemdユニット、sysusers/tmpfiles定義だけを配置する。OSユーザー作成、
+  実設定や秘密の生成、tailnet/GitHub/OpenAI変更、サービスのenable/startは行わない。
+- `make uninstall`は配布した不変ファイルだけを削除し、設定、秘密、監査ログ、永続状態、OSユーザーを残す。
+- 単独配布物の名前は`dev-agent-harness-VERSION.tar.gz`とし、Kakesu本体の配布物へ混ぜない。
+
+## 18. 未決の実装判断
+
 - 秘密情報 ストアにファイル、kernel keyring、外部マネージャーのどれを使うか。
 - TLS プロキシ libraryとGit Smart HTTP/GraphQL parserの対応範囲。
 - Tailscale app capabilities ヘッダーを識別情報/`Tailscale Grant`の補助へ使うか。
@@ -456,7 +480,7 @@ Kakesu リポジトリへ実装を置く必要が生じた時点で、製品変�
 
 未決事項は安全要件を緩める余地ではない。実装候補が境界を満たさない場合、その機能を無効のままにする。
 
-## 18. 将来Kakesu本体へ採用する場合
+## 19. 将来Kakesu本体へ採用する場合
 
 採用判断はこの文書の状態変更では行わない。別の製品変更Taskで少なくとも次を再審査する。
 
@@ -469,7 +493,7 @@ Kakesu リポジトリへ実装を置く必要が生じた時点で、製品変�
 
 そのTaskがmergeされるまでは、Kakesu本体は本ハーネスの存在、availability、状態、承認結果に依存しない。
 
-## 19. 公式参照と設計判断
+## 20. 公式参照と設計判断
 
 | Ref | 公式資料 | 本設計で使う事実・判断 |
 |---|---|---|
