@@ -587,3 +587,19 @@ tasks:
       qa: qa-agent-terra-medium
     branch: task/TASK-0033-unify-work-repository
     worktree: worktrees/TASK-0033-unify-work-repository
+  - id: TASK-0034
+    title: Kakesu開発用リモートAgent Harnessを設計する
+    type: chore
+    epic: EPIC-001
+    status: plan
+    change_class: safety_contract
+    priority: P1
+    estimate_points: 1
+    task_dir: tasks/TASK-0034-development-agent-harness-design
+    depends_on: []
+    assignees:
+      main: main-agent-sol-high
+      planner: planner-agent-terra-medium
+      dev: dev-agent-sol-high
+      reviewer: reviewer-agent-terra-medium
+      qa: qa-agent-terra-medium
