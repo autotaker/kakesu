@@ -1,4 +1,0 @@
-interface:
-  display_name: "Efficient Task Delivery"
-  short_description: "Classify work and apply proportionate delivery gates"
-  default_prompt: "Use $run-efficient-task-delivery to classify this repository change and apply the lightest safe delivery path."
