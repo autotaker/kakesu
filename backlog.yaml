@@ -603,3 +603,21 @@ tasks:
       dev: dev-agent-sol-high
       reviewer: reviewer-agent-terra-medium
       qa: qa-agent-terra-medium
+  - id: TASK-0035
+    title: Development Agent Harnessの設定・deny-by-defaultポリシー基盤を実装する
+    type: feature
+    change_class: product
+    epic: EPIC-001
+    status: plan
+    priority: P1
+    estimate_points: 1
+    task_dir: tasks/TASK-0035-dev-agent-config-policy
+    depends_on: []
+    branch: task/TASK-0035-dev-agent-config-policy
+    worktree: worktrees/TASK-0035-dev-agent-config-policy
+    assignees:
+      main: main-agent-sol-high
+      planner: planner-agent-terra-medium
+      dev: dev-agent-sol-high
+      reviewer: reviewer-agent-terra-medium
+      qa: qa-agent-terra-medium
