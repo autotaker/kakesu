@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Extract and validate the English-term inventory used by the documentation glossary."""
+"""Validate the curated documentation glossary without persisting extraction data."""
 
 from __future__ import annotations
 
@@ -19,6 +19,7 @@ GLOSSARY = ROOT / "docs" / "glossary.yml"
 GLOSSARY_INDEX = ROOT / "docs" / "99-glossary-index.md"
 TEXTLINT_CONFIG = ROOT / ".textlintrc.json"
 PACKAGE_JSON = ROOT / "package.json"
+MAX_GLOSSARY_LINES = 1000
 TOKEN_RE = re.compile(r"[A-Za-z][A-Za-z0-9_./:+-]*")
 FENCED_RE = re.compile(r"```.*?```|~~~.*?~~~", re.DOTALL)
 INLINE_CODE_RE = re.compile(r"`[^`\n]+`")
@@ -69,91 +70,45 @@ def extract_terms() -> tuple[Counter[str], dict[str, set[str]], Counter[str]]:
     return counts, token_files, code_counts
 
 
-def glossary_terms(glossary: dict) -> tuple[dict[str, dict], set[str]]:
-    known: dict[str, dict] = {}
-    identifier_values: set[str] = set()
-    for category, definition in glossary["categories"].items():
-        for term in definition.get("terms", []):
-            if not isinstance(term, dict):
-                continue
-            canonical = dict(term)
-            canonical["category"] = category
-            for value in [term.get("formal_name"), *term.get("variants", []), *term.get("abbreviations", [])]:
-                if isinstance(value, str):
-                    known[value] = canonical
-                    if category == "identifier":
-                        identifier_values.add(value)
-    return known, identifier_values
+def rule_patterns(term: str, rule: dict, *, default_to_term: bool) -> list[str]:
+    patterns = rule.get("match")
+    if patterns is None and default_to_term:
+        return [term]
+    return patterns or []
 
 
-def classify(
-    token: str,
-    known: dict[str, dict],
-    identifier_values: set[str],
-    code_count: int,
-    total_count: int,
-) -> tuple[str, dict]:
-    existing = known.get(token)
-    if existing:
-        category = existing["category"]
-    elif token in identifier_values or re.search(r"[_/.:]", token) or any(char.isdigit() for char in token):
-        category = "identifier"
-    elif code_count == total_count and code_count > 0:
-        category = "identifier"
-    elif token.isupper() and len(token) > 1:
-        category = "english_preferred"
-    else:
-        category = "japanese_translation"
-
-    if existing:
-        formal_name = existing["formal_name"]
-        japanese = existing.get("japanese")
-        abbreviations = list(existing.get("abbreviations", []))
-        variants = list(existing.get("variants", []))
-        description = existing.get("description", "")
-    else:
-        formal_name = token
-        japanese = None if category != "japanese_translation" else "訳語を検討"
-        abbreviations = []
-        variants = []
-        if category == "identifier":
-            description = "本文から抽出したコード識別子。本文ではバッククォートで囲む。"
-        elif category == "english_preferred":
-            description = "本文から抽出した製品名、仕様名、固有名、または略語。英語表記を維持する。"
-        else:
-            description = "本文から抽出した一般技術語。自然な日本語の訳語を優先する。"
-
-    return category, {
-        "token": token,
-        "category": category,
-        "formal_name": formal_name,
-        "japanese": japanese,
-        "abbreviations": abbreviations,
-        "variants": variants,
-        "description": description,
-    }
+def registered_tokens(glossary: dict) -> set[str]:
+    registered: set[str] = set()
+    for group_name in ("replacements", "preserved", "identifiers"):
+        group = glossary.get("rules", {}).get(group_name, {})
+        for term, rule in group.items():
+            registered.add(term)
+            registered.update(rule_patterns(term, rule, default_to_term=group_name != "identifiers"))
+            registered.update(rule.get("aliases", []))
+    return registered
 
 
-def inventory(glossary: dict) -> tuple[list[dict], Counter[str], dict[str, set[str]]]:
-    counts, token_files, code_counts = extract_terms()
-    known, identifier_values = glossary_terms(glossary)
-    records = []
-    for token in sorted(counts, key=lambda value: (value.lower(), value)):
-        category, record = classify(token, known, identifier_values, code_counts[token], counts[token])
-        record["count"] = counts[token]
-        record["prose_count"] = counts[token] - code_counts[token]
-        record["code_count"] = code_counts[token]
-        record["source_count"] = len(token_files[token])
-        records.append(record)
-    return records, counts, token_files
+def unregistered_frequent_terms(glossary: dict) -> list[tuple[str, int, int]]:
+    counts, _, code_counts = extract_terms()
+    registered = registered_tokens(glossary)
+    threshold = glossary.get("review", {}).get("frequent_prose_threshold", 3)
+    findings = []
+    for token, total_count in counts.items():
+        prose_count = total_count - code_counts[token]
+        if token in registered or prose_count < threshold:
+            continue
+        if code_counts[token] == total_count:
+            continue
+        if token.isupper() and len(token) > 1:
+            continue
+        if re.search(r"[_/.:]", token) or any(character.isdigit() for character in token):
+            continue
+        findings.append((token, prose_count, total_count))
+    return sorted(findings, key=lambda item: (-item[1], item[0].lower(), item[0]))
 
 
 def render_glossary_index(glossary: dict) -> str:
-    categorized = {
-        term["formal_name"]: (category, term)
-        for category, definition in glossary["categories"].items()
-        for term in definition.get("terms", [])
-    }
+    replacements = glossary.get("rules", {}).get("replacements", {})
     lines = [
         "# Kakesu用語索引",
         "",
@@ -164,64 +119,104 @@ def render_glossary_index(glossary: dict) -> str:
         "| 標準表記 | 正式名 | 説明 | 定義 |",
         "|---|---|---|---|",
     ]
-    for project_term in glossary.get("project_terms", []):
-        formal = project_term["term"]
-        category_and_term = categorized.get(formal)
+    for term, project_term in glossary.get("project_terms", {}).items():
         if "display" in project_term:
             display = project_term["display"]
-        elif category_and_term and category_and_term[0] == "japanese_translation":
-            display = category_and_term[1].get("japanese") or formal
+        elif term in replacements:
+            display = replacements[term]["to"]
         else:
-            display = formal
-        definition = project_term["definition"]
+            display = term
         lines.append(
-            f"| {display} | `{formal}` | {project_term['description']} | [設計書]({definition}) |"
+            f"| {display} | `{term}` | {project_term['description']} | "
+            f"[設計書]({project_term['definition']}) |"
         )
     return "\n".join(lines) + "\n"
 
 
-def update_glossary() -> None:
-    glossary = yaml.safe_load(GLOSSARY.read_text(encoding="utf-8"))
-    records, counts, _ = inventory(glossary)
-    glossary["extraction_inventory"] = {
-        "source": "日本語を含む**/*.md",
-        "raw_token_count": sum(counts.values()),
-        "unique_token_count": len(counts),
-        "classification": "all_extracted_termsの各レコードにcategoryを付ける。",
-    }
-    glossary["all_extracted_terms"] = records
-    GLOSSARY.write_text(
-        yaml.safe_dump(glossary, allow_unicode=True, sort_keys=False, width=120),
-        encoding="utf-8",
-    )
+def write_generated_index(glossary: dict) -> None:
     GLOSSARY_INDEX.write_text(render_glossary_index(glossary), encoding="utf-8")
-    print(f"updated {GLOSSARY}: {sum(counts.values())} tokens, {len(counts)} unique")
-    print(f"updated {GLOSSARY_INDEX}: {len(glossary.get('project_terms', []))} project terms")
+    print(f"updated {GLOSSARY_INDEX}: {len(glossary.get('project_terms', {}))} project terms")
+
+
+def validate_rule_group(errors: list[str], name: str, group: object) -> None:
+    if not isinstance(group, dict) or not group:
+        errors.append(f"glossary rules.{name} must be a non-empty mapping")
+        return
+    for term, rule in group.items():
+        if not isinstance(term, str) or not term or not isinstance(rule, dict):
+            errors.append(f"invalid rule in glossary rules.{name}: {term!r}")
+            continue
+        match = rule_patterns(term, rule, default_to_term=name != "identifiers")
+        if name == "replacements" and not isinstance(rule.get("to"), str):
+            errors.append(f"replacement rule has no string 'to' value: {term}")
+        if name == "preserved" and "to" in rule and not isinstance(rule.get("to"), str):
+            errors.append(f"preserved canonicalization has invalid 'to' value: {term}")
+        if name == "identifiers" and not match:
+            errors.append(f"identifier rule has no match patterns: {term}")
+        if not all(isinstance(pattern, str) and pattern for pattern in match):
+            errors.append(f"rule has invalid match patterns: {term}")
+        aliases = rule.get("aliases", [])
+        if not isinstance(aliases, list) or not all(isinstance(alias, str) and alias for alias in aliases):
+            errors.append(f"rule has invalid aliases: {term}")
+        if "note" in rule and not isinstance(rule["note"], str):
+            errors.append(f"rule note must be a string: {term}")
+        if "task" in match:
+            errors.append("generic task must not be an automatic replacement pattern")
 
 
 def validate() -> list[str]:
     errors: list[str] = []
-    glossary = yaml.safe_load(GLOSSARY.read_text(encoding="utf-8"))
-    records, counts, _ = inventory(glossary)
-    expected_records = glossary.get("all_extracted_terms", [])
-    actual_by_token = {record["token"]: record for record in records}
-    expected_by_token = {record.get("token"): record for record in expected_records}
+    glossary_source = GLOSSARY.read_text(encoding="utf-8")
+    glossary = yaml.safe_load(glossary_source)
 
+    if glossary.get("version") != 2:
+        errors.append("docs/glossary.yml must use compact schema version 2")
+    if len(glossary_source.splitlines()) > MAX_GLOSSARY_LINES:
+        errors.append(f"docs/glossary.yml must not exceed {MAX_GLOSSARY_LINES} lines")
+    for removed_key in ("all_extracted_terms", "extraction_inventory", "categories"):
+        if removed_key in glossary:
+            errors.append(f"docs/glossary.yml must not persist generated or legacy field: {removed_key}")
     if glossary.get("scope", {}).get("sources") != ["**/*.md"]:
         errors.append("docs/glossary.yml scope.sources must cover all Markdown files")
     if glossary.get("scope", {}).get("language") != "japanese":
         errors.append("docs/glossary.yml scope.language must limit terminology lint to Japanese Markdown")
 
+    rules = glossary.get("rules")
+    if not isinstance(rules, dict):
+        errors.append("docs/glossary.yml rules must be a mapping")
+        rules = {}
+    for group_name in ("replacements", "preserved", "identifiers"):
+        validate_rule_group(errors, group_name, rules.get(group_name))
+
+    replacement_patterns = {
+        pattern
+        for term, rule in rules.get("replacements", {}).items()
+        for pattern in rule_patterns(term, rule, default_to_term=True)
+    }
+    replacement_patterns.update(
+        pattern
+        for term, rule in rules.get("preserved", {}).items()
+        if isinstance(rule.get("to"), str)
+        for pattern in rule_patterns(term, rule, default_to_term=True)
+    )
+    identifier_patterns = {
+        pattern
+        for term, rule in rules.get("identifiers", {}).items()
+        for pattern in rule_patterns(term, rule, default_to_term=False)
+    }
+    collisions = sorted(replacement_patterns & identifier_patterns)
+    if collisions:
+        errors.append(f"replacement and identifier patterns overlap: {', '.join(collisions[:10])}")
+
     project_terms = glossary.get("project_terms")
-    if not isinstance(project_terms, list) or not project_terms:
-        errors.append("docs/glossary.yml project_terms must define the project-specific glossary index")
+    if not isinstance(project_terms, dict) or not project_terms:
+        errors.append("docs/glossary.yml project_terms must be a non-empty mapping")
     else:
-        project_names = [term.get("term") for term in project_terms]
-        if len(project_names) != len(set(project_names)):
-            errors.append("docs/glossary.yml project_terms contains duplicate terms")
-        for project_term in project_terms:
-            if not all(project_term.get(field) for field in ("term", "description", "definition")):
-                errors.append("each project term must have term, description, and definition")
+        for term, project_term in project_terms.items():
+            if not isinstance(project_term, dict) or not all(
+                project_term.get(field) for field in ("description", "definition")
+            ):
+                errors.append(f"project term must have description and definition: {term}")
                 continue
             definition_path = project_term["definition"].split("#", 1)[0]
             if not (GLOSSARY.parent / definition_path).is_file():
@@ -230,51 +225,14 @@ def validate() -> list[str]:
     expected_index = render_glossary_index(glossary)
     if not GLOSSARY_INDEX.is_file() or GLOSSARY_INDEX.read_text(encoding="utf-8") != expected_index:
         errors.append("docs/99-glossary-index.md is stale; regenerate it with validate-terminology.py --write")
-    if len(expected_records) != len(expected_by_token):
-        errors.append("docs/glossary.yml all_extracted_terms contains duplicate tokens")
-    if set(actual_by_token) != set(expected_by_token):
-        missing = sorted(set(actual_by_token) - set(expected_by_token))
-        extra = sorted(set(expected_by_token) - set(actual_by_token))
-        if missing:
-            errors.append(f"glossary is missing extracted tokens: {', '.join(missing[:10])}")
-        if extra:
-            errors.append(f"glossary contains stale extracted tokens: {', '.join(extra[:10])}")
-    for token, actual in actual_by_token.items():
-        expected = expected_by_token.get(token)
-        if not expected:
-            continue
-        if expected != actual:
-            differing_fields = sorted(
-                field
-                for field in set(expected) | set(actual)
-                if expected.get(field) != actual.get(field)
-            )
-            errors.append(
-                f"glossary record drift for {token!r}: fields {', '.join(differing_fields)}"
-            )
-        if expected.get("category") not in {"japanese_translation", "english_preferred", "identifier"}:
-            errors.append(f"invalid category for {token!r}: {expected.get('category')}")
 
-    if glossary.get("extraction_inventory", {}).get("raw_token_count") != sum(counts.values()):
-        errors.append("glossary raw_token_count is stale")
-    if glossary.get("extraction_inventory", {}).get("unique_token_count") != len(counts):
-        errors.append("glossary unique_token_count is stale")
-
-    review_threshold = glossary.get("lint", {}).get("review_required_at_prose_count")
+    review_threshold = glossary.get("review", {}).get("frequent_prose_threshold")
     if not isinstance(review_threshold, int) or review_threshold < 1:
-        errors.append("glossary lint.review_required_at_prose_count must be a positive integer")
+        errors.append("glossary review.frequent_prose_threshold must be a positive integer")
     else:
-        unreviewed = [
-            record
-            for record in records
-            if record.get("japanese") == "訳語を検討"
-            and record.get("prose_count", 0) >= review_threshold
-        ]
-        if unreviewed:
-            summary = ", ".join(
-                f"{record['token']}({record['prose_count']})"
-                for record in sorted(unreviewed, key=lambda item: -item["prose_count"])[:10]
-            )
+        unregistered = unregistered_frequent_terms(glossary)
+        if unregistered:
+            summary = ", ".join(f"{term}({count})" for term, count, _ in unregistered[:10])
             errors.append(f"frequent prose terms require glossary review: {summary}")
 
     config = json.loads(TEXTLINT_CONFIG.read_text(encoding="utf-8"))
@@ -285,44 +243,32 @@ def validate() -> list[str]:
     if lint_command != "node scripts/lint-docs.mjs":
         errors.append("package.json lint:docs must use the safe Markdown file enumerator")
 
-    for category, definition in glossary["categories"].items():
-        for term in definition.get("terms", []):
-            lint = term.get("lint")
-            if not isinstance(lint, dict):
-                errors.append(f"missing lint policy for glossary term: {term.get('formal_name')}")
-                continue
-            if category == "japanese_translation":
-                if lint.get("enabled") is not True or lint.get("mode") != "replace":
-                    errors.append(f"Japanese translation is not lint-enabled: {term.get('formal_name')}")
-                if lint.get("replacement") != term.get("japanese"):
-                    errors.append(f"lint replacement does not match japanese term: {term.get('formal_name')}")
-                if not lint.get("patterns"):
-                    errors.append(f"Japanese translation has no lint pattern: {term.get('formal_name')}")
-            if category == "identifier":
-                if lint.get("enabled") is not True or lint.get("mode") != "identifier":
-                    errors.append(f"identifier term is not lint-enabled: {term.get('formal_name')}")
-                if set(lint.get("patterns", [])) != set(term.get("variants", [])):
-                    errors.append(f"identifier lint patterns do not match variants: {term.get('formal_name')}")
-            for pattern in lint.get("patterns", []):
-                if pattern == "task":
-                    errors.append("generic task must not be an automatic replacement pattern")
-
     return errors
 
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--write", action="store_true", help="regenerate all_extracted_terms in the glossary")
+    parser.add_argument("--write", action="store_true", help="regenerate only the derived glossary index")
+    parser.add_argument("--report", action="store_true", help="report extracted terms without modifying files")
     args = parser.parse_args()
+
+    glossary = yaml.safe_load(GLOSSARY.read_text(encoding="utf-8"))
     if args.write:
-        update_glossary()
+        write_generated_index(glossary)
+    if args.report:
+        counts, _, _ = extract_terms()
+        unregistered = unregistered_frequent_terms(glossary)
+        print(f"extracted {sum(counts.values())} tokens, {len(counts)} unique")
+        for term, prose_count, total_count in unregistered:
+            print(f"{term}\tprose={prose_count}\ttotal={total_count}")
         return 0
+
     errors = validate()
     if errors:
         for error in errors:
             print(f"terminology: {error}", file=sys.stderr)
         return 1
-    print("terminology: glossary, extraction inventory, and direct textlint rule are synchronized")
+    print("terminology: compact curated glossary and generated index are synchronized")
     return 0
 
 

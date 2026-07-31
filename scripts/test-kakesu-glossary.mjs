@@ -8,8 +8,23 @@ import { fileURLToPath } from "node:url";
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const require = createRequire(import.meta.url);
 const textlintBin = require.resolve("textlint/bin/textlint.js");
+const YAML = require("yaml");
 const temporaryDirectory = fs.mkdtempSync(path.join(os.tmpdir(), "kakesu-glossary-"));
 const fixture = path.join(temporaryDirectory, "fixture.md");
+
+const glossaryPath = path.join(ROOT, "docs", "glossary.yml");
+const glossarySource = fs.readFileSync(glossaryPath, "utf8");
+const glossary = YAML.parse(glossarySource);
+
+if (glossary.version !== 2) {
+  throw new Error("glossary must use the compact version 2 schema");
+}
+if ("all_extracted_terms" in glossary || "extraction_inventory" in glossary) {
+  throw new Error("generated extraction inventory must not be stored in glossary.yml");
+}
+if (glossarySource.split("\n").length - 1 > 1000) {
+  throw new Error("glossary.yml must remain at or below 1000 lines");
+}
 
 function lint(markdown) {
   fs.writeFileSync(fixture, markdown, "utf8");

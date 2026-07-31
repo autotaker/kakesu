@@ -7,7 +7,7 @@ const YAML = require("yaml");
 const ROOT = path.resolve(__dirname, "..");
 const GLOSSARY = path.join(ROOT, "docs", "glossary.yml");
 const glossary = YAML.parse(fs.readFileSync(GLOSSARY, "utf8"));
-const categories = glossary.categories;
+const rules = glossary.rules;
 
 const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const expressionFor = (pattern) => {
@@ -17,20 +17,17 @@ const expressionFor = (pattern) => {
   return new RegExp(`${prefix}${escaped}${suffix}`, "g");
 };
 
-const terms = Object.values(categories)
-  .flatMap((category) => category.terms || [])
-  .filter((term) => term.lint?.enabled === true);
-
-const replacementRules = terms
-  .filter((term) => term.lint.mode === "replace")
-  .flatMap((term) => {
-    const lint = term.lint;
-    const patterns = [...new Set([...(lint.patterns || []), lint.replacement])];
+const replacementRules = [
+  ...Object.entries(rules.replacements || {}),
+  ...Object.entries(rules.preserved || {}).filter(([, rule]) => typeof rule.to === "string"),
+]
+  .flatMap(([formalName, rule]) => {
+    const patterns = [...new Set([...(rule.match || [formalName]), rule.to])];
     return patterns.map((pattern) => {
       return {
-        formalName: term.formal_name,
+        formalName,
         pattern,
-        replacement: lint.replacement,
+        replacement: rule.to,
         expression: expressionFor(pattern),
       };
     });
@@ -39,13 +36,12 @@ const replacementRules = terms
 
 const identifierRules = [
   ...new Map(
-    terms
-      .filter((term) => term.lint.mode === "identifier")
-      .flatMap((term) =>
-        (term.lint.patterns || []).map((pattern) => [
+    Object.entries(rules.identifiers || {})
+      .flatMap(([formalName, rule]) =>
+        (rule.match || []).map((pattern) => [
           pattern,
           {
-            formalName: term.formal_name,
+            formalName,
             pattern,
             expression: expressionFor(pattern),
           },
