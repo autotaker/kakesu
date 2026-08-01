@@ -108,7 +108,7 @@ function initTaskStartRepository() {
 function setFrontmatter(file, values) {
   let content = fs.readFileSync(file, "utf8");
   for (const [key, value] of Object.entries(values)) {
-    const line = `${key}: ${typeof value === "string" ? JSON.stringify(value) : String(value)}`;
+    const line = `${key}: ${JSON.stringify(value)}`;
     const pattern = new RegExp(`^${key}:.*$`, "m");
     content = pattern.test(content) ? content.replace(pattern, line) : content.replace(/^---\n/, `---\n${line}\n`);
   }
@@ -132,6 +132,47 @@ function prepareThreeCommitFixture() {
   setFrontmatter(path.join(taskDir, "REVIEW_RESULT.md"), { reviewer_agent: task.assignees.reviewer, decision: "pass", reviewed_at: "2026-08-01T00:00:00Z" });
   setFrontmatter(path.join(taskDir, "QA_RESULT.md"), { qa_agent: task.assignees.qa, decision: "pass", tested_at: "2026-08-01T00:00:00Z" });
   return { root, taskDir, task, started, planning, candidate };
+}
+
+function prepareLegacyQaCleanupFixture() {
+  const fixture = prepareThreeCommitFixture();
+  const merge = completionGate({ root: fixture.root, taskId: "TASK-9010", validate: false, push: false });
+  const backlogFile = path.join(fixture.root, "backlog.yaml");
+  const backlogValue = parseYaml(fs.readFileSync(backlogFile, "utf8"));
+  const task = backlogValue.tasks.find((entry) => entry.id === "TASK-9010");
+  task.status = "qa";
+  task.merged_commit = merge.commit;
+  setFrontmatter(path.join(fixture.taskDir, "PLAN.md"), {
+    approved_dev_profile: "sol-high",
+    approved_dev_profile_reason: "fixture",
+    approved_dev_profile_risk_signals: ["fixture"],
+  });
+  setFrontmatter(path.join(fixture.taskDir, "REVIEW_RESULT.md"), {
+    reviewed_commit: fixture.candidate.candidate_commit,
+    make_check: "pass",
+  });
+  setFrontmatter(path.join(fixture.taskDir, "QA_PLAN.md"), {
+    implementation_reviewed_at: "2026-08-01T00:00:00Z",
+  });
+  setFrontmatter(path.join(fixture.taskDir, "QA_RESULT.md"), {
+    tested_commit: merge.commit,
+  });
+  setFrontmatter(path.join(fixture.taskDir, "HANDOVER.md"), {
+    status: "complete",
+    completed_at: "2026-08-01T00:00:00Z",
+  });
+  fs.writeFileSync(backlogFile, `${JSON.stringify(backlogValue, null, 2)}\n`);
+  git(fixture.root, "add", "backlog.yaml", "tasks/TASK-9010-three");
+  git(fixture.root, "commit", "-m", "fixture legacy qa state");
+  git(fixture.root, "push", "origin", "main");
+
+  // Make the fixture's Wiki agent genuinely unavailable. syncMain must still
+  // complete the legacy cleanup because Wiki receipts are optional.
+  fs.rmSync(path.join(fixture.root, "scripts/task/run-wiki-agent.mjs"));
+  git(fixture.root, "add", "-A");
+  git(fixture.root, "commit", "-m", "fixture without Wiki agent");
+  git(fixture.root, "push", "origin", "main");
+  return fixture;
 }
 
 test("migration binds REF-2, 32 historical tasks, TASK-0033 overlay, and target digests", () => {
@@ -566,6 +607,29 @@ test("sync FAST only updates main and normal empty sync is idempotent", () => {
     assert.deepEqual(syncMain({ fast: "0", repo: "fixture", push: "false" }, root), { fast: false, no_op: true });
   } finally {
     process.env.PATH = priorPath;
+  }
+});
+
+test("sync legacy qa cleanup does not require or create a Wiki receipt", () => {
+  const fixture = prepareLegacyQaCleanupFixture();
+  const bin = fs.mkdtempSync(path.join(os.tmpdir(), "sync-bin-"));
+  fs.writeFileSync(path.join(bin, "gh"), "#!/bin/sh\nprintf 'success\\n'\n", { mode: 0o755 });
+  const priorPath = process.env.PATH;
+  process.env.PATH = `${bin}:${priorPath}`;
+  try {
+    const receipt = path.join(fixture.root, "wiki/ingestions/TASK-9010.json");
+    assert.equal(fs.existsSync(receipt), false);
+    const result = syncMain({ fast: "0", repo: "fixture", push: "false" }, fixture.root);
+    assert.match(result.commit, /^[0-9a-f]{40}$/);
+    assert.equal(fs.existsSync(receipt), false);
+    const synced = parseYaml(fs.readFileSync(path.join(fixture.root, "backlog.yaml"), "utf8"));
+    const task = synced.tasks.find((entry) => entry.id === "TASK-9010");
+    assert.equal(task.status, "done");
+    assert.equal(task.branch, undefined);
+    assert.equal(task.worktree, undefined);
+  } finally {
+    process.env.PATH = priorPath;
+    fs.rmSync(fixture.root, { recursive: true, force: true });
   }
 });
 

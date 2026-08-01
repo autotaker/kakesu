@@ -640,15 +640,11 @@ export function syncMain(args, root) {
   if (ci.status !== 0 || !["success", "neutral", "skipped"].includes(ci.stdout.trim())) throw new Error("sync stops while main CI is unavailable or red");
   if (args.fast === "1") return { fast: true };
   let backlog = readYaml(path.join(root, "backlog.yaml"));
-  // Completion-gate records a final done state in the same no-ff merge.  This
-  // recovery path only handles legacy qa transitions and does not require a
-  // Wiki receipt or an additional evidence commit for already-done tasks.
+  // Completion-gate records a final done state in the same no-ff merge. This
+  // recovery path only handles legacy qa transitions; Wiki is optional and
+  // must not be implicitly invoked during cleanup.
   const newlyDone = (backlog.tasks ?? []).filter((task) => task.merged_commit && task.status === "qa");
   for (const task of newlyDone) {
-    const receipt = path.join(root, "wiki/ingestions", `${task.id}.json`);
-    if (!fs.existsSync(receipt)) {
-      run(process.execPath, [path.join(REPO_ROOT, "scripts/task/run-wiki-agent.mjs"), "--work-root", root, "--task", task.id, "--action", "ingest", "--commit", "false"], { cwd: root });
-    }
     if (task.worktree && fs.existsSync(resolveInside(root, task.worktree)) && git(resolveInside(root, task.worktree), ["status", "--porcelain"])) {
       throw new Error(`${task.id}: dirty worktree blocks cleanup`);
     }

@@ -6,26 +6,11 @@ import test from "node:test";
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { checkTask } from "./check-task.mjs";
-import { acquireWorkRepoLock, dateInTimezone, estimatePoints, git, replaceTemplate, resolveInside, workRepoLockDir } from "./lib.mjs";
+import { acquireWorkRepoLock, dateInTimezone, git, replaceTemplate, resolveInside, workRepoLockDir } from "./lib.mjs";
 import { rollbackWorkRepository, validateDevSelection } from "./agent-routing.mjs";
 import { runWorkConfigSync } from "./run-work-config-sync.mjs";
 
 const REPO_ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), "../..");
-
-test("estimatePoints uses implementation file and line scores", () => {
-  assert.equal(estimatePoints(2, 80), 1);
-  assert.equal(estimatePoints(5, 250), 2);
-  assert.equal(estimatePoints(8, 500), 3);
-  assert.equal(estimatePoints(4, 900), 5);
-  assert.equal(estimatePoints(20, 1200), 8);
-});
-
-test("estimatePoints rejects work above the scale", () => {
-  assert.throws(() => estimatePoints(40, 3000), /split the task/);
-  assert.throws(() => estimatePoints(-1, 10), /non-negative integers/);
-  assert.throws(() => estimatePoints(1.5, 10), /non-negative integers/);
-  assert.throws(() => estimatePoints(1, "200"), /non-negative integers/);
-});
 
 test("resolveInside rejects absolute and traversing paths", () => {
   assert.equal(resolveInside("/tmp/work", "tasks/TASK-0001-a"), "/tmp/work/tasks/TASK-0001-a");
