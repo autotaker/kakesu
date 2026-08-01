@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "task_id": "TASK-0048",
+  "handover_sha256": "3a5a07f574e6dd7131ad505a6fd93b774ce7390a943d9de10a8e61ebf3d9c008",
+  "ingested_at": "2026-08-01T11:19:19Z",
+  "updated_pages": [
+    "wiki/semantic/schemas/development-agent-harness-egress-transaction.md"
+  ],
+  "created_decisions": [],
+  "deferred": [
+    "実GitHub/OpenAI、実認証情報、Internet DNS/TLS/system trust、Agent proxy/response writer、production resolver/transport wiringはlive E2E境界として未確認である。HTTP入口、production wiring、live E2EはExchangeの対象外であり、QA-009のblockedを他のPASSで代替しない。"
+  ]
+}

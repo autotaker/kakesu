@@ -43,6 +43,14 @@ ForwarderがGitHub又はOpenAIへ送る最初の接続境界には、固定allow
 
 成功responseはsize上限内で完全にread、検証、closeしてから、status、正規JSON media type、独立した本文だけをrequest単位sinkへ一回渡す。HEAD/204 responseは空本文だけを受理し、provider error本文と上流headerはAgent側へ返さない。2xx以外、想定外media type、上限超過、UTF-8/JSON不正、read/close/timeout、sinkの各失敗はfail closedにする。
 
+## 呼出し単位のExchange合成
+
+`brokerexchange.Exchange`は、検証済みの依存と上限だけをimmutableに保持し、各`Do`呼出しごとにprivate capture sink、`upstreamforwarder.Forwarder`、`egresstransaction.Transaction`を新規に合成する。これにより既存のpolicy、Authorization、capability、credential、response検査の意味を再実装せずに委譲する。
+
+成功時だけ、captureした縮退responseの独立copyを返す。いずれかの段階が失敗した場合はzero responseと固定`exchange-denied`だけを返し、上流失敗の詳細を公開しない。呼出し間でsinkやresponse本文を共有しないため、並行実行したresponseが相互に混入しない。
+
+policy又はAuthorizationの拒否はcapabilityを消費しない。capability消費後にresolver、transport、Forwarder、captureのいずれかが失敗しても消費をrollbackせず、同一`Do`による上流試行は一回だけとする。
+
 この性質だけでは秘密情報ストア、実network上のprovider受理、Agent側proxy、response writer又はauditを証明しない。実GitHub/OpenAI、実認証情報、Internet DNS/TLS/system trust、Agent proxy/response writerはlive E2Eで別途確認する。
 
 ## 適用限界
@@ -54,5 +62,6 @@ ForwarderがGitHub又はOpenAIへ送る最初の接続境界には、固定allow
 - [TASK-0041 HANDOVER](../../../tasks/TASK-0041-dev-agent-egress-transaction/HANDOVER.md)
 - [TASK-0045 HANDOVER](../../../tasks/TASK-0045-dev-agent-upstream-transport/HANDOVER.md)
 - [TASK-0047 HANDOVER](../../../tasks/TASK-0047-dev-agent-upstream-forwarder/HANDOVER.md)
+- [TASK-0048 HANDOVER](../../../tasks/TASK-0048-dev-agent-broker-exchange/HANDOVER.md)
 - [Development Agent Harness Egress Policy](development-agent-harness-egress-policy.md)
 - [Development Agent Harness Capability Registry](development-agent-harness-capability-registry.md)

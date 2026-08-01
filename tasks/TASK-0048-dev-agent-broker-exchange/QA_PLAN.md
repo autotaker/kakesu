@@ -6,7 +6,7 @@ qa_agent: "qa-agent-terra-medium"
 approved_by: "main-agent-sol-high"
 approved_at: "2026-08-01T10:55:32Z"
 revision: 1
-implementation_reviewed_at: ""
+implementation_reviewed_at: "2026-08-01T11:14:40Z"
 expectation_changed: false
 expectation_change_approved_by: ""
 ---
@@ -58,6 +58,6 @@ command と結果を記録する。失敗は実装不具合と決めつけず、
 
 ## 実装後の再確認
 
-- [ ] candidate の source/test、HANDOVER、DEV check 証跡を独立に確認した。
-- [ ] 指定 race test を candidate で一回だけ実行した。
-- [ ] live-e2e blocked を PASS に置換せず、期待結果又は範囲を変更していないことを確認した。
+- [x] candidate の source/test、HANDOVER、DEV check 証跡を独立に確認した。
+- [x] 指定 race test を candidate で一回だけ実行した。
+- [x] live-e2e blocked を PASS に置換せず、期待結果又は範囲を変更していないことを確認した。

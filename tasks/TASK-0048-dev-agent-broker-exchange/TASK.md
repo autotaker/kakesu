@@ -36,12 +36,12 @@ TASK-0041のpolicy/capability/credential transactionとTASK-0047のrequest単位
 
 ### 受け入れ条件
 
-- [ ] AC-1: `New`は非nil Policy/Registry/CredentialResolver/RoundTripper、1〜4,096 byteのcredential上限、1ms〜30秒のtimeout、1 byte〜1 MiBのresponse上限だけを受理し、値を保持したimmutable `Exchange`を返す。不正Rulesは固定error、nil/zero receiverの`Do`はzero responseと固定errorになり、dependencyをformatへ出さない。
-- [ ] AC-2: `Do`は呼出しごとにprivate capture sink、`upstreamforwarder.Forwarder`、`egresstransaction.Transaction`を一つずつ構成し、入力subject/requestをTransactionへ同期一回だけ渡す。caller所有のBody/Authorization sliceを変更・保持せず、既定transport、network client、redirect又はretryを自ら選ばない。
-- [ ] AC-3: Transactionが成功し、request単位sinkが正確に一回通知された場合だけresponseを返す。status、空又は正規`application/json` content type、caller/dependencyとaliasしない本文以外を公開せず、次の又は並行する`Do`とresponse stateを共有しない。
-- [ ] AC-4: policy/Authorization/capability拒否ではresolver/transportへ到達しない。subject/scope不一致のcapabilityは消費せず後続の正しい交換で使える一方、resolver又はForwarderへ到達した失敗は既存Transaction契約どおりcapabilityを消費したままとし、同じhandleで再試行してもresolver/transportへ再到達しない。
-- [ ] AC-5: 任意のconstructor、Transaction、Forwarder、sink通知不在又はdependency失敗はzero responseと固定`exchange-denied`だけに畳む。opaque handle、上流credential、request/response本文、URL、scope、provider、下位errorをerror、format又は保持stateへ出さず、capability rollback、再発行、上流再試行をしない。
-- [ ] AC-6: real Policy/Registryとfake resolver/RoundTripperによるhermetic race testが両provider成功、実Bearer置換、policy/subject/scope/Authorization拒否順序、非消費/消費境界、resolver/transport/sink単回、zero response on failure、input/output copy、並行response分離、fixed error/non-leakを検出する。`go test -race ./internal/brokerexchange`、harness `make check`/`make distcheck`、candidate launcherのroot `make check`がPASSし、base...candidate差分は追加＋削除1,000行以下である。
+- [x] AC-1: `New`は非nil Policy/Registry/CredentialResolver/RoundTripper、1〜4,096 byteのcredential上限、1ms〜30秒のtimeout、1 byte〜1 MiBのresponse上限だけを受理し、値を保持したimmutable `Exchange`を返す。不正Rulesは固定error、nil/zero receiverの`Do`はzero responseと固定errorになり、dependencyをformatへ出さない。
+- [x] AC-2: `Do`は呼出しごとにprivate capture sink、`upstreamforwarder.Forwarder`、`egresstransaction.Transaction`を一つずつ構成し、入力subject/requestをTransactionへ同期一回だけ渡す。caller所有のBody/Authorization sliceを変更・保持せず、既定transport、network client、redirect又はretryを自ら選ばない。
+- [x] AC-3: Transactionが成功し、request単位sinkが正確に一回通知された場合だけresponseを返す。status、空又は正規`application/json` content type、caller/dependencyとaliasしない本文以外を公開せず、次の又は並行する`Do`とresponse stateを共有しない。
+- [x] AC-4: policy/Authorization/capability拒否ではresolver/transportへ到達しない。subject/scope不一致のcapabilityは消費せず後続の正しい交換で使える一方、resolver又はForwarderへ到達した失敗は既存Transaction契約どおりcapabilityを消費したままとし、同じhandleで再試行してもresolver/transportへ再到達しない。
+- [x] AC-5: 任意のconstructor、Transaction、Forwarder、sink通知不在又はdependency失敗はzero responseと固定`exchange-denied`だけに畳む。opaque handle、上流credential、request/response本文、URL、scope、provider、下位errorをerror、format又は保持stateへ出さず、capability rollback、再発行、上流再試行をしない。
+- [x] AC-6: real Policy/Registryとfake resolver/RoundTripperによるhermetic race testが両provider成功、実Bearer置換、policy/subject/scope/Authorization拒否順序、非消費/消費境界、resolver/transport/sink単回、zero response on failure、input/output copy、並行response分離、fixed error/non-leakを検出する。`go test -race ./internal/brokerexchange`、harness `make check`/`make distcheck`、candidate launcherのroot `make check`がPASSし、base...candidate差分は追加＋削除1,000行以下である。
 
 ### 安定した参照
 
@@ -97,10 +97,10 @@ Transactionはresponseを返さずtrusted Forwarderを同期呼出し、Forwarde
 
 ## 完成の定義
 
-- [ ] 受け入れ条件を満たしている。
-- [ ] planning/candidate/completionの3 commit経路とcandidate一回のroot `make check`を満たしている。
-- [ ] 同一candidateの独立REVIEW/QAを完了し、実provider/Agent proxyのlive E2E未実施境界をPASSと誤記していない。
-- [ ] 再利用可能な知識が生じた場合だけ意味Wikiを既存ページへ同化し、post-merge `task-check`をPASSしている。
+- [x] 受け入れ条件を満たしている。
+- [x] planning/candidate/completionの3 commit経路とcandidate一回のroot `make check`を満たしている。
+- [x] 同一candidateの独立REVIEW/QAを完了し、実provider/Agent proxyのlive E2E未実施境界をPASSと誤記していない。
+- [x] 再利用可能な知識が生じた場合だけ意味Wikiを既存ページへ同化し、post-merge `task-check`をPASSしている。
 
 ## 関連コンテキスト
 
