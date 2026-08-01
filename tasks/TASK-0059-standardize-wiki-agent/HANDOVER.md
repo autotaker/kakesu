@@ -9,23 +9,22 @@ candidate_commit: ""
 
 ## 成果
 
-- TODO
+- 新candidate固定後に記録する。
 
 ## candidate-bound DEV証跡
 
 | コマンド/テスト | 結果 |
-|---|---|---|
+|---|---|
 | `make check`（DEVで一回） | `pending` |
 
 ## 主要な変更
 
-- TODO
+- pending
 
 ## 検証結果
 
 - `make check`: `pending`
-- TODO
 
 ## 判断・既知の制約
 
-- TODO
+- 旧candidate `32df3c8` はcompletion transactionの削除path stage不具合を含むため失効した。

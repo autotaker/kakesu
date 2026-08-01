@@ -32,6 +32,7 @@ classification_approval_reason: "Makefile、実行script、process test、.codex
 - `scripts/task/run-wiki-agent.mjs`（削除）
 - `scripts/task/agent-routing.mjs`
 - `scripts/task/development-process.test.mjs`
+- `scripts/task/unified-lifecycle.mjs`
 - `scripts/task/unified-lifecycle.test.mjs`
 - `.codex/config.toml`
 - `.codex/agents/wiki.toml`（新規）
@@ -65,6 +66,10 @@ classification_approval_reason: "Makefile、実行script、process test、.codex
    - receiptの作成自体を必須化するテスト、または新しいwrapper/token/version/checklistを要求するテストは追加しない。
    - `wiki/AGENTS.md`はcandidateに含めず、同一candidateの独立REVIEW/QA後にMainがcompletion transactionで統合する既存境界を維持する。
 
+5. completion transactionを削除pathに対応させる。
+   - candidate merge後の許可差分stageを`git add -A -- <paths>`にし、削除済みpathのpathspec errorでtransactionが中断しないようにする。
+   - 既存の3-commit completion fixtureでtracked launcherを削除し、削除を含むcandidateがno-ff mergeされる回帰ケースとして使う。新しいgateや証跡項目は追加しない。
+
 ## 受け入れ条件への対応
 
 | AC | 実施・検証の対応 |
@@ -73,8 +78,8 @@ classification_approval_reason: "Makefile、実行script、process test、.codex
 | AC-2 | `.codex`のwiki roleとrole契約、標準spawnを唯一の起動経路とする規約・routingの同期。 |
 | AC-3 | Mainの直列writer、事前scope固定、終了後検査、既存lock付きtransaction所有を統制文書とprocess testで確認。 |
 | AC-4 | receipt Schema/検証を維持し、Wiki未依頼Taskのreceipt・Agent非必須性を文書とprocess testで確認。 |
-| AC-5 | 影響Node tests、docs lint、`make work-check`、root `make check`、`git diff --check`を実行する。 |
-| AC-6 | `wiki/AGENTS.md`をcandidate外のMain管理差分としてcompletion transactionで統合すること、許可10 pathsのみであること、TASK-0058・Kakesu product runtime・tools/dev-agent-harness runtimeに差分がないことを差分で監査する。 |
+| AC-5 | 影響Node testsでlauncher削除と削除pathを含むcompletion transactionを検出し、docs lint、`make work-check`、root `make check`、`git diff --check`を実行する。 |
+| AC-6 | `wiki/AGENTS.md`をcandidate外のMain管理差分としてcompletion transactionで統合すること、許可11 pathsのみであること、TASK-0058・Kakesu product runtime・tools/dev-agent-harness runtimeに差分がないことを差分で監査する。 |
 
 ## 検証計画
 
@@ -97,6 +102,10 @@ classification_approval_reason: "Makefile、実行script、process test、.codex
 
 復旧は、candidate製品差分とcandidate外の`wiki/AGENTS.md` Main管理差分を区別して許可path単位で戻し、既存の標準role registry・Main transaction・receipt任意契約へ復元したうえで、同じfocused process testsと製品変更検査を再実行する。公開済みreceipt/Decisionは書換えない。
 
+## Mainの軽量確認
+
+Mainは本PLANとQA_PLANがユーザ意図、対象範囲、受け入れ経路に一致することだけを確認した。独立PLANレビューは実施しない。実装後の独立REVIEW/QAで実際のcandidateを評価する。
+
 ## 引き継ぎ条件
 
-実装担当は承認済み本PLANと独立QA_PLANの後に、candidateへ含める許可9 pathsだけで実施する。`wiki/AGENTS.md`はcandidate外のMain管理差分としてcompletion transactionで統合する。子Agentはstage、commit、merge、`.git`書込みを行わない。Mainだけがcandidate固定、既存lock付きtransactionでのcommit、独立REVIEW/QA、完了ゲートを所有する。
+実装担当はMain確認済みの本PLANとQA_PLANの後に、candidateへ含める許可10 pathsだけで実施する。`wiki/AGENTS.md`はcandidate外のMain管理差分としてcompletion transactionで統合する。子Agentはstage、commit、merge、`.git`書込みを行わない。Mainだけがcandidate固定、既存lock付きtransactionでのcommit、独立REVIEW/QA、完了ゲートを所有する。

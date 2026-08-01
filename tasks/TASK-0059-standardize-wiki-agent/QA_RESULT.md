@@ -12,7 +12,7 @@ tested_at: ""
 
 | ケース ID | コマンド/テスト | 結果 |
 |---|---|---|
-| QA-001 | TODO | `pending` |
+| QA-001〜QA-006 | 新candidate固定後に実施 | `pending` |
 
 ## 発見事項
 
