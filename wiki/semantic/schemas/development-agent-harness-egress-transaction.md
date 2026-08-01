@@ -61,9 +61,17 @@ Exchangeへ到達する前に、origin-form、構造的に妥当なmethodとauth
 
 成功時はExchangeが返した2xx responseだけを、縮退済みContent-Typeとbody、固定`Cache-Control: no-store`と`X-Content-Type-Options: nosniff`、正確な`Content-Length`で返す。response write失敗後に上流処理を再試行しない。Handlerはlistener/TLS終端、production identity resolver、実provider client、実credential、DNS/system trust、Agent network namespaceを所有せず、それらはlive E2Eの別境界である。
 
+## CONNECTからHTTP handoffまでの一接続境界
+
+`connectsession.Session`は受理済みの一connectionだけを所有し、strict CONNECT、host-bound TLS終端、`brokerhttp.Handler`への単一HTTP/1.1 request handoff、単一response、closeを有限state machineとして順に行う。CONNECT authorityとSNIは`api.github.com`又は`api.openai.com`への完全一致に限り、CAが発行するleafと同じallow surfaceを保つ。
+
+CONNECTでは限定headerだけを受理し、HTTP phaseへ入る前の余分なbyte、framing又は未許可headerを拒否する。TLSはTLS 1.2以上、SNI、HTTP/1.1 ALPNを要求する。TLS終端後は最大一requestをhandlerへ渡し、keep-aliveを許可しない。CONNECT、TLS、HTTPの各phaseには5秒とcallerのより早いdeadline/cancelのうち早い方を適用し、失敗は固定された非漏えい応答へ縮退してconnectionをcloseする。
+
+Sessionはcaller contextをそのままhandlerへ渡すが、CONNECT header、RemoteAddr、SNI又はinner HTTP headerから主体を生成しない。handlerはdeadline/cancelに協調してreturnするtrusted dependencyである。任意の非協調callbackを別goroutineでtimeoutさせるとcallbackが戻らない時にgoroutineを確実にleakするため、Sessionはその強制停止を保証しない。
+
 ## 適用限界
 
-このトランザクションはin-memoryの認可接続コアであり、実認証情報の読取・生成、GitHub App token交換、OpenAI key管理、HTTP listener、CONNECT/TLS終端、DNS、上流通信、監査、永続化を実装しない。Agent向けTLS interceptionのCA検証とhost限定leaf発行はProxy CAの別境界であり、listener/CONNECT/SNI、OS trust、実clientと実配置はなおlive E2Eで確認する。前記transport又はCAのhermetic testも、実GitHub/OpenAI、実Internet DNS、実system trust store、実proxy/firewallでの成功や認証情報非露出を証明しない。
+このトランザクションはin-memoryの認可接続コアであり、実認証情報の読取・生成、GitHub App token交換、OpenAI key管理、HTTP listener、DNS、上流通信、監査、永続化を実装しない。CONNECT/TLS/HTTPの一接続処理、Agent向けTLS interceptionのCA検証とhost限定leaf発行は別境界である。実socket bind/accept、OS peer identity、CA file lifecycle/rotate/trust install、実client、実GitHub/OpenAI、実Internet DNS/system trust、network namespace/VPS、実配置のrestart/rollback/cleanupはなおlive E2Eで確認する。前記transport、CA又はSessionのhermetic testは、これらのlive E2E又は認証情報非露出の証明にならない。
 
 ## 関連
 
@@ -72,6 +80,7 @@ Exchangeへ到達する前に、origin-form、構造的に妥当なmethodとauth
 - [TASK-0047 HANDOVER](../../../tasks/TASK-0047-dev-agent-upstream-forwarder/HANDOVER.md)
 - [TASK-0048 HANDOVER](../../../tasks/TASK-0048-dev-agent-broker-exchange/HANDOVER.md)
 - [TASK-0049 HANDOVER](../../../tasks/TASK-0049-dev-agent-broker-http-handler/HANDOVER.md)
+- [TASK-0051 HANDOVER](../../../tasks/TASK-0051-dev-agent-connect-session/HANDOVER.md)
 - [Development Agent Harness Egress Policy](development-agent-harness-egress-policy.md)
 - [Development Agent Harness Capability Registry](development-agent-harness-capability-registry.md)
 - [Development Agent Harness Proxy CA](development-agent-harness-proxy-ca.md)

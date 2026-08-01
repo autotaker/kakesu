@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "task_id": "TASK-0051",
+  "handover_sha256": "5b3abfe8f2ad72551d0bc13eb58bb68547fd608d74c91c2deaf0cc1e19bb6bce",
+  "ingested_at": "2026-08-01T13:54:15Z",
+  "updated_pages": [
+    "wiki/semantic/schemas/development-agent-harness-egress-transaction.md"
+  ],
+  "created_decisions": [],
+  "deferred": [
+    "実socket bind/accept、OS peer identity、CA file lifecycle/rotate/trust install、実client、実GitHub/OpenAI、network namespace/VPS、および実配置のrestart/rollback/cleanupはlive E2E境界として未実装・未確認である。hermetic Session/TLS PASSで代替しない。"
+  ]
+}

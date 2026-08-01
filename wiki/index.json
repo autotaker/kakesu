@@ -137,6 +137,7 @@
         "../../../tasks/TASK-0047-dev-agent-upstream-forwarder/HANDOVER.md",
         "../../../tasks/TASK-0048-dev-agent-broker-exchange/HANDOVER.md",
         "../../../tasks/TASK-0049-dev-agent-broker-http-handler/HANDOVER.md",
+        "../../../tasks/TASK-0051-dev-agent-connect-session/HANDOVER.md",
         "development-agent-harness-egress-policy.md",
         "development-agent-harness-capability-registry.md",
         "development-agent-harness-proxy-ca.md"
