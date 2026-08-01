@@ -8,6 +8,7 @@ import {
   changedContentDigest, findMainWorktree, git, isMainManagedPath, parseArgs, parseFrontmatter, readYaml, replaceTemplate,
   resolveInside, taskById, writeYaml,
 } from "./lib.mjs";
+import { validateDevSelection } from "./agent-routing.mjs";
 
 const ACTION_FILES = {
   task: ["TASK.md"], plan: ["PLAN.md"], "qa-plan": ["QA_PLAN.md"], review: ["REVIEW_RESULT.md"],
@@ -78,6 +79,7 @@ function validatePlanningState(root, taskId, changed) {
   if (plan.task_id !== taskId || qaPlan.task_id !== taskId || taskFile.task_id !== taskId) throw new Error("planning-gate task identity mismatch");
   if (plan.status !== "approved" || plan.approved_by !== task.assignees?.main || plan.planner_agent !== task.assignees?.planner) throw new Error("planning-gate PLAN approval or role mismatch");
   if (qaPlan.status !== "approved" || qaPlan.approved_by !== task.assignees?.main || qaPlan.qa_agent !== task.assignees?.qa) throw new Error("planning-gate QA PLAN approval or role mismatch");
+  validateDevSelection(plan);
   if (!new Set(["dev", "plan"]).has(task.status)) throw new Error("planning-gate backlog status is invalid");
 }
 

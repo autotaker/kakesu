@@ -115,13 +115,17 @@ function setFrontmatter(file, values) {
   fs.writeFileSync(file, content);
 }
 
+function approvedPlan(task) {
+  return { status: "approved", planner_agent: task.assignees.planner, approved_by: task.assignees.main, approved_at: "2026-08-01T00:00:00Z", approved_dev_profile: "luna-xhigh", approved_dev_profile_reason: "fixture", approved_dev_profile_risk_signals: [] };
+}
+
 function prepareThreeCommitFixture() {
   const root = initTaskStartRepository();
   const started = taskStart({ id: "TASK-9010", slug: "three", title: "three commit fixture", epic: "EPIC-001", push: "false" }, root);
   const taskDir = path.join(root, "tasks/TASK-9010-three");
   const backlogValue = parseYaml(fs.readFileSync(path.join(root, "backlog.yaml"), "utf8"));
   const task = backlogValue.tasks.find((entry) => entry.id === "TASK-9010");
-  setFrontmatter(path.join(taskDir, "PLAN.md"), { status: "approved", planner_agent: task.assignees.planner, approved_by: task.assignees.main, approved_at: "2026-08-01T00:00:00Z" });
+  setFrontmatter(path.join(taskDir, "PLAN.md"), approvedPlan(task));
   setFrontmatter(path.join(taskDir, "QA_PLAN.md"), { status: "approved", qa_agent: task.assignees.qa, approved_by: task.assignees.main, approved_at: "2026-08-01T00:00:00Z" });
   const planning = evidenceCommit({ root, action: "planning-gate", taskId: "TASK-9010", message: "planning TASK-9010", push: false, validate: false });
   fs.writeFileSync(path.join(started.worktree, "Makefile"), "check:\n\t@true\n");
@@ -337,7 +341,7 @@ test("candidate make check failure reports stderr and stdout diagnostics", () =>
     const started = taskStart({ id: "TASK-9014", slug: "check-diagnostics", title: "check diagnostics fixture", epic: "EPIC-001", push: "false" }, root);
     const taskDir = path.join(root, "tasks/TASK-9014-check-diagnostics");
     const task = parseYaml(fs.readFileSync(path.join(root, "backlog.yaml"), "utf8")).tasks.find((entry) => entry.id === "TASK-9014");
-    setFrontmatter(path.join(taskDir, "PLAN.md"), { status: "approved", planner_agent: task.assignees.planner, approved_by: task.assignees.main, approved_at: "2026-08-01T00:00:00Z" });
+    setFrontmatter(path.join(taskDir, "PLAN.md"), approvedPlan(task));
     setFrontmatter(path.join(taskDir, "QA_PLAN.md"), { status: "approved", qa_agent: task.assignees.qa, approved_by: task.assignees.main, approved_at: "2026-08-01T00:00:00Z" });
     evidenceCommit({ root, action: "planning-gate", taskId: "TASK-9014", message: "planning TASK-9014", push: false, validate: false });
     fs.writeFileSync(path.join(started.worktree, "Makefile"), "check:\n\t@printf 'stdout diagnostic\\n'; printf 'stderr diagnostic\\n' >&2; exit 1\n");
@@ -360,7 +364,7 @@ test("Q-01 planning preflight failure leaves main and allocation unchanged", () 
     const before = git(root, "rev-parse", "main");
     const taskDir = path.join(root, "tasks/TASK-9012-planning-fail");
     const taskValue = parseYaml(fs.readFileSync(path.join(root, "backlog.yaml"), "utf8")).tasks[0];
-    setFrontmatter(path.join(taskDir, "PLAN.md"), { status: "approved", planner_agent: taskValue.assignees.planner, approved_by: taskValue.assignees.main, approved_at: "2026-08-01T00:00:00Z" });
+    setFrontmatter(path.join(taskDir, "PLAN.md"), approvedPlan(taskValue));
     setFrontmatter(path.join(taskDir, "QA_PLAN.md"), { status: "approved", qa_agent: taskValue.assignees.qa, approved_by: taskValue.assignees.main, approved_at: "2026-08-01T00:00:00Z" });
     const backlogFile = path.join(root, "backlog.yaml");
     const value = parseYaml(fs.readFileSync(backlogFile, "utf8"));
@@ -374,6 +378,36 @@ test("Q-01 planning preflight failure leaves main and allocation unchanged", () 
   }
 });
 
+test("Q-01 planning rejects a missing DEV profile before any Git mutation", () => {
+  const root = initTaskStartRepository();
+  try {
+    const started = taskStart({ id: "TASK-9015", slug: "profile-fail", title: "profile fail", epic: "EPIC-001", push: "false" }, root);
+    const taskDir = path.join(root, "tasks/TASK-9015-profile-fail");
+    const task = parseYaml(fs.readFileSync(path.join(root, "backlog.yaml"), "utf8")).tasks[0];
+    const planFile = path.join(taskDir, "PLAN.md");
+    setFrontmatter(planFile, { status: "approved", planner_agent: task.assignees.planner, approved_by: task.assignees.main, approved_at: "2026-08-01T00:00:00Z" });
+    setFrontmatter(path.join(taskDir, "QA_PLAN.md"), { status: "approved", qa_agent: task.assignees.qa, approved_by: task.assignees.main, approved_at: "2026-08-01T00:00:00Z" });
+    fs.appendFileSync(planFile, "dirty planning input\n");
+    const mainBefore = git(root, "rev-parse", "main");
+    const branchBefore = git(root, "rev-parse", task.branch);
+    const worktreeBefore = git(started.worktree, "rev-parse", "HEAD");
+    const indexBefore = git(root, "diff", "--cached", "--binary");
+    const statusBefore = git(root, "status", "--porcelain");
+    const planBefore = fs.readFileSync(planFile);
+    const remoteBefore = git(root, "rev-parse", "origin/main");
+    assert.throws(() => evidenceCommit({ root, action: "planning-gate", taskId: "TASK-9015", message: "bad DEV profile", push: true, validate: false }), /DEV_PROFILE_UNKNOWN/);
+    assert.equal(git(root, "rev-parse", "main"), mainBefore);
+    assert.equal(git(root, "rev-parse", task.branch), branchBefore);
+    assert.equal(git(started.worktree, "rev-parse", "HEAD"), worktreeBefore);
+    assert.equal(git(root, "diff", "--cached", "--binary"), indexBefore);
+    assert.equal(git(root, "status", "--porcelain"), statusBefore);
+    assert.deepEqual(fs.readFileSync(planFile), planBefore);
+    assert.equal(git(root, "rev-parse", "origin/main"), remoteBefore);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("Q-01 planning push failure restores main, Task branch, and worktree", () => {
   const root = initTaskStartRepository();
   try {
@@ -381,7 +415,7 @@ test("Q-01 planning push failure restores main, Task branch, and worktree", () =
     const taskDir = path.join(root, "tasks/TASK-9013-planning-push");
     const value = parseYaml(fs.readFileSync(path.join(root, "backlog.yaml"), "utf8"));
     const task = value.tasks[0];
-    setFrontmatter(path.join(taskDir, "PLAN.md"), { status: "approved", planner_agent: task.assignees.planner, approved_by: task.assignees.main, approved_at: "2026-08-01T00:00:00Z" });
+    setFrontmatter(path.join(taskDir, "PLAN.md"), approvedPlan(task));
     setFrontmatter(path.join(taskDir, "QA_PLAN.md"), { status: "approved", qa_agent: task.assignees.qa, approved_by: task.assignees.main, approved_at: "2026-08-01T00:00:00Z" });
     const mainBefore = git(root, "rev-parse", "main");
     const branchBefore = git(root, "rev-parse", task.branch);
