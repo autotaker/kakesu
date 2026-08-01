@@ -1,7 +1,7 @@
 ---
 task_id: "TASK-0041"
 title: "Capability連携済みegress transactionを実装する"
-status: plan
+status: done
 created_at: "2026-08-01"
 ---
 
@@ -36,12 +36,12 @@ TASK-0039のHTTP allowlist判断とTASK-0040のOpaque capability消費を一つ�
 
 ### 受け入れ条件
 
-- [ ] AC-1: `egresspolicy`の新scope APIは、既存allowlistと同じ一回の評価からGitHub REST readなら`github`/canonical `owner/repo`/`github-rest-read`/`api.github.com`、OpenAI Responses textなら`openai`/repositoryなし/`openai-responses-text`/`api.openai.com`を返す。denyはzero scopeと既存の固定`request-denied`だけを返し、既存`Authorize`の全decision/errorを変えない。
-- [ ] AC-2: valid RulesからTransactionを生成でき、policy、capability Registry、CredentialResolver、Forwarderのnil又はCredential最大長が1〜4,096以外なら固定Rules errorで拒否する。non-nilのzero policy/RegistryはExecute時に固定denyとなる。Subjectはcanonical agent instance、non-root UID、workspaceを保持し、Requestとcaller-owned Authorization/body sliceを保存・変更しない。
-- [ ] AC-3: `Execute`はpolicy allow、provider別の厳密なcapability Authorization抽出、scope APIから作る完全一致`capability.Request`のConsumeを順に行う。policy/auth denyではcapability、resolver、Forwarderを使わず、capability denyではresolverとForwarderを使わない。scope/repository/host/operationをcallerの別入力から補完又は正規化しない。
-- [ ] AC-4: capability Consume成功後だけresolverをcanonical provider/repositoryで一回呼ぶ。resolver error又は空、上限超過、space/tab/改行/control/non-ASCIIを含むCredentialは固定execute errorとなり、resolver/Forwarder再試行とcapability復元をしない。valid CredentialだけをForwarderへ一回渡す。同じ1-use handleへの並行Executeはexactly oneだけがresolverとForwarderへ到達し、race detectorでdata raceがない。
-- [ ] AC-5: Forwarderへ同期的に渡すPreparedRequestはmethod、raw URL、content type、bodyの独立copy、canonical provider scope、`Bearer ` + 実Credentialだけを持ち、Opaque handle又は入力Authorizationを保持しない。ExecuteはCredential-bearing値を返さず、Transactionも保持しない。errorはURL、body、subject、repository、handle、Credential、resolver/Forwarder detailを含まない固定値であり、transaction自身はfile/environment/process/network/DNS/TLSを使わない。
-- [ ] AC-6: table-driven unit testsがscope導出、既存Authorize互換、両providerの成功、Authorization境界、policy/scope/capability/resolver/Forwarder deny、Credential検証、消費順序、入力不変、non-leak、並行1-useを検出する。`go test -race ./internal/egresspolicy ./internal/egresstransaction`、harness `make check`/`make distcheck`、root `make check`がPASSする。candidateのbaseとの差分は対象2 packageとREADMEだけとし、`git diff --numstat <base>...<candidate>`の追加行＋削除行の合計を1,200以下とする。
+- [x] AC-1: `egresspolicy`の新scope APIは、既存allowlistと同じ一回の評価からGitHub REST readなら`github`/canonical `owner/repo`/`github-rest-read`/`api.github.com`、OpenAI Responses textなら`openai`/repositoryなし/`openai-responses-text`/`api.openai.com`を返す。denyはzero scopeと既存の固定`request-denied`だけを返し、既存`Authorize`の全decision/errorを変えない。
+- [x] AC-2: valid RulesからTransactionを生成でき、policy、capability Registry、CredentialResolver、Forwarderのnil又はCredential最大長が1〜4,096以外なら固定Rules errorで拒否する。non-nilのzero policy/RegistryはExecute時に固定denyとなる。Subjectはcanonical agent instance、non-root UID、workspaceを保持し、Requestとcaller-owned Authorization/body sliceを保存・変更しない。
+- [x] AC-3: `Execute`はpolicy allow、provider別の厳密なcapability Authorization抽出、scope APIから作る完全一致`capability.Request`のConsumeを順に行う。policy/auth denyではcapability、resolver、Forwarderを使わず、capability denyではresolverとForwarderを使わない。scope/repository/host/operationをcallerの別入力から補完又は正規化しない。
+- [x] AC-4: capability Consume成功後だけresolverをcanonical provider/repositoryで一回呼ぶ。resolver error又は空、上限超過、space/tab/改行/control/non-ASCIIを含むCredentialは固定execute errorとなり、resolver/Forwarder再試行とcapability復元をしない。valid CredentialだけをForwarderへ一回渡す。同じ1-use handleへの並行Executeはexactly oneだけがresolverとForwarderへ到達し、race detectorでdata raceがない。
+- [x] AC-5: Forwarderへ同期的に渡すPreparedRequestはmethod、raw URL、content type、bodyの独立copy、canonical provider scope、`Bearer ` + 実Credentialだけを持ち、Opaque handle又は入力Authorizationを保持しない。ExecuteはCredential-bearing値を返さず、Transactionも保持しない。errorはURL、body、subject、repository、handle、Credential、resolver/Forwarder detailを含まない固定値であり、transaction自身はfile/environment/process/network/DNS/TLSを使わない。
+- [x] AC-6: table-driven unit testsがscope導出、既存Authorize互換、両providerの成功、Authorization境界、policy/scope/capability/resolver/Forwarder deny、Credential検証、消費順序、入力不変、non-leak、並行1-useを検出する。`go test -race ./internal/egresspolicy ./internal/egresstransaction`、harness `make check`/`make distcheck`、root `make check`がPASSする。candidateのbaseとの差分は対象2 packageとREADMEだけとし、`git diff --numstat <base>...<candidate>`の追加行＋削除行の合計を1,200以下とする。
 
 ### 安定した参照
 
@@ -102,10 +102,10 @@ TASK-0039はHTTP requestだけを評価し、TASK-0040はcallerが渡したscope
 
 ## 完成の定義
 
-- [ ] 受け入れ条件を満たしている。
-- [ ] planning/candidate/completionの3 commit経路を満たしている。
-- [ ] 同一candidateの独立REVIEW/QA、candidateで一回のroot `make check`、post-merge `task-check`を満たしている。
-- [ ] 再利用可能なscope導出・消費・Credential置換順序をSemantic Wikiへ記録している。
+- [x] 受け入れ条件を満たしている。
+- [x] planning/candidate/completionの3 commit経路を満たしている。
+- [x] 同一candidateの独立REVIEW/QA、candidateで一回のroot `make check`、post-merge `task-check`を満たしている。
+- [x] 再利用可能なscope導出・消費・Credential置換順序をSemantic Wikiへ記録している。
 
 ## 関連コンテキスト
 

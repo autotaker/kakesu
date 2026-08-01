@@ -5,7 +5,7 @@ status: approved
 qa_agent: qa-agent-terra-medium
 approved_by: main-agent-sol-high
 approved_at: "2026-08-01T06:12:29Z"
-implementation_reviewed_at: ""
+implementation_reviewed_at: "2026-08-01T06:27:47Z"
 expectation_changed: false
 expectation_change_approved_by: ""
 ---
@@ -44,6 +44,12 @@ QAはHANDOVERに記録された `candidate_commit` を唯一のcandidateとし�
 ## Result criteria
 
 各caseの証跡はcase ID、candidate、command、resultだけを記録する。対象外の実Credential、file、network、TLS、HTTP forwardingに関する確認不足を他モードのPASSで代替しない。失敗はQAガイドラインに従い、実装不具合と決めつけずに分類する。
+
+## 実装後の再確認
+
+- [x] fixed candidateの実装差分と、REVIEWを開始条件としない独立QA結果を確認した。
+- [x] QA-004のfocused race testをcandidateで一度だけ実行し、source/test auditと合わせて確認した。
+- [x] QA-001〜006のcandidate-bound証跡、許可5 path、差分692行、DEV command/resultを監査し、期待結果または範囲を変更していない。
 
 ## Approval
 

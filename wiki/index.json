@@ -119,6 +119,16 @@
       ]
     },
     {
+      "path": "wiki/semantic/schemas/development-agent-harness-egress-transaction.md",
+      "kind": "schema",
+      "title": "Development Agent Harness Egress Transaction",
+      "links": [
+        "../../../tasks/TASK-0041-dev-agent-egress-transaction/HANDOVER.md",
+        "development-agent-harness-egress-policy.md",
+        "development-agent-harness-capability-registry.md"
+      ]
+    },
+    {
       "path": "wiki/semantic/schemas/development-agent-harness-provision-manifest.md",
       "kind": "schema",
       "title": "Development Agent Harness Provision Manifest",
