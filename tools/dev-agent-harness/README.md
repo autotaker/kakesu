@@ -36,6 +36,15 @@ Kakesuを開発するための外部開発基盤である。Kakesu本体のラ�
 固定要約を出力し、失敗時も入力値やパスを診断へ含めない。設定検証はユーザー作成、秘密の読込、ネットワーク、
 IPC、サービス起動を行わない。
 
+V1設定の`identity.workspace_id`は、1〜128バイトで先頭がASCII英数字、残りがASCII英数字または`._-`の
+設定固定識別子である。`internal/runtimeidentity`はこのworkspaceと固定ユーザー名をconstructorで検証し、
+起動単位ごとにLinuxのユーザー/グループ検索（各一回）と現在のnon-rootブローカーEUIDを突き合わせる。
+成功時はインスタンスID（`agent-` + 16バイトの暗号乱数をlowercase hex化）、ブローカーUID、エージェントUID/GID、
+`brokerlistener.Subject`を同じ解決結果から返す。非Linux、NSS/UID/GID不一致、検索または乱数失敗は
+常に固定エラーへ畳み、username・workspace・numeric IDや下位エラーを診断へ出さない。ソケット有効化とPeerBinderの
+組み合わせ、実NSS・別UID/GID・サービス再起動・VPS確認はこの境界の対象外であり、隔離テストとLinux cross-compileは
+それらのlive E2Eを意味しない。
+
 `dev-agent-harness-setup plan-provision --config PATH --target-root PATH` は、対象OSへ渡す
 配置計画の望ましい状態を確認するための読み取り専用dry-runである。成功時はヘッダー1行と、固定順序
 （ユーザー3件、ディレクトリ4件、サービス3件）の計10 actionを正規JSONLとしてstdoutへ出力する。

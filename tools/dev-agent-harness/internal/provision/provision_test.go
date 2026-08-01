@@ -21,8 +21,9 @@ func testConfig() *config.Config {
 			StateDir:   "/var/lib/dev-agent-harness",
 			RuntimeDir: "/run/dev-agent-harness",
 		},
-		Users:   config.Users{Agent: "dev-agent", Runtime: "dev-runtime", Broker: "dev-broker"},
-		Network: config.Network{Default: "deny"},
+		Users:    config.Users{Agent: "dev-agent", Runtime: "dev-runtime", Broker: "dev-broker"},
+		Identity: config.Identity{WorkspaceID: "workspace-1"},
+		Network:  config.Network{Default: "deny"},
 	}
 }
 
@@ -198,6 +199,8 @@ func TestBuildRejectsDirectInvalidConfigValues(t *testing.T) {
 		{"unclean path", func(c *config.Config) { c.Paths.ConfigDir = "/etc/../etc/dev-agent" }},
 		{"invalid user", func(c *config.Config) { c.Users.Agent = "9agent" }},
 		{"duplicate user", func(c *config.Config) { c.Users.Runtime = c.Users.Agent }},
+		{"invalid workspace", func(c *config.Config) { c.Identity.WorkspaceID = "workspace/id" }},
+		{"missing workspace", func(c *config.Config) { c.Identity.WorkspaceID = "" }},
 		{"empty root", func(c *config.Config) { _ = c }},
 	}
 	for _, tc := range cases {

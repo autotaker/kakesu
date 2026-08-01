@@ -41,10 +41,11 @@ func (e *Error) Error() string { return string(e.Class) }
 func fail(class ErrorClass) error { return &Error{Class: class} }
 
 type Config struct {
-	Version int     `json:"version"`
-	Paths   Paths   `json:"paths"`
-	Users   Users   `json:"users"`
-	Network Network `json:"network"`
+	Version  int      `json:"version"`
+	Paths    Paths    `json:"paths"`
+	Users    Users    `json:"users"`
+	Identity Identity `json:"identity"`
+	Network  Network  `json:"network"`
 }
 
 type Paths struct {
@@ -57,6 +58,10 @@ type Users struct {
 	Agent   string `json:"agent"`
 	Runtime string `json:"runtime"`
 	Broker  string `json:"broker"`
+}
+
+type Identity struct {
+	WorkspaceID string `json:"workspace_id"`
 }
 
 type Network struct {
@@ -231,10 +236,32 @@ func validate(c *Config) error {
 	if c.Users.Agent == c.Users.Runtime || c.Users.Agent == c.Users.Broker || c.Users.Runtime == c.Users.Broker {
 		return fail(ClassSemantic)
 	}
+	if !validateIdentifier(c.Identity.WorkspaceID) {
+		return fail(ClassSemantic)
+	}
 	if c.Network.Default != "deny" {
 		return fail(ClassSemantic)
 	}
 	return nil
+}
+
+func validateIdentifier(value string) bool {
+	if len(value) < 1 || len(value) > 128 {
+		return false
+	}
+	for index := 0; index < len(value); index++ {
+		char := value[index]
+		if index == 0 {
+			if !((char >= 'a' && char <= 'z') || (char >= 'A' && char <= 'Z') || (char >= '0' && char <= '9')) {
+				return false
+			}
+			continue
+		}
+		if !((char >= 'a' && char <= 'z') || (char >= 'A' && char <= 'Z') || (char >= '0' && char <= '9') || char == '.' || char == '_' || char == '-') {
+			return false
+		}
+	}
+	return true
 }
 
 func validatePath(value string) error {
