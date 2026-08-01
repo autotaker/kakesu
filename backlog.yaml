@@ -852,3 +852,23 @@ tasks:
       dev: dev-agent-luna-xhigh
       reviewer: reviewer-agent-terra-medium
       qa: qa-agent-terra-medium
+  - id: TASK-0048
+    title: broker内egress交換を合成する
+    type: feature
+    change_class: product
+    epic: EPIC-001
+    status: dev
+    priority: P1
+    estimate_points: 1
+    task_dir: tasks/TASK-0048-dev-agent-broker-exchange
+    depends_on:
+      - TASK-0041
+      - TASK-0047
+    branch: task/TASK-0048-dev-agent-broker-exchange
+    worktree: worktrees/TASK-0048-dev-agent-broker-exchange
+    assignees:
+      main: main-agent-sol-high
+      planner: planner-agent-terra-medium
+      dev: dev-agent-luna-xhigh
+      reviewer: reviewer-agent-terra-medium
+      qa: qa-agent-terra-medium
