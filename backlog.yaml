@@ -637,6 +637,6 @@ tasks:
     assignees:
       main: main-agent-sol-high
       planner: planner-agent-terra-medium
-      dev: dev-agent-sol-high
+      dev: dev-agent-luna-xhigh
       reviewer: reviewer-agent-terra-medium
       qa: qa-agent-terra-medium
