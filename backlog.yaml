@@ -930,3 +930,22 @@ tasks:
       dev: dev-agent-luna-xhigh
       reviewer: reviewer-agent-terra-medium
       qa: qa-agent-terra-medium
+  - id: TASK-0052
+    title: 受理loopとtrusted peer context bindingを実装する
+    type: feature
+    change_class: product
+    epic: EPIC-001
+    status: plan
+    priority: P1
+    estimate_points: 1
+    task_dir: tasks/TASK-0052-dev-agent-listener
+    depends_on:
+      - TASK-0051
+    branch: task/TASK-0052-dev-agent-listener
+    worktree: worktrees/TASK-0052-dev-agent-listener
+    assignees:
+      main: main-agent-sol-high
+      planner: planner-agent-terra-medium
+      dev: dev-agent-luna-xhigh
+      reviewer: reviewer-agent-terra-medium
+      qa: qa-agent-terra-medium
