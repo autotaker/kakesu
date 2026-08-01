@@ -6,7 +6,7 @@ qa_agent: "qa-agent-terra-medium"
 approved_by: "main-agent-sol-high"
 approved_at: "2026-08-01T03:36:53Z"
 revision: 2
-implementation_reviewed_at: ""
+implementation_reviewed_at: "2026-08-01T03:56:11Z"
 expectation_changed: false
 expectation_change_approved_by: ""
 ---
@@ -30,9 +30,9 @@ TASK本文だけを仕様として、同一candidate commitを独立に検証す
 
 ## 実装後の再確認
 
-- [ ] 各ケースのcandidate commit、command、fixture、結果又は未実施理由を記録した。
-- [ ] QA-002〜005をDEV結果と独立に再実行し、失敗を原因別に分類した。
-- [ ] candidate diffに独立parser/別schema、path再open、入力由来の診断、外部作用、生成済み`configure`又はinstall surfaceの変更がないことを確認した。
+- [x] 各ケースのcandidate commit、command、fixture、結果又は未実施理由を記録した。
+- [x] QA-002〜005をDEV結果と独立に再実行し、失敗を原因別に分類した。
+- [x] candidate diffに独立parser/別schema、path再open、入力由来の診断、外部作用、生成済み`configure`又はinstall surfaceの変更がないことを確認した。
 
 ## 改訂履歴
 

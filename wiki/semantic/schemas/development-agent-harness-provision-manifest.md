@@ -21,6 +21,12 @@ logical pathと`target-root`は別のcoordinateとして扱う。logical `/`だ�
 
 この区別により、論理的な配置先の安全な検証と、テストまたは隔離先へのtarget-root mappingを混同しない。
 
+## OS適用前のconsumer境界
+
+`dev-agent-harness-setup verify-provision`は、manifestを一度だけ開いたfile descriptorからbounded readし、regular file、非symlink、group/world non-writable、読取前後で不変なsize、mode、byte countを要求する。検査後に同じpathを開き直さない。
+
+受理条件は、同じconfigと指定rootから`provision.Build`で再生成したcanonical bytesとの完全一致だけである。consumerはJSONLを独自にparse、normalize、部分比較せず、別schemaや別の望ましい状態を持たない。このため1 byteでも異なるmanifest、別config由来、別root由来のmanifestはOS適用前にfail-closedとなる。
+
 ## 部分writeの限界
 
 OS-level writerがprefixを書いた後にerrorを返したとき、既に書かれたbyteはapplication側から巻き戻せない。したがってこの契約の保証は、事前全件検証、single write、retry/re-emitなしまでである。writer自身のatomicityやOS-level rollbackを保証するものではない。
@@ -28,3 +34,4 @@ OS-level writerがprefixを書いた後にerrorを返したとき、既に書か
 ## 関連
 
 - [TASK-0036 HANDOVER](../../../tasks/TASK-0036-dev-agent-provision-manifest/HANDOVER.md)
+- [TASK-0038 HANDOVER](../../../tasks/TASK-0038-dev-agent-provision-verify/HANDOVER.md)

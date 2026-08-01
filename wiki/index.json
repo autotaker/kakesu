@@ -105,7 +105,8 @@
       "kind": "schema",
       "title": "Development Agent Harness Provision Manifest",
       "links": [
-        "../../../tasks/TASK-0036-dev-agent-provision-manifest/HANDOVER.md"
+        "../../../tasks/TASK-0036-dev-agent-provision-manifest/HANDOVER.md",
+        "../../../tasks/TASK-0038-dev-agent-provision-verify/HANDOVER.md"
       ]
     },
     {

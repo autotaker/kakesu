@@ -23,6 +23,15 @@ IPCも起動しない。executor、sysusers、tmpfiles、unitの実行は後続�
 暗黙に許可されない。全記録をメモリ上で検証・serializeしてからstdoutへ一度だけ書き込むため、
 writerがpartialバイトを返してエラーになった場合の巻戻しはできず、再試行や再出力は行わない。
 
+`dev-agent-harness-setup verify-provision` は、config、manifest、指定ルートを受け取り、
+OSへ適用する前のmanifestを読み取り専用で検証する。manifestは一度だけ開いたファイルディスクリプタから読み、
+末尾symlinkでないregularファイル、グループまたはその他ユーザーから書き込み可能でないモード、128 KiB以下、
+読取前後で変化しないサイズ・モードおよびバイト数を満たす必要がある。入力を解釈する独立parserは持たず、同じ設定と
+指定ルートから`provision.Build`で生成した正規バイト列との完全一致だけを受理する。成功時の出力は
+`provision manifest version=1 actions=10 verified`という固定要約だけであり、失敗時も入力パス、設定値、
+manifest本文、ユーザー名、OSエラー本文を診断へ含めない。設定、manifest、指定ルートその他ホスト状態は
+変更せず、OS適用処理、管理者権限、systemd、プロセス、ネットワーク、IPCはこの検証境界の対象外である。
+
 ## Build
 
 リリースtarballには生成済み`configure`を含める。

@@ -1,7 +1,7 @@
 ---
 task_id: "TASK-0038"
 title: "Provision manifestのstrict consumerを実装する"
-status: plan
+status: done
 created_at: "2026-08-01"
 ---
 
@@ -37,14 +37,14 @@ created_at: "2026-08-01"
 
 <!-- AC-IDはTask内で一意かつ安定させ、観測可能な結果をここに一度だけ記載する。 -->
 
-- [ ] AC-1: validなversion 1設定、absolute/cleanな`target-root`、TASK-0036が生成した安全なmanifest fileに対してCLIはexit 0となり、stdoutへ`provision manifest version=1 actions=10 verified`と改行だけを出し、stderrを空にする。
-- [ ] AC-2: verifierは同じconfigとtarget rootから`provision.Build`で再構築したcanonical bytesとの完全一致だけを受理条件とする。したがって行数、field、型、空白、record順、値、config、target root、終端改行のいずれかが異なる入力をnon-zeroで拒否し、独立JSON parser、別schema、別の望ましい状態実装を追加しない。
-- [ ] AC-3: manifest pathは一度だけopenし、そのfile descriptorから検査・読取する。symlink、non-regular file、128 KiB超、group/world writable file、読取前後のsize/mode変更を拒否し、検査済みpathを開き直さない。
-- [ ] AC-4: 引数不足/余剰、設定不正、manifest不一致、file policy違反、read失敗はnon-zeroかつstdout空となる。stderrは固定error classだけを含み、入力path、user名、config/manifest本文、JSON値、OS error本文を出さない。
-- [ ] AC-5: CLIはmanifest、config、target rootその他host stateを書き換えず、外部process、network、IPCを開始しない。他のsetup操作と5 binaryは既存どおりfail-closedする。
-- [ ] AC-6: unit/CLI testはvalid case、代表的な1 byte追加/変更/削除、config/root mismatch、symlink/type/mode/size、読取中変更、非漏洩、副作用不在を検出する。JSON grammarごとの網羅matrixやproduction parserは要求しない。
-- [ ] AC-7: harness `make check`、`make distcheck`、root `make check`がPASSし、生成済み`configure`とinstall surfaceは変わらない。
-- [ ] AC-8: executor/実OS/root権限という新security boundary、許可外path、または1,200行超過が必要ならMainへ戻す。行数の下限、見積算術、mutation専用証跡は完了条件にしない。
+- [x] AC-1: validなversion 1設定、absolute/cleanな`target-root`、TASK-0036が生成した安全なmanifest fileに対してCLIはexit 0となり、stdoutへ`provision manifest version=1 actions=10 verified`と改行だけを出し、stderrを空にする。
+- [x] AC-2: verifierは同じconfigとtarget rootから`provision.Build`で再構築したcanonical bytesとの完全一致だけを受理条件とする。したがって行数、field、型、空白、record順、値、config、target root、終端改行のいずれかが異なる入力をnon-zeroで拒否し、独立JSON parser、別schema、別の望ましい状態実装を追加しない。
+- [x] AC-3: manifest pathは一度だけopenし、そのfile descriptorから検査・読取する。symlink、non-regular file、128 KiB超、group/world writable file、読取前後のsize/mode変更を拒否し、検査済みpathを開き直さない。
+- [x] AC-4: 引数不足/余剰、設定不正、manifest不一致、file policy違反、read失敗はnon-zeroかつstdout空となる。stderrは固定error classだけを含み、入力path、user名、config/manifest本文、JSON値、OS error本文を出さない。
+- [x] AC-5: CLIはmanifest、config、target rootその他host stateを書き換えず、外部process、network、IPCを開始しない。他のsetup操作と5 binaryは既存どおりfail-closedする。
+- [x] AC-6: unit/CLI testはvalid case、代表的な1 byte追加/変更/削除、config/root mismatch、symlink/type/mode/size、読取中変更、非漏洩、副作用不在を検出する。JSON grammarごとの網羅matrixやproduction parserは要求しない。
+- [x] AC-7: harness `make check`、`make distcheck`、root `make check`がPASSし、生成済み`configure`とinstall surfaceは変わらない。
+- [x] AC-8: executor/実OS/root権限という新security boundary、許可外path、または1,200行超過が必要ならMainへ戻す。行数の下限、見積算術、mutation専用証跡は完了条件にしない。
 
 ### 安定した参照
 
@@ -104,9 +104,9 @@ TASK-0036は安全な望ましい状態をcanonical JSONLとして生成でき�
 
 ## 完成の定義
 
-- [ ] 受け入れ条件を満たしている。
-- [ ] 選択した`change_class`の完了経路と`make check`を満たしている。
-- [ ] 製品変更の場合: 実装、テスト、文書、同一案の独立REVIEW/QA、完了後の環境依存ケース確認が完了している。
+- [x] 受け入れ条件を満たしている。
+- [x] 選択した`change_class`の完了経路と`make check`を満たしている。
+- [x] 製品変更の場合: 実装、テスト、文書、同一案の独立REVIEW/QA、完了後の環境依存ケース確認が完了している。
 - [ ] 安全契約変更の場合: 独立計画レビュー、契約検査、許可された統制文書差分の確認が完了している。
 
 ## 関連コンテキスト
