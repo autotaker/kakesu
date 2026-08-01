@@ -6,7 +6,7 @@ qa_agent: "qa-agent-terra-medium"
 approved_by: "main-agent-sol-high"
 approved_at: "2026-08-01T14:03:15Z"
 revision: 1
-implementation_reviewed_at: ""
+implementation_reviewed_at: "2026-08-01T14:27:06Z"
 expectation_changed: false
 expectation_change_approved_by: ""
 ---
@@ -56,11 +56,11 @@ QA は root/harness `make check`、`make distcheck`、lint、追加 test 又は 
 
 ## 実装後の再確認
 
-- [ ] candidate source/test、HANDOVER、DEV check evidence を独立確認する。
-- [ ] 指定 package race test を candidate で一回だけ実行する。
-- [ ] private key/binding order/subject copy/isolation、panic/error isolation、accept failure、cancel/drain、no timeout leak の failure detection を確認する。
-- [ ] 変更が許可 path と追加＋削除 1,000 行以内に収まり、既存 dependency/package の意味を変えていないことを確認する。
-- [ ] real socket/OS credential/network namespace/systemd/real client/VPS live-e2e を PASS に置換せず、期待値又は scope を変更していないことを確認する。
+- [x] candidate source/test、HANDOVER、DEV check evidence を独立確認する。
+- [x] 指定 package race test を candidate で一回だけ実行する。
+- [x] private key/binding order/subject copy/isolation、panic/error isolation、accept failure、cancel/drain、no timeout leak の failure detection を確認する。
+- [x] 変更が許可 path と追加＋削除 1,000 行以内に収まり、既存 dependency/package の意味を変えていないことを確認する。
+- [x] real socket/OS credential/network namespace/systemd/real client/VPS live-e2e を PASS に置換せず、期待値又は scope を変更していないことを確認する。
 
 ## 改訂履歴
 

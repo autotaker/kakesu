@@ -69,9 +69,17 @@ CONNECTでは限定headerだけを受理し、HTTP phaseへ入る前の余分な
 
 Sessionはcaller contextをそのままhandlerへ渡すが、CONNECT header、RemoteAddr、SNI又はinner HTTP headerから主体を生成しない。handlerはdeadline/cancelに協調してreturnするtrusted dependencyである。任意の非協調callbackを別goroutineでtimeoutさせるとcallbackが戻らない時にgoroutineを確実にleakするため、Sessionはその強制停止を保証しない。
 
+## listenerでの主体束縛と接続ライフサイクル
+
+`brokerlistener.Server`は注入済みの`net.Listener`を所有し、trustedな`PeerBinder`が得たSubjectを検証し、独立copyをprivate context keyへ束縛してから、一接続だけを扱う既存`Session`へ渡す。`Resolver`はこのprivate contextからのみSubjectの独立copyを一回返す。公開setter、`RemoteAddr`、CONNECT/TLS/HTTP headerによる主体の補完はしない。
+
+SubjectはUID正数、identifierは1〜128 byte、先頭は英数字、残りは英数字又は`._-`に制限する。binderが拒否したSubject、無効なSubject、binder又はSessionのerror/panicは当該connectionをcloseして次のacceptを継続する。
+
+Serverは1〜64の同時接続上限をslot-before-Acceptで適用し、slot取得後にもcancelを再確認してからAcceptする。caller cancel/deadline又はunexpected Accept failureではlistenerを一回だけcloseし、全active connection contextをcancelして、協調するBinder/Sessionのreturnをdrainする。任意の非協調callbackを強制停止したり、timeout用goroutineでleakを隠したりはしない。
+
 ## 適用限界
 
-このトランザクションはin-memoryの認可接続コアであり、実認証情報の読取・生成、GitHub App token交換、OpenAI key管理、HTTP listener、DNS、上流通信、監査、永続化を実装しない。CONNECT/TLS/HTTPの一接続処理、Agent向けTLS interceptionのCA検証とhost限定leaf発行は別境界である。実socket bind/accept、OS peer identity、CA file lifecycle/rotate/trust install、実client、実GitHub/OpenAI、実Internet DNS/system trust、network namespace/VPS、実配置のrestart/rollback/cleanupはなおlive E2Eで確認する。前記transport、CA又はSessionのhermetic testは、これらのlive E2E又は認証情報非露出の証明にならない。
+このトランザクションはin-memoryの認可接続コアであり、実認証情報の読取・生成、GitHub App token交換、OpenAI key管理、実socket生成/bind、OS peer identity、DNS、上流通信、監査、永続化を実装しない。CONNECT/TLS/HTTPの一接続処理、Agent向けTLS interceptionのCA検証とhost限定leaf発行は別境界である。実socket bind、Linux peer credential、Agent/UID/workspace mapping、network namespace、systemd、実client/VPS、実GitHub/OpenAI、実Internet DNS/system trust、CA file lifecycle/rotate/trust install、実配置のrestart/rollback/cleanupはなおlive E2Eで確認する。前記transport、CA、Session又はlistenerのhermetic testは、これらのlive E2E又は認証情報非露出の証明にならない。
 
 ## 関連
 
@@ -81,6 +89,7 @@ Sessionはcaller contextをそのままhandlerへ渡すが、CONNECT header、Re
 - [TASK-0048 HANDOVER](../../../tasks/TASK-0048-dev-agent-broker-exchange/HANDOVER.md)
 - [TASK-0049 HANDOVER](../../../tasks/TASK-0049-dev-agent-broker-http-handler/HANDOVER.md)
 - [TASK-0051 HANDOVER](../../../tasks/TASK-0051-dev-agent-connect-session/HANDOVER.md)
+- [TASK-0052 HANDOVER](../../../tasks/TASK-0052-dev-agent-listener/HANDOVER.md)
 - [Development Agent Harness Egress Policy](development-agent-harness-egress-policy.md)
 - [Development Agent Harness Capability Registry](development-agent-harness-capability-registry.md)
 - [Development Agent Harness Proxy CA](development-agent-harness-proxy-ca.md)

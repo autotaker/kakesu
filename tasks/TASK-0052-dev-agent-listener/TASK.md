@@ -38,12 +38,12 @@ created_at: "2026-08-01"
 
 ### 受け入れ条件
 
-- [ ] AC-1: `New`はcontextに協調するtrusted PeerBinder、trusted Session、`1..64`のMaxConcurrentだけを受理し、Binder/Session/上限以外の長寿命stateを持たないimmutable Serverを返す。nil/typed-nil dependency、範囲外上限、nil/zero/破損Server、nil context/listenerはpanicせず固定errorとなり、Format/errorにdependency、subject、address、下位errorを含めない。
-- [ ] AC-2: `Serve`はlistenerを所有し、slot取得後だけAcceptして同時Session数をMaxConcurrent以下に保つ。各accepted connでPeerBinderを一回だけSession前に呼び、UID正数、1〜128 byte、先頭英数字・残り英数字又は`._-`だけのAgentInstanceID/WorkspaceIDを検証してcopyし、root由来のprivate context valueとしてSessionへ一回だけ渡す。binder拒否/invalid subjectではSessionへ到達せずconnをcloseしてacceptを継続する。
-- [ ] AC-3: `Resolver`はServerがprivate keyへ束縛したsubjectだけを独立copyで返す。missing、wrong type、invalid又はcancelled contextを固定errorで拒否し、公開setterを持たず、RemoteAddr、listener address、HTTP/CONNECT/TLS/header又はcaller自己申告値からSubjectを生成・補完しない。並行connectionのsubject/contextを共有しない。
-- [ ] AC-4: Session error又はbinder/session panicは当該connだけをcloseしてslotを解放し、acceptを継続する。予期しないAccept errorは新規受理を停止し、listener close、全connection cancel、協調的処理のdrain後に固定server errorだけを返す。retry/backoff、別listener、default binder/session、診断logを作らない。
-- [ ] AC-5: caller cancel/deadlineはlistener closeでAcceptを解除し、全connection contextへ同じcancelを伝播して、協調的binder/Sessionのreturn後にnilで終了する。正常cancel、accept failure、per-connection failure/panicの全経路でServer自身のgoroutine、accepted conn、listenerを残さず、任意の非協調callback強制停止又はtimeout用leak goroutineを導入しない。
-- [ ] AC-6: hermetic race testがprivate Resolver、binder-before-session、invalid/rejected subject、MaxConcurrent上限、複数connのidentity隔離、Session/binder panic・error後のaccept継続、unexpected Accept failure、caller cancel/deadlineとdrain、listener/conn closeを失敗検出する。focused package race、harness check/distcheck、README変更時lint、candidate launcherのroot `make check`がPASSし、base...candidate差分は800〜900行を目標、追加＋削除1,000行以下とする。
+- [x] AC-1: `New`はcontextに協調するtrusted PeerBinder、trusted Session、`1..64`のMaxConcurrentだけを受理し、Binder/Session/上限以外の長寿命stateを持たないimmutable Serverを返す。nil/typed-nil dependency、範囲外上限、nil/zero/破損Server、nil context/listenerはpanicせず固定errorとなり、Format/errorにdependency、subject、address、下位errorを含めない。
+- [x] AC-2: `Serve`はlistenerを所有し、slot取得後だけAcceptして同時Session数をMaxConcurrent以下に保つ。各accepted connでPeerBinderを一回だけSession前に呼び、UID正数、1〜128 byte、先頭英数字・残り英数字又は`._-`だけのAgentInstanceID/WorkspaceIDを検証してcopyし、root由来のprivate context valueとしてSessionへ一回だけ渡す。binder拒否/invalid subjectではSessionへ到達せずconnをcloseしてacceptを継続する。
+- [x] AC-3: `Resolver`はServerがprivate keyへ束縛したsubjectだけを独立copyで返す。missing、wrong type、invalid又はcancelled contextを固定errorで拒否し、公開setterを持たず、RemoteAddr、listener address、HTTP/CONNECT/TLS/header又はcaller自己申告値からSubjectを生成・補完しない。並行connectionのsubject/contextを共有しない。
+- [x] AC-4: Session error又はbinder/session panicは当該connだけをcloseしてslotを解放し、acceptを継続する。予期しないAccept errorは新規受理を停止し、listener close、全connection cancel、協調的処理のdrain後に固定server errorだけを返す。retry/backoff、別listener、default binder/session、診断logを作らない。
+- [x] AC-5: caller cancel/deadlineはlistener closeでAcceptを解除し、全connection contextへ同じcancelを伝播して、協調的binder/Sessionのreturn後にnilで終了する。正常cancel、accept failure、per-connection failure/panicの全経路でServer自身のgoroutine、accepted conn、listenerを残さず、任意の非協調callback強制停止又はtimeout用leak goroutineを導入しない。
+- [x] AC-6: hermetic race testがprivate Resolver、binder-before-session、invalid/rejected subject、MaxConcurrent上限、複数connのidentity隔離、Session/binder panic・error後のaccept継続、unexpected Accept failure、caller cancel/deadlineとdrain、listener/conn closeを失敗検出する。focused package race、harness check/distcheck、README変更時lint、candidate launcherのroot `make check`がPASSし、base...candidate差分は800〜900行を目標、追加＋削除1,000行以下とする。
 
 ### 安定した参照
 
@@ -101,10 +101,10 @@ strict CONNECT/TLS Sessionまで完成したが、connectionを受理し、Agent
 
 ## 完成の定義
 
-- [ ] 受け入れ条件を満たしている。
-- [ ] planning/candidate/completionの3 commit経路とcandidate一回のroot `make check`を満たしている。
-- [ ] 同一candidateの独立REVIEW/QAを完了し、実listener/OS identity/network namespace/client/VPSのlive E2E未実施境界をPASSと誤記していない。
-- [ ] 再利用可能な知識が生じた場合だけ意味Wikiへ同化し、post-merge `task-check`をPASSしている。
+- [x] 受け入れ条件を満たしている。
+- [x] planning/candidate/completionの3 commit経路とcandidate一回のroot `make check`を満たしている。
+- [x] 同一candidateの独立REVIEW/QAを完了し、実listener/OS identity/network namespace/client/VPSのlive E2E未実施境界をPASSと誤記していない。
+- [x] 再利用可能な知識が生じた場合だけ意味Wikiへ同化し、post-merge `task-check`をPASSしている。
 
 ## 関連コンテキスト
 

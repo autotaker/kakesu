@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "task_id": "TASK-0052",
+  "handover_sha256": "250d3f2b4243a86e75e4ff73b7f84da5c2752dd2c63229dc23d6e63ac70c5a7a",
+  "ingested_at": "2026-08-01T14:28:27Z",
+  "updated_pages": [
+    "wiki/semantic/schemas/development-agent-harness-egress-transaction.md"
+  ],
+  "created_decisions": [],
+  "deferred": [
+    "実socket生成/bind、Linux peer credential、Agent/UID/workspace mapping、network namespace、systemd、実client/VPS、および実配置のrestart/rollback/cleanupはlive E2E境界として未実装・未確認である。fake listenerのhermetic PASSで代替しない。"
+  ]
+}
