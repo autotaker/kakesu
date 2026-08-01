@@ -2,15 +2,15 @@
 task_id: "TASK-0035"
 status: passed
 qa_agent: "qa-agent-terra-medium"
-tested_commit: "5e5d29e8250d8b2999d2cf6e51e748b7f866b016"
-candidate_commit: "5e5d29e8250d8b2999d2cf6e51e748b7f866b016"
-candidate_tree: "cc3ea4ba4b6f99da68e73e370faddc3c1bad2aa1"
-managed_path_digest: "a62367397b23bb54347ff9f04951b7a11e2eb2a97e1385c51b9a2e2aef395c40"
+tested_commit: "6b5d3495a0f61bd0a1b134926ef932dd65a5000b"
+candidate_commit: "6b5d3495a0f61bd0a1b134926ef932dd65a5000b"
+candidate_tree: "84b53854c139b23d992026175b8f979ae71d4df2"
+managed_path_digest: "66f2d043bf7acc1a7801233e553f9bcf6a45fea4e164450866e180fba8ad93d9"
 bootstrap_evidence_commit: "a063f6d461bbc6ce752d93306f83e4939e299d1e"
 bootstrap_evidence_digest: "279dc69dba63337208ac4d0dd065db8055e7bb0b00fb8df5e0f9024d9f283329"
 merge_tree: ""
 decision: pass
-tested_at: "2026-08-01T10:15:00+10:00"
+tested_at: "2026-08-01T10:20:00+10:00"
 ---
 
 # TASK-0035 QA RESULT
@@ -43,9 +43,16 @@ tested_at: "2026-08-01T10:15:00+10:00"
 ## 未実施・Main判断
 
 - blocked/未実施はない。negative mutationはcandidate外copyだけを変更しcleanup済みである。
-- `qa_carry_forward`は`not-applicable`。指定candidateを直接評価した。設定/parser/file policy/CLI/installに関わる候補変更はcarry-forward禁止であり、変更時は影響ケースを再実行する。
+- Main選択は`qa_carry_forward`。初回QA PASS candidate `5e5d29e8250d8b2999d2cf6e51e748b7f866b016` / tree `cc3ea4ba4b6f99da68e73e370faddc3c1bad2aa1`から、最終candidate `6b5d3495a0f61bd0a1b134926ef932dd65a5000b` / tree `84b53854c139b23d992026175b8f979ae71d4df2`へ結果を引き継ぐ。
+- `CF-1`: complete。旧QA-035-01〜08 PASSは旧candidate commit/tree/digestへ束縛済み。
+- `CF-2`: complete。旧新差分は`tools/dev-agent-harness/README.md`の4 add/4 delだけで、SHA-256 `562579d4c621dd4f28c499fcd6a3cd3bc6c6c3e041f8853a04c44c10676c0f47`。
+- `CF-3`: complete。変更は実行されない用語表記だけで、命令の意味、製品挙動、runtime、test、Schema、設定、依存、生成物、外部契約、AC、QA_PLANを変更しない。
+- `CF-4`: complete。影響QAケース集合は`[]`。
+- `CF-5`: complete。独立Reviewerは最終candidateのharness `make check`、candidate README textlint、旧新diff検査をPASSし、挙動・test・安全契約への影響なしを確認した。
+- `CF-6`: complete。QA FAIL、認証認可、秘密、sudo/PAM、IPC/Schema/設定/依存、並行性/lifecycle/persistence/error/fail-closed、test削除/弱体化、影響不明、binding不一致はいずれも偽。
+- `CF-7`: complete。Mainが旧新commit/tree、全差分digest、空の影響集合、Reviewer証拠、docs lint起因の表記訂正である理由を本sectionへ記録した。
 - `merge_tree`はマージ前のため未設定。Mainはmerge後にcandidate treeとの同一性を確認する。本Taskにlive-e2eケースはない。
 
 ## 結論
 
-`pass`。QA-035-01〜08は指定candidate commit/treeへ束縛してPASSした。FAIL、blocked、要件gapはない。
+`pass`。QA-035-01〜08は初回candidateへ束縛してPASSし、閉じたCF-1〜CF-7によりdocs-only最終candidateへ引き継いだ。FAIL、blocked、要件gapはない。
