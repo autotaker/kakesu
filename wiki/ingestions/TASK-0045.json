@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "task_id": "TASK-0045",
+  "handover_sha256": "29e26d87d54faa697967d1b298f2ea02cc0aa354d313bc879d34c348369f769f",
+  "ingested_at": "2026-08-01T09:26:22Z",
+  "updated_pages": [
+    "wiki/semantic/schemas/development-agent-harness-egress-transaction.md"
+  ],
+  "created_decisions": [],
+  "deferred": [
+    "Agent向けproxy/CONNECT/TLS interception、Forwarder、Authorization置換、response capture、Git push/pull、および実GitHub/OpenAI・Internet DNS・system trust store・proxy/firewallのlive確認は、このtransport境界の外に残る。"
+  ]
+}

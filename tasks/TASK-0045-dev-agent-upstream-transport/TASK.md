@@ -1,7 +1,7 @@
 ---
 task_id: "TASK-0045"
 title: "provider上流HTTPS transportを実装する"
-status: plan
+status: done
 created_at: "2026-08-01"
 ---
 
@@ -35,12 +35,12 @@ TASK-0043のprovider resolverと後続request Forwarderへ注入できる、brok
 
 ### 受け入れ条件
 
-- [ ] AC-1: `New`は固定安全値を持つ`http.RoundTripper`を返し、nil/zero receiverを含め、暗黙443の正規`https://api.github.com`又は`https://api.openai.com`以外、および非emptyでURL authorityと完全一致しない`Request.Host`をDNS/dial前に固定errorで拒否する。環境の`HTTP_PROXY`/`HTTPS_PROXY`/`NO_PROXY`を参照せず、redirectを実装しない。
-- [ ] AC-2: 各requestはbroker側resolverを一回だけ呼び、全answerを正規化・重複排除して検査する。空又は一件でもzone付き、unspecified、loopback、private、link-local、multicast、非global-unicastを含むanswerはdialなしで拒否し、全件安全な場合だけ返却順の検査済みIP literalとport 443へ上限付きでdialする。hostnameをdialerへ渡さない。
-- [ ] AC-3: dial後は元のallowlisted hostnameをSNIと証明書検証名に使い、TLS 1.2以上かつHTTP/1.1だけを受理する。system root CA以外のproduction trust又は`InsecureSkipVerify`を持たず、connect/TLS handshake/response header timeoutとrequest context cancellationを強制する。
-- [ ] AC-4: transportはkeep-alive、自動compression、HTTP/2、proxy、redirect、request retryを行わず、一requestにつきDNS一回・dial最大answer数・TLS成功一回とする。dial失敗時だけ未使用の検査済みIPへ進めるが、TLS handshake又はHTTP送信開始後は別IPへ再試行しない。
-- [ ] AC-5: 公開error/formatは固定値だけで、Authorization、body、DNS answer、hostname/IP、underlying DNS/dial/TLS/HTTP detailを含まない。`RoundTrip`がresponseとerrorを同時に受けた場合を含む失敗response bodyをcloseし、callerへ成功response bodyの所有権だけを渡す。`CloseIdleConnections`は安全に呼べる。
-- [ ] AC-6: runtime生成TLS fixtureと注入resolver/dialerによるhermetic testが両originの成功、exact dial IP:443、SNI/hostname verification、TLS/HTTP version、全address拒否、mixed answer、fallback境界、timeout/cancel、proxy env無視、call count、body close、固定error/non-leakを検出する。`go test -race ./internal/upstreamtransport`、harness `make check`/`make distcheck`、candidate launcherのroot `make check`がPASSし、base...candidateの対象packageとREADME差分は追加＋削除1,000行以下である。
+- [x] AC-1: `New`は固定安全値を持つ`http.RoundTripper`を返し、nil/zero receiverを含め、暗黙443の正規`https://api.github.com`又は`https://api.openai.com`以外、および非emptyでURL authorityと完全一致しない`Request.Host`をDNS/dial前に固定errorで拒否する。環境の`HTTP_PROXY`/`HTTPS_PROXY`/`NO_PROXY`を参照せず、redirectを実装しない。
+- [x] AC-2: 各requestはbroker側resolverを一回だけ呼び、全answerを正規化・重複排除して検査する。空又は一件でもzone付き、unspecified、loopback、private、link-local、multicast、非global-unicastを含むanswerはdialなしで拒否し、全件安全な場合だけ返却順の検査済みIP literalとport 443へ上限付きでdialする。hostnameをdialerへ渡さない。
+- [x] AC-3: dial後は元のallowlisted hostnameをSNIと証明書検証名に使い、TLS 1.2以上かつHTTP/1.1だけを受理する。system root CA以外のproduction trust又は`InsecureSkipVerify`を持たず、connect/TLS handshake/response header timeoutとrequest context cancellationを強制する。
+- [x] AC-4: transportはkeep-alive、自動compression、HTTP/2、proxy、redirect、request retryを行わず、一requestにつきDNS一回・dial最大answer数・TLS成功一回とする。dial失敗時だけ未使用の検査済みIPへ進めるが、TLS handshake又はHTTP送信開始後は別IPへ再試行しない。
+- [x] AC-5: 公開error/formatは固定値だけで、Authorization、body、DNS answer、hostname/IP、underlying DNS/dial/TLS/HTTP detailを含まない。`RoundTrip`がresponseとerrorを同時に受けた場合を含む失敗response bodyをcloseし、callerへ成功response bodyの所有権だけを渡す。`CloseIdleConnections`は安全に呼べる。
+- [x] AC-6: runtime生成TLS fixtureと注入resolver/dialerによるhermetic testが両originの成功、exact dial IP:443、SNI/hostname verification、TLS/HTTP version、全address拒否、mixed answer、fallback境界、timeout/cancel、proxy env無視、call count、body close、固定error/non-leakを検出する。`go test -race ./internal/upstreamtransport`、harness `make check`/`make distcheck`、candidate launcherのroot `make check`がPASSし、base...candidateの対象packageとREADME差分は追加＋削除1,000行以下である。
 
 ### 安定した参照
 
@@ -95,10 +95,10 @@ provider resolverはGitHub installation token交換を注入RoundTripperへ渡�
 
 ## 完成の定義
 
-- [ ] 受け入れ条件を満たしている。
-- [ ] planning/candidate/completionの3 commit経路とcandidate一回のroot `make check`を満たしている。
-- [ ] 同一candidateの独立REVIEW/QAを完了し、live E2E未実施境界をPASSと誤記していない。
-- [ ] 新しい再利用可能なtransport安全境界を意味Wikiへ一ページだけ更新し、post-merge `task-check`をPASSしている。
+- [x] 受け入れ条件を満たしている。
+- [x] planning/candidate/completionの3 commit経路とcandidate一回のroot `make check`を満たしている。
+- [x] 同一candidateの独立REVIEW/QAを完了し、live E2E未実施境界をPASSと誤記していない。
+- [x] 新しい再利用可能なtransport安全境界を意味Wikiへ一ページだけ更新し、post-merge `task-check`をPASSしている。
 
 ## 関連コンテキスト
 

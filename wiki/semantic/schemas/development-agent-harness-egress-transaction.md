@@ -31,14 +31,21 @@ policy又はAuthorizationの拒否ではケイパビリティ、resolver、Forwa
 
 Credential-bearingな`PreparedRequest`は、Transactionへ注入されたbroker内のtrusted Forwarderへの同期呼出中だけ渡す。`Execute`は値を返さず、TransactionもPreparedRequest、元のAuthorization、Opaque handle、実認証情報を保持しない。本文は独立コピーを渡す。
 
-この性質だけではForwarder実装、秘密情報ストア、HTTP転送の安全性を証明しない。Forwarderが実認証情報を保持、記録、Agent側へ返さないこと、TLS/DNS/socket/redirect/responseをfail-closedに扱うことは後続境界で別途検証する。
+## 上流 HTTPS transportとの接続
+
+ForwarderがGitHub又はOpenAIへ送る最初の接続境界には、固定allowlistの`http.RoundTripper`を注入する。transportはoriginと`Request.Host`をDNS前に照合し、resolverの全answerを検査して、一件でもunsafeなaddressを含む集合を拒否する。安全なanswerだけの場合も、検査済みIP literalの443番だけへdialし、元hostnameをTLSのSNIと証明書検証に使う。
+
+このtransportは一request一接続で、環境proxy、keep-alive、自動compression、HTTP/2、redirect、retryを持たない。TCP接続失敗時だけ未使用の検査済みIPへ進めるが、TLS handshake又はHTTP送信開始後は再dialしない。TLS 1.2未満又はHTTP/1.1以外、失敗response、下位のDNS/TLS/socket detailは公開せず、失敗時のbodyはtransportがcloseする。
+
+この性質だけではForwarder実装、秘密情報ストア、実network上のprovider受理、Agent側proxy、response capture又はauditを証明しない。Forwarderが実認証情報を保持、記録、Agent側へ返さず、上流responseを別途fail-closedに扱うことは後続境界で検証する。
 
 ## 適用限界
 
-このトランザクションはin-memoryの認可接続コアであり、実認証情報の読取・生成、GitHub App token交換、OpenAI key管理、HTTP listener、CONNECT/TLS終端、CA、DNS、上流通信、監査、永続化を実装しない。成功は外部通信の成功や認証情報非露出のlive証明を意味しない。
+このトランザクションはin-memoryの認可接続コアであり、実認証情報の読取・生成、GitHub App token交換、OpenAI key管理、HTTP listener、CONNECT/TLS終端、CA、DNS、上流通信、監査、永続化を実装しない。前記transportのhermetic testも、実GitHub/OpenAI、実Internet DNS、実system trust store、実proxy/firewallでの成功や認証情報非露出を証明しない。
 
 ## 関連
 
 - [TASK-0041 HANDOVER](../../../tasks/TASK-0041-dev-agent-egress-transaction/HANDOVER.md)
+- [TASK-0045 HANDOVER](../../../tasks/TASK-0045-dev-agent-upstream-transport/HANDOVER.md)
 - [Development Agent Harness Egress Policy](development-agent-harness-egress-policy.md)
 - [Development Agent Harness Capability Registry](development-agent-harness-capability-registry.md)
