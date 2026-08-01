@@ -29,23 +29,23 @@
 2. 製品変更では`PLAN / DEV / QA`の各ゲートを飛ばさない。
 3. 製品変更のDEV開始前に承認済み`PLAN.md`と独立した`QA_PLAN.md`を用意する。
 4. 製品変更ではDEV Agentとレビュアー Agent、DEV AgentとQA Agentを分離する。
-5. 製品変更のレビュアー AgentはDEVが固定した同一`candidate_commit`/`candidate_tree`を独立にレビューし、`make check`を完了してmain管理`REVIEW_RESULT.md`へ対象を記録する。QA Agentも同じ案から独立に開始し、相互のPASSを開始条件にしない。
-6. main Agentだけが`main`へ`--no-ff`でマージする。承認案と`merge_tree`の同一性を確認し、差異があれば結果を持ち越さない。
+5. DEVはTask ブランチ上で一回だけ製品差分だけの案 コミットを作り、レビュアー AgentとQA Agentは同じ案から独立に確認する。REVIEW_RESULTには案 diffとDEV `make check`を監査した事実を記録し、案の識別子はHANDOVERの`candidate_commit`だけで管理する。
+6. main Agentだけが完了 ゲートの`--no-ff --no-commit`検査を経て`main`へ一回だけマージする。マージ後の環境依存ケースは必要なものだけ確認する。
 7. 案またはマージ後確認のFAILは実装不具合と決めつけず、[QAガイドライン](docs/development/qa.md)に従って原因を分類する。
 8. 配下に別の`AGENTS.md`がある場合は、その追加手順も守る。
-9. 子Agentの標準起動は内部`agents.spawn_agent`とする。`agent_type`欠落、内部`Spawn Agent`利用不能、または`model/effort`不一致は停止・証跡化し、異なる起動経路で迂回しない。main管理証跡の公開は親が`make evidence-commit`を使い、共通ロックとaction スコープを所有する。
-10. 子Agentは原則としてステージ、コミット、マージ、`.git`書き込みを行わない。ただしレビュアー/QA Agentは、自ら軽微と判断した指摘をTask ワークツリーで修正・ステージ・コミットできる。Task ブランチへの取り込み後はその指摘を解消済みとしてPASSにでき、DEV差し戻し、再REVIEW、再QA、`qa_carry_forward`を要求しない。Mainだけが`main`へのmerge/pushを行う。
+9. 子Agentの標準起動は内部`agents.spawn_agent`とする。`agent_type`欠落、内部`Spawn Agent`利用不能、識別情報/role/サンドボックス・権限境界の不明確さは停止・証跡化し、異なる起動経路で迂回しない。観測された`model/effort`が契約と異なる場合はrequested/observed値とランタイム条件を警告として記録して継続する。main管理証跡の公開は親がplanning-gate/completion-gateを使い、共通ロックとaction スコープを所有する。
+10. 子Agentはステージ、コミット、マージ、`.git`書き込みを行わない。指摘や案変更が必要な場合はMainがTask ブランチの案を再固定し、影響を限定したfocused テスト（限定不能ならfull）を再実行する。Mainだけが`main`へのmerge/pushを行う。
 11. ロールとモデルは`.codex`の正規 契約に従う。mainは`Sol/high`、PLAN/QA/REVIEWは`Terra/medium`に固定し、DEVは承認済みPLANの`luna-xhigh`または`sol-high`を使う。各ロールの`Explorer`は`Luna/medium/read-only`で一件の限定質問だけを扱う。
 
 ### 案とQA実施モード
 
-製品変更では、DEVが評価対象を`candidate_commit`（評価対象コミット）と`candidate_tree`（そのtree）として固定し、ケース ID、コマンド/テスト、環境またはフィクスチャ、cache条件、exit、成果物 ダイジェスト、未実施理由を運用証跡へ結び付ける。QA_PLANはDEV開始前に各ケースへ次の一つを理由付きで割り当てる。
+製品変更では、製品差分だけの`candidate_commit`を一度だけ作成し、ケース ID、コマンド/テスト、結果、未実施理由を運用証跡へ結び付ける。QA_PLANはDEV開始前に各ケースへ次の一つを理由付きで割り当てる。
 
 - `evidence-review`: candidate-bound証跡、テストの失敗検出能力、ネガティブ ケース、弱体化の有無をQAが独立監査する。
 - `focused-rerun`: 高リスクでもhermetic・deterministic・上限付き フィクスチャで受け入れ真実を完全再現できるケースを、QAが独立に限定再実行する。
 - `live-e2e`: 実OS権限/auth（sudo/PAMを含む）、実配置、外部作用、実restart/ロールバック/クリーンアップ、環境固有integrationに依存するケースを、承認済み実環境で確認する。環境または安全なクリーンアップが不明ならblockedのままとし、別モードのPASSで代替しない。
 
-高リスク信号、証跡不足、案/tree不一致、影響不明は`evidence-review`のPASSを禁止する。REVIEWとQAは同一案から独立かつ並行に評価し、Mainだけが修正後の`qa_carry_forward`または限定/全面再実行を選ぶ。carry-forwardは[QAガイドライン](docs/development/qa.md)の閉じた`CF-1`から`CF-7`を全て証明した場合だけ許可する。変更は実行されない誤字、空白、コメント、リンク、証跡メタデータに限定し、意味変更は許可しない。影響QAケース集合が空でなければ該当ケースを再実行し、限定できなければ全面再実行とする。QA FAIL、受け入れ条件/QA_PLAN変更、認証認可、秘密、sudo/PAM、IPC/Schema/設定/依存、並行性/ライフサイクル/persistence/エラー/fail-closed、テスト削除/弱体化、影響不明、証跡と評価対象の案/tree不一致はcarry-forwardを禁止する。`merge_tree == candidate_tree`で環境依存ケースがない場合だけ全面的な重複確認を省略でき、環境依存ケースはマージ後もケース単位で確認する。既存Task証跡とLap30 イベント Schema/JSONLは遡及変更しない。
+高リスク信号、証跡不足、影響不明は`evidence-review`のPASSを禁止する。REVIEWとQAは同一案から独立に評価し、相互のPASSを開始条件にしない。QAの再実行要否はMainがケース単位で判断し、環境依存ケースはマージ後も確認する。既存Task証跡とLap30 イベント Schema/JSONLは遡及変更しない。
 
 ## 子Agentの標準起動
 
@@ -60,7 +60,7 @@ agents.spawn_agent(
 )
 ```
 
-起動後は、選択したロールの契約と実際の`model/effort`を照合する。不一致なら子の成果を採用せず停止し、requested/observed値とランタイム条件を証跡化する。`agent_type`または内部`Spawn Agent`が利用できない場合も停止する。限定調査だけは一問専用の`make explorer-agent`を使用できる。ロール対応、ゲート順序、`Explorer`の制約、サンドボックス観測限界は[Agent責務](docs/development/agent-roles.md)を正本とする。
+起動後は、選択したロールの識別情報、role、サンドボックス・権限境界を確認する。境界が不明なら停止する。観測された`model/effort`の不一致はrequested/observed値とランタイム条件を警告として記録し、役割境界が保たれていれば継続する。`agent_type`または内部`Spawn Agent`が利用できない場合は停止する。限定調査だけは一問専用の`make explorer-agent`を使用できる。ロール対応、ゲート順序、`Explorer`の制約、サンドボックス観測限界は[Agent責務](docs/development/agent-roles.md)を正本とする。
 
 `role` TOMLの`sandbox_mode`は意図する契約であり、ランタイムで観測できた値だけを証跡に記録する。実効サンドボックスをTOMLの宣言だけで保証済みとは扱わない。レビュアー/QAの軽微修正コミットを除き、子の`stage`、`commit`、`merge`、`.git`書込みは禁止する。Mainは`main`への統合を所有する。
 

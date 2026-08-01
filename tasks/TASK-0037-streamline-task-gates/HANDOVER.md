@@ -1,85 +1,33 @@
 ---
 task_id: "TASK-0037"
-status: draft
-completed_at: ""
-safety_checks:
-  process_tests: pending
-  contract_scope: pending
-  docs_lint: pending
-  make_check: pending
-safety_checked_at: ""
-safety_check_digest: ""
-safety_candidate_tree: ""
-safety_merge_tree: ""
-candidate_commit: ""
-candidate_tree: ""
-managed_path_digest: ""
-bootstrap_evidence_commit: ""
-bootstrap_evidence_digest: ""
+status: complete
+completed_at: "2026-08-01T04:13:00Z"
+candidate_commit: "ce4666dab4408fa94809b7065a8f871b463db04a"
 ---
 
 # TASK-0037 HANDOVER
 
 ## 成果
 
-- TODO
+- 標準経路を計画、製品案、完了mergeの3コミットへ縮小した。
+- 重複した案情報、形式だけの証跡、全TaskのWiki必須、CFチェックリスト、見積算術ゲートを削除した。
+- 計画と完了を原子的なtransactionにし、失敗時のbranch、worktree、証跡bytes、index復元を実装した。
 
-## candidate-bound DEV証跡
+## 案に対するDEV証跡
 
-- `candidate_commit`:
-- `candidate_tree`:
-- `managed_path_digest`:
-- `bootstrap_evidence_commit` / `bootstrap_evidence_digest`:
-
-| ケース ID | コマンド/テスト | 環境/フィクスチャ | cache条件 | exit | 成果物 ダイジェスト | 未実施理由 |
-|---|---|---|---:|---:|---|---|
-| QA-001 | TODO | TODO | TODO | TODO | TODO | なし |
-
-- QAへ渡すネガティブ検出証拠、テスト弱体化の有無を判定できる差分ダイジェスト: TODO
+| コマンド/テスト | 結果 |
+|---|---|
+| `make check`（candidate launcher） | PASS |
+| focused process tests | PASS |
 
 ## 主要な変更
 
-- TODO
+- Task開始を非コミットのallocationへ変更し、計画を最初の公開コミットへ統合した。
+- `candidate-commit`と`completion-gate`を追加し、検査済みbytesをhookへ引き渡す。
+- Reviewer/QA証跡を最小化し、candidateの正本をこのHANDOVERだけにした。
+- 10 Taskごとの既存振り返りで低価値ルールを削除・警告化する運用を明記した。
 
-## 検証結果
+## 判断・既知の制約
 
-- TODO
-
-安全契約変更では`safety_checks`を`process_tests`、`contract_scope`、`docs_lint`、`make_check`の4項目だけとし、すべて`pass`を記録する。`safety_check_digest`は案 tree、merge tree、上記順の検査名と結果を`key=value`の改行区切りで正規化し、末尾改行を含めたSHA-256とする。第2親の案 treeとmerge treeもフロントマターへ記録する。製品用のREVIEW/QA PASS、製品用の完了HANDOVER、Wiki取込記録を代用証跡として作成しない。
-
-## 判断
-
-- TODO
-- 選択: `not-applicable | qa_carry_forward | focused-rerun | full-rerun`
-- Main判断の旧新コミット/tree、全差分とダイジェスト、影響ケース集合、レビュアー/`make check`証拠、理由: TODO
-- carry-forward時の`QA_RESULT.md` `CF-1`から`CF-7`: `not-applicable | complete | incomplete`
-- 影響QAケース集合が空でない場合の再実行証拠: TODO
-- `merge_tree`と案 treeの比較: `pending`
-
-## 既知の制約と未解決事項
-
-- なし
-
-環境依存ケースがある場合、install/deploy/config生成、実権限、外部作用、実restart/ロールバック/クリーンアップのマージ後確認を省略しない。実環境または安全なクリーンアップが不明なケースはblockedとして残す。
-
-## 運用上の注意
-
-- なし
-
-## Wikiへ引き渡す知識
-
-### 再利用可能な知識
-
-- TODO
-
-### 反例・失敗・注意点
-
-- TODO
-
-### 更新候補ページ
-
-- TODO
-
-## ブートストラップ例外
-
-- 該当なし
+- 実OS、認証、外部作用を変更しないためlive E2Eは不要。
+- 再利用知識は開発文書自体が正本であり、別Wikiページは作成しない。

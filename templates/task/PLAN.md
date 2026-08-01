@@ -14,9 +14,6 @@ classification_approval_reason: ""
 # safety_contract_version: 2
 # safety_contract_planned_paths: []
 # safety_contract_generated_paths: []
-planned_implementation_files: 0
-planned_implementation_lines: 0
-estimate_points: 1
 ---
 
 # {{TASK_ID}} PLAN
@@ -55,13 +52,9 @@ TASKの条件本文を再掲せず、`planning input packet`のAC-IDに設計を
 |---|---|---:|---|
 | TODO | implementation | 0 | TODO |
 
-## 見積もり
+## 見積もり（参考）
 
-```text
-file_score = ceil(planned_implementation_files / 3)
-line_score = ceil(planned_implementation_lines / 200)
-estimate_points = 1, 2, 3, 5, 8, 13のうちmax(1, file_score, line_score)以上の最小値
-```
+バックログの`estimate_points`は計画の規模感を示す参考値であり、実装ゲートの算術条件ではない。
 
 ## 実装手順
 

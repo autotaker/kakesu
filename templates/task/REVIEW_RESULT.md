@@ -2,30 +2,22 @@
 task_id: "{{TASK_ID}}"
 status: pending
 reviewer_agent: ""
-reviewed_commit: ""
-candidate_commit: ""
-candidate_tree: ""
-managed_path_digest: ""
-bootstrap_evidence_commit: ""
-bootstrap_evidence_digest: ""
 decision: pending
-make_check: pending
 reviewed_at: ""
 ---
 
 # {{TASK_ID}} REVIEW RESULT
 
-## 対象
+## 監査対象
 
-- ブランチ:
-- 案 コミット/tree:
-- Task / PLAN / QA PLAN:
+- Task ブランチ の 案 diff と DEV の `make check` 証跡を独立に監査する。
+- candidate_commit は HANDOVER の一箇所だけで管理する。
 
-## 実行した検査
+## 監査したDEV証跡
 
-| コマンド | 結果 | 備考 |
+| コマンド/テスト | 結果 | 備考 |
 |---|---|---|
-| `make check` | `pending` | |
+| DEVの`make check` | `pending` | 実行済み証跡を監査 |
 
 ## 受け入れ条件の確認
 
@@ -33,23 +25,9 @@ reviewed_at: ""
 |---|---|---|
 | TODO | `pending` | TODO |
 
-## QAとの独立性
-
-- QAと同一案から評価を開始した: `pending`
-- 相互のPASSを開始条件にしていない: `pending`
-- 案が変わった場合の再評価/再束縛: `pending`
-
 ## 指摘
 
-軽微指摘をレビュアーが直接修正した場合は、修正コミットとTask ブランチへの取り込みを記録する。取り込み後は解消済みとしてPASSにでき、再レビューを要求しない。
-
-| ID | 重大度 | 状態 | 内容 | 根拠 |
-|---|---|---|---|---|
-| - | - | - | 指摘なし | - |
-
-## 残存リスク
-
-- TODO
+- なし
 
 ## 結論
 

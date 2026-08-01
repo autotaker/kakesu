@@ -1,7 +1,7 @@
 ---
 task_id: "TASK-0037"
 title: "Taskゲートの重複transactionと検査を削減する"
-status: dev
+status: done
 created_at: "2026-08-01"
 ---
 
@@ -80,6 +80,7 @@ Task品質ゲートの独立性とfail-closed性を維持したまま、同じ�
 - `scripts/task/work-pre-commit.mjs`
 - `scripts/task/check-task.mjs`
 - `scripts/task/development-process.test.mjs`
+- `schemas/operations/backlog.schema.json`（完了時の自己参照`merged_commit`必須を外し、checkerへ一本化する互換修正）
 - `templates/task/HANDOVER.md`
 - `templates/task/REVIEW_RESULT.md`
 - `templates/task/QA_PLAN.md`

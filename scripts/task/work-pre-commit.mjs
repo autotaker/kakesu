@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
-import { REPO_ROOT, git, parseArgs, parseFrontmatter, workRoot } from "./lib.mjs";
+import { REPO_ROOT, changedContentDigest, git, parseArgs, parseFrontmatter, workRoot } from "./lib.mjs";
 
 const args = parseArgs(process.argv.slice(2));
 const root = workRoot(args.work_root);
@@ -14,6 +14,7 @@ const action = process.env.WIKI_ACTION;
 const target = process.env.WIKI_TARGET;
 const workAction = process.env.WORK_ACTION;
 const workAllowed = process.env.WORK_ALLOWED_PATHS ? JSON.parse(process.env.WORK_ALLOWED_PATHS) : null;
+const branch = git(root, ["branch", "--show-current"]);
 const unstaged = git(root, ["diff", "--name-only"]).split("\n").filter(Boolean);
 const untracked = git(root, ["ls-files", "--others", "--exclude-standard"]).split("\n").filter(Boolean);
 if (unstaged.length || untracked.length) {
@@ -27,6 +28,10 @@ if (workAction) {
   const matchesAllowed = (file) => workAllowed.some((rule) => rule.endsWith("/**") ? file.startsWith(rule.slice(0, -2)) : rule.endsWith("/") || rule.endsWith("-") ? file.startsWith(rule) : file === rule);
   const forbidden = staged.filter((file) => !matchesAllowed(file));
   if (forbidden.length) throw new Error(`Work Agent staged files outside ${workAction}: ${forbidden.join(", ")}`);
+}
+
+if (branch.startsWith("task/") && workAction !== "candidate-commit") {
+  throw new Error(`Task branch commits must be created by candidate-commit launcher; work_action=${workAction ?? "missing"}`);
 }
 
 if (action) {
@@ -83,7 +88,18 @@ for (const file of staged.filter((candidate) => candidate.startsWith("wiki/decis
   }
 }
 
-const validation = fs.existsSync(path.join(root, "backlog.yaml")) ? spawnSync(
+const suppliedDigest = process.env.WORK_VALIDATED_DIGEST;
+const trustedParent = process.env.WORK_REPO_LOCK_HELD === "1" && process.env.WORK_PARENT_COMMIT === "1";
+const prevalidated = trustedParent && suppliedDigest && /^[a-f0-9]{64}$/.test(suppliedDigest) && staged.length
+  ? changedContentDigest(root) === suppliedDigest
+  : false;
+if (trustedParent && suppliedDigest && /^[a-f0-9]{64}$/.test(suppliedDigest) && staged.length && !prevalidated) {
+  throw new Error("validated working bytes differ from the staged content digest");
+}
+if (branch.startsWith("task/") && !prevalidated) {
+  throw new Error("candidate-commit requires a trusted pre-validation digest");
+}
+const validation = !prevalidated && fs.existsSync(path.join(root, "backlog.yaml")) ? spawnSync(
   process.execPath,
   [path.join(REPO_ROOT, "scripts", "task", "validate-work.mjs"), "--work-root", root],
   { cwd: REPO_ROOT, encoding: "utf8" },

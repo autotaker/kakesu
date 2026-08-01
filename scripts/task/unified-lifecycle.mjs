@@ -5,7 +5,7 @@ import { spawnSync } from "node:child_process";
 import YAML from "yaml";
 import {
   REPO_ROOT, REQUIRED_TASK_FILES, acquireWorkRepoLock, assertSlug, assertTaskId, dateInTimezone,
-  findMainWorktree, git, isMainManagedPath, parseArgs, parseFrontmatter, readYaml, replaceTemplate,
+  changedContentDigest, findMainWorktree, git, isMainManagedPath, parseArgs, parseFrontmatter, readYaml, replaceTemplate,
   resolveInside, taskById, writeYaml,
 } from "./lib.mjs";
 
@@ -13,6 +13,7 @@ const ACTION_FILES = {
   task: ["TASK.md"], plan: ["PLAN.md"], "qa-plan": ["QA_PLAN.md"], review: ["REVIEW_RESULT.md"],
   "qa-result": ["QA_RESULT.md"], handover: ["HANDOVER.md"],
 };
+const PLANNING_FILES = ["TASK.md", "PLAN.md", "QA_PLAN.md", "REVIEW_RESULT.md", "QA_RESULT.md", "HANDOVER.md"];
 
 function run(command, argv, options = {}) {
   const result = spawnSync(command, argv, { encoding: "utf8", ...options });
@@ -55,6 +56,7 @@ function allowedFor(root, action, taskId) {
   if (action === "task-start-rollback") return ["backlog.yaml", `tasks/${taskId}-`];
   if (action === "wiki") return ["wiki/semantic/", "wiki/decisions/", "wiki/ingestions/", "wiki/index.json"];
   const { taskDir } = taskContext(root, taskId);
+  if (action === "planning-gate") return ["backlog.yaml", ...PLANNING_FILES.map((file) => `${taskDir}/${file}`)];
   if (action in ACTION_FILES) return ACTION_FILES[action].map((file) => `${taskDir}/${file}`);
   if (action === "task-start") return ["backlog.yaml", `${taskDir}/`];
   if (action === "main-transition") return ["backlog.yaml", `${taskDir}/TASK.md`, `${taskDir}/HANDOVER.md`];
@@ -63,6 +65,36 @@ function allowedFor(root, action, taskId) {
 }
 
 function matches(file, rules) { return rules.some((rule) => rule.endsWith("/") || rule.endsWith("-") ? file.startsWith(rule) : file === rule); }
+
+function validatePlanningState(root, taskId, changed) {
+  const { task, taskDir } = taskContext(root, taskId);
+  const planning = new Set(["backlog.yaml", `${taskDir}/TASK.md`, `${taskDir}/PLAN.md`, `${taskDir}/QA_PLAN.md`]);
+  if (!changed.some((file) => planning.has(file))) throw new Error("planning-gate requires a non-empty planning subset");
+  const forbidden = changed.filter((file) => !matches(file, allowedFor(root, "planning-gate", taskId)));
+  if (forbidden.length) throw new Error(`planning-gate scope violation: ${forbidden.join(", ")}`);
+  const plan = parseFrontmatter(path.join(root, taskDir, "PLAN.md"));
+  const qaPlan = parseFrontmatter(path.join(root, taskDir, "QA_PLAN.md"));
+  const taskFile = parseFrontmatter(path.join(root, taskDir, "TASK.md"));
+  if (plan.task_id !== taskId || qaPlan.task_id !== taskId || taskFile.task_id !== taskId) throw new Error("planning-gate task identity mismatch");
+  if (plan.status !== "approved" || plan.approved_by !== task.assignees?.main || plan.planner_agent !== task.assignees?.planner) throw new Error("planning-gate PLAN approval or role mismatch");
+  if (qaPlan.status !== "approved" || qaPlan.approved_by !== task.assignees?.main || qaPlan.qa_agent !== task.assignees?.qa) throw new Error("planning-gate QA PLAN approval or role mismatch");
+  if (!new Set(["dev", "plan"]).has(task.status)) throw new Error("planning-gate backlog status is invalid");
+}
+
+function restoreMerge(root) {
+  output("git", ["merge", "--abort"], root, true);
+}
+
+function fastForwardPlanningWorktree(root, taskId, commit) {
+  const { task } = taskContext(root, taskId);
+  const worktree = resolveInside(root, task.worktree, `${taskId} worktree`);
+  if (!fs.existsSync(worktree) || git(worktree, ["branch", "--show-current"]) !== task.branch) {
+    throw new Error(`${taskId}: planning-gate requires the recorded Task worktree`);
+  }
+  if (git(worktree, ["status", "--porcelain"])) throw new Error(`${taskId}: planning worktree must be clean before fast-forward`);
+  git(worktree, ["merge", "--ff-only", commit]);
+  if (git(worktree, ["rev-parse", "HEAD"]) !== commit) throw new Error(`${taskId}: planning worktree did not fast-forward`);
+}
 
 function assertMain(root) {
   if (git(root, ["branch", "--show-current"]) !== "main") throw new Error("Evidence writes require the explicit main worktree");
@@ -87,17 +119,11 @@ export function resolveOperationsValidation(root, action, taskId, candidateRoot 
   const { task, taskDir } = taskContext(root, taskId);
   const handover = parseFrontmatter(path.join(root, taskDir, "HANDOVER.md"));
   const candidateCommit = git(candidateRoot, ["rev-parse", "HEAD"]);
-  const candidateTree = git(candidateRoot, ["rev-parse", "HEAD^{tree}"]);
   if (git(candidateRoot, ["branch", "--show-current"]) !== task.branch) throw new Error("validator must run from the recorded candidate branch");
   if (git(root, ["rev-parse", task.branch]) !== candidateCommit) throw new Error("validator candidate differs from the recorded branch head");
   if (git(candidateRoot, ["status", "--porcelain"])) throw new Error("validator candidate worktree must be clean");
-  const base = git(root, ["merge-base", "main", candidateCommit]);
-  const digest = managedDigest(root, base, candidateCommit);
-  if (handover.candidate_commit !== candidateCommit || handover.candidate_tree !== candidateTree || handover.managed_path_digest !== digest) {
-    throw new Error(`validator candidate is not bound by HANDOVER: commit=${handover.candidate_commit ?? "missing"}/${candidateCommit}, tree=${handover.candidate_tree ?? "missing"}/${candidateTree}, digest=${handover.managed_path_digest ?? "missing"}/${digest}`);
-  }
-  if (!/^[0-9a-f]{40}$/.test(handover.bootstrap_evidence_commit ?? "") || !/^[0-9a-f]{64}$/.test(handover.bootstrap_evidence_digest ?? "")) {
-    throw new Error("HANDOVER is missing the bootstrap evidence binding");
+  if (!/^[0-9a-f]{40}$/.test(handover.candidate_commit ?? "") || handover.candidate_commit !== candidateCommit) {
+    throw new Error(`validator candidate is not bound by HANDOVER: candidate=${handover.candidate_commit ?? "missing"}/${candidateCommit}`);
   }
   return { mode: "pre-merge-candidate", validatorRoot: candidateRoot, schemaRoot: candidateRoot };
 }
@@ -128,25 +154,49 @@ export function evidenceCommit({ root, action, taskId, message, push = true, val
   const rules = allowedFor(root, action, taskId);
   const release = acquireWorkRepoLock(root, { requireClean: false });
   const before = git(root, ["rev-parse", "HEAD"]);
+  let prevalidatedDigest = null;
+  let commitCreated = false;
+  let pushed = false;
+  let planningBranchBefore = null;
+  let planningWorktree = null;
   try {
+    prevalidatedDigest = validate ? changedContentDigest(root, { cached: false }) : null;
     const changed = changedFiles(root);
     if (!changed.length) return { commit: null, pushed: false, changed: [] };
-    const forbidden = changed.filter((file) => !matches(file, rules));
-    if (forbidden.length) throw new Error(`Evidence scope violation for ${action}: ${forbidden.join(", ")}`);
+    if (action === "planning-gate") validatePlanningState(root, taskId, changed);
+    else {
+      const forbidden = changed.filter((file) => !matches(file, rules));
+      if (forbidden.length) throw new Error(`Evidence scope violation for ${action}: ${forbidden.join(", ")}`);
+    }
+    if (action === "planning-gate") {
+      const { task } = taskContext(root, taskId);
+      planningWorktree = resolveInside(root, task.worktree, `${taskId} worktree`);
+      if (!fs.existsSync(planningWorktree) || git(planningWorktree, ["branch", "--show-current"]) !== task.branch) {
+        throw new Error(`${taskId}: planning-gate requires the recorded Task worktree`);
+      }
+      planningBranchBefore = git(root, ["rev-parse", task.branch]);
+      if (git(planningWorktree, ["status", "--porcelain"])) throw new Error(`${taskId}: planning worktree must be clean before planning-gate`);
+    }
     // Bootstrap runs before this product change is merged, so its verifier and
     // schemas must come from the approved Task worktree, not the old main tree.
-    if (validate) validateEvidenceAction(root, action, taskId, candidateRoot);
+    if (validate) validateOperations(root, action === "planning-gate" ? "plan" : action, taskId, candidateRoot);
     git(root, ["add", "--", ...changed]);
     git(root, ["commit", "-m", message], { env: {
       ...process.env, WORK_REPO_LOCK_HELD: "1", WORK_PARENT_COMMIT: "1", WORK_ACTION: action,
       WORK_ALLOWED_PATHS: JSON.stringify(rules),
+      ...(prevalidatedDigest ? { WORK_VALIDATED_DIGEST: prevalidatedDigest } : {}),
     } });
+    commitCreated = true;
     let commit = git(root, ["rev-parse", "HEAD"]);
+    if (action === "planning-gate") fastForwardPlanningWorktree(root, taskId, commit);
     if (!push) return { commit, pushed: false, changed };
     for (let retry = 0; retry <= 2; retry += 1) {
-      const pushed = output("git", ["push", "origin", "HEAD:main"], root, true);
-      if (pushed.status === 0) return { commit, pushed: true, changed, retries: retry };
-      if (retry === 2) throw new Error(`Evidence push retry limit reached: ${(pushed.stderr || pushed.stdout).trim()}`);
+      const pushResult = output("git", ["push", "origin", "HEAD:main"], root, true);
+      if (pushResult.status === 0) {
+        pushed = true;
+        return { commit, pushed: true, changed, retries: retry };
+      }
+      if (retry === 2) throw new Error(`Evidence push retry limit reached: ${(pushResult.stderr || pushResult.stdout).trim()}`);
       git(root, ["fetch", "origin", "main"]);
       const rebase = output("git", ["rebase", "origin/main"], root, true);
       if (rebase.status !== 0) {
@@ -157,6 +207,10 @@ export function evidenceCommit({ root, action, taskId, message, push = true, val
       commit = git(root, ["rev-parse", "HEAD"]);
     }
   } catch (error) {
+    if (action === "planning-gate" && commitCreated && !pushed && git(root, ["rev-parse", "HEAD"]) !== before) {
+      if (planningWorktree && planningBranchBefore) output("git", ["reset", "--hard", planningBranchBefore], planningWorktree, true);
+      output("git", ["reset", "--mixed", before], root, true);
+    }
     throw new Error(`${error.message}; transaction_start=${before}`);
   } finally {
     release();
@@ -229,9 +283,10 @@ export function taskStart(args, root, allocate = createSparseWorktree) {
     writeYaml(backlogFile, backlog);
     allocate(root, branch, worktree);
     allocated = true;
-    const published = evidenceCommit({ root, action: "task-start", taskId: args.id, message: `task: start ${args.id}`, push: args.push !== "false" });
+    // task-start is an allocation transaction only.  The first main commit is
+    // planning-gate, so the scaffold remains dirty for the planner to finish.
     git(worktree, ["reset", "--hard", "main"]);
-    return { ...published, branch, worktree };
+    return { commit: null, pushed: false, changed: changedFiles(root), branch, worktree };
   } catch (error) {
     const currentHead = git(root, ["rev-parse", "HEAD"]);
     if (currentHead !== startHead) {
@@ -263,6 +318,210 @@ export function managedDigest(root, base, head) {
   return crypto.createHash("sha256").update(records).digest("hex");
 }
 
+function candidatePaths(root, task) {
+  const candidateRoot = resolveInside(root, task.worktree, `${task.id} candidate worktree`);
+  if (!fs.existsSync(candidateRoot)) throw new Error(`${task.id}: candidate worktree is missing`);
+  if (git(candidateRoot, ["branch", "--show-current"]) !== task.branch) throw new Error(`${task.id}: candidate worktree branch mismatch`);
+  return candidateRoot;
+}
+
+export function candidateCommit({ root, taskId, candidateRoot, message = `task: candidate ${taskId}` }) {
+  assertMain(root);
+  const { task } = taskContext(root, taskId);
+  const worktree = candidateRoot ? path.resolve(candidateRoot) : candidatePaths(root, task);
+  const release = acquireWorkRepoLock(root, { requireClean: false });
+  try {
+    if (git(worktree, ["branch", "--show-current"]) !== task.branch) throw new Error("candidate commit requires the Task branch");
+    const base = git(root, ["merge-base", "main", task.branch]);
+    const prior = Number(git(root, ["rev-list", "--count", `${base}..${task.branch}`]));
+    if (prior !== 0) throw new Error("candidate branch must contain only the planning commit before DEV");
+    const changed = changedFiles(worktree);
+    if (!changed.length) throw new Error("candidate commit requires non-empty product changes");
+    const forbidden = changed.filter(isMainManagedPath);
+    if (forbidden.length) throw new Error(`candidate commit contains main-managed paths: ${forbidden.join(", ")}`);
+
+    // Freeze the exact working bytes before the single DEV quality run.  The
+    // pre-commit hook compares this digest with the staged bytes, so any
+    // validation/build mutation causes the trusted fast path to fail closed.
+    const digest = changedContentDigest(worktree, { cached: false });
+    const check = spawnSync("make", ["check"], { cwd: worktree, encoding: "utf8" });
+    const diagnostics = [check.stderr, check.stdout].filter(Boolean).join("\n").trim();
+    if (check.status !== 0) throw new Error(diagnostics || "make check failed");
+    const afterCheck = changedFiles(worktree);
+    if (afterCheck.join("\0") !== changed.join("\0")) throw new Error("make check changed the candidate working set");
+    if (changedContentDigest(worktree, { cached: false }) !== digest) throw new Error("make check changed candidate bytes");
+    git(worktree, ["add", "--", ...changed]);
+    let commitCreated = false;
+    try {
+      git(worktree, ["commit", "-m", message], { env: {
+        ...process.env,
+        WORK_REPO_LOCK_HELD: "1",
+        WORK_PARENT_COMMIT: "1",
+        WORK_ACTION: "candidate-commit",
+        WORK_ALLOWED_PATHS: JSON.stringify(changed),
+        WORK_VALIDATED_DIGEST: digest,
+      } });
+      commitCreated = true;
+      const commit = git(worktree, ["rev-parse", "HEAD"]);
+      if (Number(git(root, ["rev-list", "--count", `${base}..${commit}`])) !== 1) throw new Error("candidate must be one commit after planning");
+      return { candidate_commit: commit, base, changed };
+    } catch (error) {
+      if (commitCreated) output("git", ["reset", "--mixed", base], worktree, true);
+      throw error;
+    }
+  } finally {
+    release();
+  }
+}
+
+function completionAllowed(root, taskId) {
+  const { taskDir } = taskContext(root, taskId);
+  return ["backlog.yaml", ...PLANNING_FILES.filter((file) => file !== "PLAN.md").map((file) => `${taskDir}/${file}`), "wiki/"];
+}
+
+function snapshotBytes(root, files) {
+  return new Map(files.map((file) => {
+    const absolute = path.join(root, file);
+    if (!fs.existsSync(absolute)) return [file, { exists: false }];
+    const stat = fs.statSync(absolute);
+    return [file, { exists: true, mode: stat.mode & 0o7777, bytes: fs.readFileSync(absolute) }];
+  }));
+}
+
+function restoreBytes(root, snapshot) {
+  for (const [file, state] of snapshot) {
+    const absolute = path.join(root, file);
+    if (!state.exists) {
+      if (fs.existsSync(absolute)) fs.rmSync(absolute, { force: true });
+      continue;
+    }
+    fs.mkdirSync(path.dirname(absolute), { recursive: true });
+    fs.writeFileSync(absolute, state.bytes);
+    fs.chmodSync(absolute, state.mode);
+  }
+}
+
+function removeUnknownUntracked(root, snapshot, allowed) {
+  for (const file of changedFiles(root)) {
+    if (snapshot.has(file) || !matches(file, allowed)) continue;
+    const tracked = output("git", ["ls-files", "--error-unmatch", "--", file], root, true).status === 0;
+    if (!tracked) fs.rmSync(path.join(root, file), { force: true });
+  }
+}
+
+export function completionGate({ root, taskId, message = `task: complete ${taskId}`, validate = true, push = false }) {
+  assertMain(root);
+  const { task, taskDir } = taskContext(root, taskId);
+  const stagedBefore = lines(git(root, ["diff", "--cached", "--name-only", "--diff-filter=ACMRD"]));
+  if (stagedBefore.length) throw new Error(`completion requires an unstaged quality evidence set; staged=${stagedBefore.join(", ")}`);
+  const candidate = parseFrontmatter(path.join(root, taskDir, "HANDOVER.md")).candidate_commit;
+  if (!/^[0-9a-f]{40}$/.test(candidate ?? "")) throw new Error("completion requires a main-side HANDOVER candidate_commit");
+  if (git(root, ["branch", "--show-current"]) !== "main") throw new Error("completion requires main");
+  if (output("git", ["cat-file", "-e", `${candidate}^{commit}`], root, true).status !== 0) throw new Error("candidate commit does not exist");
+  if (git(root, ["rev-parse", task.branch]) !== candidate) throw new Error("HANDOVER candidate is not the Task branch head");
+  const base = git(root, ["merge-base", "main", candidate]);
+  if (Number(git(root, ["rev-list", "--count", `${base}..${candidate}`])) !== 1) throw new Error("candidate must be one commit after merge-base");
+  const product = diffPaths(root, base, candidate);
+  const forbidden = product.filter(isMainManagedPath);
+  if (forbidden.length) throw new Error(`candidate is not product-only: ${forbidden.join(", ")}`);
+  const candidateEvidence = output("git", ["cat-file", "-e", `${candidate}:${taskDir}/HANDOVER.md`], root, true);
+  if (candidateEvidence.status === 0 && diffPaths(root, base, candidate).includes(`${taskDir}/HANDOVER.md`)) throw new Error("candidate-side HANDOVER is forbidden");
+  const review = parseFrontmatter(path.join(root, taskDir, "REVIEW_RESULT.md"));
+  const qa = parseFrontmatter(path.join(root, taskDir, "QA_RESULT.md"));
+  const qaPlan = parseFrontmatter(path.join(root, taskDir, "QA_PLAN.md"));
+  if (review.decision !== "pass" || review.reviewer_agent !== task.assignees?.reviewer) throw new Error("completion requires independent REVIEW PASS with reviewer identity");
+  const reviewText = fs.readFileSync(path.join(root, taskDir, "REVIEW_RESULT.md"), "utf8");
+  if (!/candidate/i.test(reviewText) || !/(?:DEV|make\s+check)/i.test(reviewText)) throw new Error("completion requires REVIEW candidate diff and DEV check audit");
+  if (!new Set(["pass", "accepted_with_bugs"]).has(qa.decision) || qa.qa_agent !== task.assignees?.qa) throw new Error("completion requires independent QA PASS");
+  if (qaPlan.status !== "approved") throw new Error("completion requires the approved QA PLAN");
+  const allowed = completionAllowed(root, taskId);
+  const preHead = git(root, ["rev-parse", "HEAD"]);
+  const beforeChanged = changedFiles(root);
+  const preForbidden = beforeChanged.filter((file) => !matches(file, allowed));
+  if (preForbidden.length) throw new Error(`completion evidence scope violation: ${preForbidden.join(", ")}`);
+  const snapshot = snapshotBytes(root, beforeChanged);
+  const indexSnapshot = output("git", ["diff", "--cached", "--binary"], root, true).stdout;
+  const release = acquireWorkRepoLock(root, { requireClean: false });
+  let result;
+  try {
+    git(root, ["merge", "--no-ff", "--no-commit", candidate]);
+    if (git(root, ["rev-parse", "MERGE_HEAD"]) !== candidate) throw new Error("completion merge second parent mismatch");
+    const afterChanged = changedFiles(root);
+    const invalid = afterChanged.filter((file) => !matches(file, allowed) && !product.includes(file));
+    if (invalid.length) throw new Error(`completion scope violation: ${invalid.join(", ")}`);
+    // Snapshot before validation and before staging; the hook binds the exact
+    // post-validation bytes to this transaction's trusted parent.
+    const digest = changedContentDigest(root, { cached: false });
+    if (validate) validateOperations(root, "handover", taskId, root);
+    git(root, ["add", "--", ...afterChanged]);
+    const commitAllowed = [...new Set([...allowed, ...product])];
+    git(root, ["commit", "-m", message], { env: {
+      ...process.env,
+      WORK_REPO_LOCK_HELD: "1",
+      WORK_PARENT_COMMIT: "1",
+      WORK_ACTION: "completion-gate",
+      WORK_ALLOWED_PATHS: JSON.stringify(commitAllowed),
+      WORK_VALIDATED_DIGEST: digest,
+    } });
+    const merge = git(root, ["rev-parse", "HEAD"]);
+    result = { commit: merge, candidate_commit: candidate, changed: afterChanged, pushed: false };
+  } catch (error) {
+    restoreMerge(root);
+    // --abort normally restores the pre-merge index and bytes.  Re-apply the
+    // explicit snapshot as a final guard for conflicts or hook failures.
+    restoreBytes(root, snapshot);
+    removeUnknownUntracked(root, snapshot, allowed);
+    output("git", ["reset", "--mixed", "HEAD"], root, true);
+    if (indexSnapshot) {
+      const patchFile = path.join(root, `.completion-index-${process.pid}.patch`);
+      fs.writeFileSync(patchFile, indexSnapshot);
+      try { output("git", ["apply", "--cached", patchFile], root, true); } finally { fs.rmSync(patchFile, { force: true }); }
+    }
+    throw new Error(`${error.message}; completion transaction aborted`);
+  } finally {
+    release();
+  }
+  if (!push) return result;
+  const pushResult = output("git", ["push", "origin", "HEAD:main"], root, true);
+  if (pushResult.status === 0) return { ...result, pushed: true, retries: 0 };
+  const diagnostics = [pushResult.stderr, pushResult.stdout].filter(Boolean).join("\n").trim();
+  const remote = output("git", ["ls-remote", "origin", "refs/heads/main"], root, true);
+  const remoteHead = remote.status === 0 ? (lines(remote.stdout)[0]?.split(/\s+/)[0] ?? null) : null;
+  if (remoteHead === result.commit) return { ...result, pushed: true, retries: 0, reconciled: true };
+  if (remoteHead !== preHead) {
+    throw new Error(`Completion merge push failed; reconciliation required (remote main=${remoteHead ?? "unknown"}, local merge=${result.commit})${diagnostics ? `: ${diagnostics}` : ""}`);
+  }
+  const rollbackRelease = acquireWorkRepoLock(root, { requireClean: false });
+  try {
+    if (git(root, ["rev-parse", "HEAD"]) !== result.commit || git(root, ["status", "--porcelain"])) {
+      throw new Error(`Completion merge push failed; reconciliation required before rollback (local merge=${result.commit})`);
+    }
+    output("git", ["reset", "--mixed", preHead], root, true);
+    for (const file of product) {
+      const absolute = path.join(root, file);
+      if (output("git", ["cat-file", "-e", `${preHead}:${file}`], root, true).status === 0) {
+        output("git", ["restore", "--source", preHead, "--worktree", "--", file], root, true);
+      } else if (fs.existsSync(absolute)) {
+        fs.rmSync(absolute, { force: true, recursive: true });
+      }
+    }
+    restoreBytes(root, snapshot);
+    for (const file of changedFiles(root)) {
+      if (snapshot.has(file)) continue;
+      const tracked = output("git", ["ls-files", "--error-unmatch", "--", file], root, true).status === 0;
+      if (!tracked) fs.rmSync(path.join(root, file), { force: true });
+    }
+    if (indexSnapshot) {
+      const patchFile = path.join(root, `.completion-index-${process.pid}.patch`);
+      fs.writeFileSync(patchFile, indexSnapshot);
+      try { output("git", ["apply", "--cached", patchFile], root, true); } finally { fs.rmSync(patchFile, { force: true }); }
+    }
+  } finally {
+    rollbackRelease();
+  }
+  throw new Error(`Completion merge push failed; remote main unchanged at ${preHead}; local merge commit rolled back and pre-merge evidence restored; completion can be retried${diagnostics ? `: ${diagnostics}` : ""}`);
+}
+
 function assertBootstrapBinding(root, evidence, refs) {
   const commit = evidence.bootstrap_evidence_commit ?? "";
   const digest = evidence.bootstrap_evidence_digest ?? "";
@@ -287,26 +546,16 @@ export function assertComposite(root, taskId) {
   const qa = parseFrontmatter(path.join(root, taskDir, "QA_RESULT.md"));
   const handover = parseFrontmatter(path.join(root, taskDir, "HANDOVER.md"));
   const head = git(root, ["rev-parse", task.branch]);
-  const tree = git(root, ["rev-parse", `${head}^{tree}`]);
+  if (handover.candidate_commit !== head) throw new Error("HANDOVER candidate does not match the Task branch head");
   const base = git(root, ["merge-base", "main", head]);
-  const digest = managedDigest(root, base, head);
-  for (const [label, evidence] of [["review", review], ["qa", qa], ["handover", handover]]) {
-    if (evidence.candidate_commit !== head || evidence.candidate_tree !== tree || evidence.managed_path_digest !== digest) {
-      throw new Error(`${label} is not bound to the current candidate`);
-    }
-    if (!/^[0-9a-f]{40}$/.test(evidence.bootstrap_evidence_commit ?? "") || !/^[0-9a-f]{64}$/.test(evidence.bootstrap_evidence_digest ?? "")) {
-      throw new Error(`${label} is missing the bootstrap evidence binding`);
-    }
-  }
-  if (review.decision !== "pass" || review.make_check !== "pass") throw new Error("Independent REVIEW PASS is required");
-  if (!new Set(["pass", "accepted_with_bugs"]).has(qa.decision)) throw new Error("Independent QA PASS is required");
-  const bindings = [review, qa, handover].map((evidence) => `${evidence.bootstrap_evidence_commit}:${evidence.bootstrap_evidence_digest}`);
-  if (new Set(bindings).size !== 1) throw new Error("Composite bootstrap bindings differ");
-  const forbidden = diffPaths(root, "main", head).filter(isMainManagedPath);
+  if (Number(git(root, ["rev-list", "--count", `${base}..${head}`])) !== 1) throw new Error("Task branch must contain exactly one candidate commit after planning");
+  const candidateFiles = diffPaths(root, base, head);
+  if (candidateFiles.includes(`${taskDir}/HANDOVER.md`)) throw new Error("candidate-side HANDOVER is forbidden");
+  const forbidden = candidateFiles.filter(isMainManagedPath);
   if (forbidden.length) throw new Error(`PR contains main-managed paths: ${forbidden.join(", ")}`);
-  const [bootstrapCommit, bootstrapDigest] = bindings[0].split(":");
-  assertBootstrapBinding(root, handover, [head, "main"]);
-  return { task, head, tree, digest, bootstrap_commit: bootstrapCommit, bootstrap_digest: bootstrapDigest };
+  if (review.decision !== "pass" || review.reviewer_agent !== task.assignees?.reviewer) throw new Error("Independent REVIEW PASS is required");
+  if (!new Set(["pass", "accepted_with_bugs"]).has(qa.decision) || qa.qa_agent !== task.assignees?.qa) throw new Error("Independent QA PASS is required");
+  return { task, head, base, candidate_commit: head, files: candidateFiles };
 }
 
 function taskPr(args, root) {
@@ -333,7 +582,7 @@ export function scopeCheck(args, root) {
       const candidateCommit = parents[2];
       const backlog = YAML.parse(git(root, ["show", `${firstParent}:backlog.yaml`]));
       const observedCandidates = [];
-      const matches = (backlog.tasks ?? []).filter((task) => {
+      const boundTasks = (backlog.tasks ?? []).filter((task) => {
         try {
           const content = git(root, ["show", `${firstParent}:${task.task_dir}/HANDOVER.md`]);
           const frontmatter = content.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/);
@@ -344,17 +593,17 @@ export function scopeCheck(args, root) {
           return false;
         }
       });
-      if (matches.length !== 1) throw new Error(`Merge commit is not bound to exactly one Task HANDOVER candidate: merge_candidate=${candidateCommit}, observed=${observedCandidates.join(",") || "none"}`);
-      const task = matches[0];
-      const content = git(root, ["show", `${firstParent}:${task.task_dir}/HANDOVER.md`]);
-      const handover = YAML.parse(content.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/)[1]);
-      if (git(root, ["rev-parse", `${candidateCommit}^{tree}`]) !== handover.candidate_tree) throw new Error("Merge candidate tree differs from HANDOVER");
-      if (managedDigest(root, firstParent, args.head) !== handover.managed_path_digest) throw new Error("Merge managed-path digest differs from HANDOVER");
-      const forbidden = diffPaths(root, firstParent, candidateCommit).filter(isMainManagedPath);
+      if (boundTasks.length !== 1) throw new Error(`Merge commit is not bound to exactly one Task HANDOVER candidate: merge_candidate=${candidateCommit}, observed=${observedCandidates.join(",") || "none"}`);
+      const task = boundTasks[0];
+      const candidateBase = git(root, ["merge-base", firstParent, candidateCommit]);
+      if (Number(git(root, ["rev-list", "--count", `${candidateBase}..${candidateCommit}`])) !== 1) throw new Error("Merge candidate must be one commit after planning");
+      const candidateFiles = diffPaths(root, candidateBase, candidateCommit);
+      if (candidateFiles.includes(`${task.task_dir}/HANDOVER.md`)) throw new Error("Merge candidate contains candidate-side HANDOVER");
+      const forbidden = candidateFiles.filter(isMainManagedPath);
       if (forbidden.length) throw new Error(`Merge candidate contains main-managed paths: ${forbidden.join(", ")}`);
-      const mergeEvidenceChanges = diffPaths(root, firstParent, args.head).filter(isMainManagedPath);
-      if (mergeEvidenceChanges.length) throw new Error(`Merge commit changes main-managed paths: ${mergeEvidenceChanges.join(", ")}`);
-      assertBootstrapBinding(root, handover, [firstParent, candidateCommit]);
+      const allowedEvidence = ["backlog.yaml", ...PLANNING_FILES.filter((file) => file !== "PLAN.md").map((file) => `${task.task_dir}/${file}`), "wiki/"];
+      const mergeEvidenceChanges = diffPaths(root, firstParent, args.head).filter((file) => isMainManagedPath(file) && !matches(file, allowedEvidence));
+      if (mergeEvidenceChanges.length) throw new Error(`Merge commit changes unapproved main-managed paths: ${mergeEvidenceChanges.join(", ")}`);
       return { files, merge_commit: true, task: task.id, candidate_commit: candidateCommit };
     }
     const forbidden = files.filter((file) => !isMainManagedPath(file));
@@ -371,7 +620,6 @@ function postMerge(args, root) {
   const handover = parseFrontmatter(path.join(root, taskDir, "HANDOVER.md"));
   const parents = git(root, ["rev-list", "--parents", "-n", "1", args.merged_commit]).split(" ");
   if (parents.length !== 3 || parents[2] !== handover.candidate_commit) throw new Error("Merged commit is not the recorded candidate merge commit");
-  if (managedDigest(root, parents[1], args.merged_commit) !== handover.managed_path_digest) throw new Error("Merged managed-path digest differs from the candidate");
   if (task.merged_commit) {
     if (task.merged_commit !== args.merged_commit) throw new Error("Task already records a different merged commit");
     return { no_op: true, merged_commit: task.merged_commit };
@@ -392,6 +640,9 @@ export function syncMain(args, root) {
   if (ci.status !== 0 || !["success", "neutral", "skipped"].includes(ci.stdout.trim())) throw new Error("sync stops while main CI is unavailable or red");
   if (args.fast === "1") return { fast: true };
   let backlog = readYaml(path.join(root, "backlog.yaml"));
+  // Completion-gate records a final done state in the same no-ff merge.  This
+  // recovery path only handles legacy qa transitions and does not require a
+  // Wiki receipt or an additional evidence commit for already-done tasks.
   const newlyDone = (backlog.tasks ?? []).filter((task) => task.merged_commit && task.status === "qa");
   for (const task of newlyDone) {
     const receipt = path.join(root, "wiki/ingestions", `${task.id}.json`);
@@ -428,6 +679,9 @@ if (isMain) {
   const root = path.resolve(args.main_root ?? (args.action === "task-pr" ? REPO_ROOT : findMainWorktree(REPO_ROOT)));
   let result;
   if (args.action === "evidence-commit") result = evidenceCommit({ root, action: args.evidence_action, taskId: args.task, message: args.message ?? `task: ${args.evidence_action} ${args.task}`, push: args.push !== "false" });
+  else if (args.action === "planning-gate") result = evidenceCommit({ root, action: "planning-gate", taskId: args.task, message: args.message ?? `task: planning ${args.task}`, push: args.push !== "false" });
+  else if (args.action === "candidate-commit") result = candidateCommit({ root, taskId: args.task, candidateRoot: args.candidate_root, message: args.message ?? `task: candidate ${args.task}` });
+  else if (args.action === "completion-gate") result = completionGate({ root, taskId: args.task, message: args.message ?? `task: complete ${args.task}`, validate: args.validate !== "false", push: args.push !== "false" });
   else if (args.action === "task-start") result = taskStart(args, root);
   else if (args.action === "task-pr") result = taskPr(args, root);
   else if (args.action === "scope-check") result = scopeCheck(args, root);
