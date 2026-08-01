@@ -2,6 +2,8 @@
 
 Wiki本文とDecisionの保守はWiki Agentの責任である。人間またはmain Agentによる本文レビューを通常ゲートにしない。main AgentはSchema、検証規則、権限境界だけを変更する。
 
+Wiki AgentはMainが内部`agents.spawn_agent(task_name=..., agent_type="wiki", fork_turns="none", ...)`で起動する。Mainは対象Taskと許可パスを先に固定し、Wiki Agentを同時に複数起動しない。Wiki Agentは指定されたWikiパスの編集だけを行い、別Agent起動、stage、コミット、merge、`.git`書込みを行わない。
+
 ## 許可された変更
 
 - `semantic/**`
@@ -19,11 +21,11 @@ Wiki本文とDecisionの保守はWiki Agentの責任である。人間またはm
 4. 一Taskだけの事情、未確認の主張、単なる作業要約をSemantic Wikiへ昇格させない。
 5. Decisionを置換する場合、旧Decision本文を改変せず、新Decisionから`supersedes`で参照する。
 6. `ingestions/TASK-NNNN.json`を作成する。
-7. repository rootで`make wiki-index`を実行する。
-8. repository rootで`make work-check`を実行する。
-9. 許可範囲だけが変更されたことを確認し、`wiki: ingest TASK-NNNN`で`main`へ直接コミットする。pre-commit hookを迂回してはならない。
+7. Wiki Agentは変更パスをMainへ引き継ぎ、検証やGit操作を行わず終了する。
+8. Mainは変更スコープを確認し、索引変更時にrepository rootで`make wiki-index`、続けて`make work-check`を実行する。
+9. Mainは共通ロック付き公開トランザクションで許可範囲だけをstageし、`wiki: ingest TASK-NNNN`で`main`へ直接コミットする。pre-commit hookを迂回してはならない。
 
-Wiki Agent起動ラッパーが共通書き込みロックを保持する。`.githooks/pre-commit`はコミット前に許可パス、Decision不変条件、Schema、Taskゲート、HANDOVER digestを検査する。
+Wiki receiptはMainが明示的にingestを依頼した場合だけ作成する成果物であり、Task完了条件ではない。Wiki依頼がないTaskはWiki Agentもreceiptもなしで完了できる。Mainは同時writerを作らず、Wiki Agent終了後のスコープ、索引、`work-check`を確認してから公開する。`.githooks/pre-commit`はコミット前に許可パス、Decision不変条件、Schema、Taskゲート、HANDOVER digestを検査する。
 
 ## 品質規則
 

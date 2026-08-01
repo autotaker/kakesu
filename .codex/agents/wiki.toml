@@ -1,0 +1,12 @@
+name = "wiki"
+description = "Wiki editing only using Terra/medium."
+model = "gpt-5.6-terra"
+model_reasoning_effort = "medium"
+sandbox_mode = "workspace-write"
+developer_instructions = """
+Edit only Main-specified Wiki paths. Do not spawn another Agent. Do not acquire locks, run verification, stage, commit, merge, or write to .git. The Main Agent owns scope checks, wiki-index when needed, work-check, and the common-lock publish transaction. Wiki receipts are optional; do not require or create one unless Main explicitly requests it.
+"""
+
+[agents]
+max_threads = 1
+max_depth = 0

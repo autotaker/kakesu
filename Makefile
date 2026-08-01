@@ -10,16 +10,13 @@ PRODUCT_ROOT ?= $(abspath $(dir $(shell git rev-parse --path-format=absolute --g
 MAIN_ROOT ?= $(PRODUCT_ROOT)
 SOURCE_REF ?= d030db5dc2974056387616d047197823b94602ce
 SOURCE_HEAD ?= a49338d5013f8e54f72a9c7cc4f92c4a76c52d91
-WIKI_CONTEXT_TARGET ?= task
-WIKI_PROFILE ?=
-WIKI_MODEL ?= gpt-5.6-terra
 GO_ENV := GOCACHE=$(CURDIR)/.build/go-cache
 UV_ENV := UV_CACHE_DIR=$(CURDIR)/.build/uv-cache
 
 .PHONY: build build-core build-memory build-governance node-deps
 .PHONY: test test-core test-memory test-governance test-tabletop test-docs test-process
 .PHONY: lint lint-core lint-memory lint-governance lint-docs
-.PHONY: check clean explorer-agent task-start task-check task-preflight work-check backlog-view wiki-index wiki-context wiki-ingest
+.PHONY: check clean explorer-agent task-start task-check task-preflight work-check backlog-view wiki-index
 .PHONY: evidence-commit planning-gate candidate-commit completion-gate task-pr task-scope-check sync bootstrap-plan bootstrap-apply bootstrap-verify bootstrap-freeze bootstrap-unfreeze
 
 build: build-core build-memory build-governance
@@ -131,15 +128,6 @@ backlog-view: node-deps work-check
 
 wiki-index: node-deps
 	$(NODE) scripts/task/wiki-index.mjs --work-root "$(MAIN_ROOT)"
-
-wiki-context: node-deps
-	@test -n "$(TASK)" || (echo "TASK is required" >&2; exit 1)
-	@test "$(WIKI_CONTEXT_TARGET)" = "task" -o "$(WIKI_CONTEXT_TARGET)" = "plan" || (echo "WIKI_CONTEXT_TARGET must be task or plan" >&2; exit 1)
-	$(NODE) scripts/task/run-wiki-agent.mjs --work-root "$(MAIN_ROOT)" --task "$(TASK)" --action "context-$(WIKI_CONTEXT_TARGET)" $(if $(WIKI_PROFILE),--profile "$(WIKI_PROFILE)",) $(if $(WIKI_MODEL),--model "$(WIKI_MODEL)",) $(if $(WIKI_EFFORT),--effort "$(WIKI_EFFORT)",)
-
-wiki-ingest: node-deps
-	@test -n "$(TASK)" || (echo "TASK is required" >&2; exit 1)
-	$(NODE) scripts/task/run-wiki-agent.mjs --work-root "$(MAIN_ROOT)" --task "$(TASK)" --action ingest $(if $(WIKI_PROFILE),--profile "$(WIKI_PROFILE)",) $(if $(WIKI_MODEL),--model "$(WIKI_MODEL)",) $(if $(WIKI_EFFORT),--effort "$(WIKI_EFFORT)",)
 
 task-scope-check: node-deps
 	$(NODE) scripts/task/unified-lifecycle.mjs --action scope-check --main-root "$(MAIN_ROOT)" --event "$(EVENT)" --base "$(BASE)" --head "$(HEAD)" --allow-merge "$(if $(filter 1,$(ALLOW_MERGE)),true,false)"

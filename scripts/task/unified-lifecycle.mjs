@@ -455,7 +455,8 @@ export function completionGate({ root, taskId, message = `task: complete ${taskI
     // post-validation bytes to this transaction's trusted parent.
     const digest = changedContentDigest(root, { cached: false });
     if (validate) validateOperations(root, "handover", taskId, root);
-    git(root, ["add", "--", ...afterChanged]);
+    const unstagedAfterValidation = lines(git(root, ["diff", "--name-only", "--diff-filter=ACMRD"]));
+    if (unstagedAfterValidation.length) git(root, ["add", "-A", "--", ...unstagedAfterValidation]);
     const commitAllowed = [...new Set([...allowed, ...product])];
     git(root, ["commit", "-m", message], { env: {
       ...process.env,
