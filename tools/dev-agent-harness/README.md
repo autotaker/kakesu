@@ -68,6 +68,20 @@ manifest本文、ユーザー名、OSエラー本文を診断へ含めない。�
 使い、Agent や診断へ 認証情報・JWT・リクエスト/レスポンスの詳細を公開しない。実 転送方式 と
 GitHub installation の受理は後続の live E2E 境界で確認する。
 
+## プロバイダー上流レスポンス転送
+
+`internal/upstreamforwarder` は、既存の `egresstransaction.PreparedRequest` を同じ
+`egresspolicy.Policy` で再評価してから、注入済み `http.RoundTripper` を同期的に一度だけ
+呼び出す信頼済みブローカー境界である。送信時のヘッダーは実 `Bearer` 認証、固定の
+`Accept: application/json` と `User-Agent`、OpenAI の場合だけ `Content-Type: application/json`
+に限定する。リダイレクト、再試行、既定転送方式、環境プロキシは選択しない。
+
+2xxレスポンスは上限付きで全量を読み、本文を閉じてからUTF-8の有効なJSONとJSONメディア型を
+確認する。成功時だけHTTP状態コード、正規化したメディア型、独立コピーした本文をリクエスト単位の
+sinkへ一度渡す。上流ヘッダー、プロバイダーエラー本文、URL、スコープ、認証情報、下位エラーは
+sinkと公開エラーに出さない。実プロバイダー、実認証情報、DNS/TLS、Agent側レスポンスwriterへの接続は
+このhermetic境界の対象外であり、後続のlive E2Eで確認する。
+
 ## Build
 
 リリースtarballには生成済み`configure`を含める。
