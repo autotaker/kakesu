@@ -2,15 +2,15 @@
 task_id: "TASK-0036"
 status: passed
 qa_agent: "qa-agent-terra-medium"
-tested_commit: "8f07079e03e8b408e4450bb94b79915646f923a7"
+tested_commit: "0efd3a1b7fcf2ecc452bfda97cecdeee907c4b4d"
 candidate_commit: "8f07079e03e8b408e4450bb94b79915646f923a7"
 candidate_tree: "287f382df73a489707d9920086ae164b894b8c7d"
 managed_path_digest: "9667121cb08ea80927dcba823f843d05cd92b08934121194fd026c45cc38fde3"
 bootstrap_evidence_commit: "a063f6d461bbc6ce752d93306f83e4939e299d1e"
 bootstrap_evidence_digest: "279dc69dba63337208ac4d0dd065db8055e7bb0b00fb8df5e0f9024d9f283329"
-merge_tree: ""
+merge_tree: "c5fa0c3e8c28ca644551e8df6d90c9218ec9e7d6"
 decision: pass
-tested_at: "2026-08-01T11:10:40+10:00"
+tested_at: "2026-08-01T11:16:28+10:00"
 ---
 
 # TASK-0036 QA RESULT
@@ -18,8 +18,8 @@ tested_at: "2026-08-01T11:10:40+10:00"
 ## 対象
 
 - 案 コミット/tree: `8f07079e03e8b408e4450bb94b79915646f923a7` / `287f382df73a489707d9920086ae164b894b8c7d`
-- `main` / merge tree:
-- `merge_tree`はマージ後にMainが記録し、案 QAでは未設定とする:
+- `main` / merge tree: merge `0efd3a1b7fcf2ecc452bfda97cecdeee907c4b4d` / `c5fa0c3e8c28ca644551e8df6d90c9218ec9e7d6`
+- `merge_tree`はマージ後にMainが記録し、案 QAでは未設定とする: 第2親がtested candidate `8f07079`と一致し、scope-check `--allow-merge true`がPASS。環境依存caseは0件なのでcandidate focused rerunを重複実行しない。
 - QA PLAN 改訂: revision 4。post-implementation reviewで期待変更なし。
 - 環境: Darwin arm64、candidate worktree、`GOCACHE=/private/tmp/task0036-qa-gocache`、`-count=1`。network、sudo、実OS user/serviceは使用しない。
 
