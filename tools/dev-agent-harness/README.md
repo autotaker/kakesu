@@ -95,6 +95,18 @@ sinkと公開エラーに出さない。実プロバイダー、実認証情報�
 組立て、既定転送方式、実GitHub/OpenAI、DNS/TLS、外部ネットワークを実装しない。実プロバイダー
 受理と実配置は後続のlive E2E境界で確認する。
 
+## TLS終端後のHTTP入口
+
+`internal/brokerhttp` は、TLS終端済みの `net/http` リクエストから HTTP/1.1 の
+origin-form と既知の本文長形式だけを受け取り、コンテキストだけから解決した呼出元と独立コピーした
+メソッド、Host/パス、Content-Type、Authorization、上限内本文を一度だけ既存の
+`brokerexchange` へ渡す。成功時は2xxの縮退済みレスポンスと固定のno-store/nosniff ヘッダーだけを
+返し、入力不整合、呼出元解決失敗、交換拒否は空の403へ畳む。
+
+この入口はTCP待受け、TLS、HTTP/2、absolute-form、chunked、実配置の呼出元解決、実プロバイダー、
+外部ネットワーク、再試行、診断本文を実装しない。hermeticなテスト成功は実環境の受理を意味せず、
+実配置確認は後続のlive E2E境界で行う。
+
 ## Build
 
 リリースtarballには生成済み`configure`を含める。

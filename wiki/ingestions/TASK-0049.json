@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "task_id": "TASK-0049",
+  "handover_sha256": "a6d77c7eef61f3bc1e431a656e126cd08d6e9bcc0c03347595afa3183b38475d",
+  "ingested_at": "2026-08-01T11:50:58Z",
+  "updated_pages": [
+    "wiki/semantic/schemas/development-agent-harness-egress-transaction.md"
+  ],
+  "created_decisions": [],
+  "deferred": [
+    "HTTP/2、absolute-form、chunked request、listener/TLS終端、production identity resolver、実GitHub/OpenAI client/provider、実credential、DNS/system trust、Agent network namespaceはlive E2E境界として未確認である。live E2E blockedをhermetic PASSで代替しない。"
+  ]
+}

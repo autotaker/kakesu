@@ -6,7 +6,7 @@ qa_agent: "qa-agent-terra-medium"
 approved_by: "main-agent-sol-high"
 approved_at: "2026-08-01T11:31:40Z"
 revision: 1
-implementation_reviewed_at: ""
+implementation_reviewed_at: "2026-08-01T11:48:55Z"
 expectation_changed: false
 expectation_change_approved_by: ""
 ---
@@ -54,6 +54,6 @@ GOCACHE=$PWD/.build/go-cache go test -count=1 -race ./internal/brokerhttp
 
 ## 実装後の再確認
 
-- [ ] candidateのsource/test、HANDOVER、DEV check証跡を独立に確認した。
-- [ ] 指定race testをcandidateで一回だけ実行した。
-- [ ] live E2E blockedをPASSに置換せず、期待結果又は範囲を変更していないことを確認した。
+- [x] candidateのsource/test、HANDOVER、DEV check証跡を独立に確認した。
+- [x] 指定race testをcandidateで一回だけ実行した。
+- [x] live E2E blockedをPASSに置換せず、期待結果又は範囲を変更していないことを確認した。

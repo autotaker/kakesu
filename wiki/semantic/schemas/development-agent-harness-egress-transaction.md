@@ -53,6 +53,14 @@ policy又はAuthorizationの拒否はcapabilityを消費しない。capability�
 
 この性質だけでは秘密情報ストア、実network上のprovider受理、Agent側proxy、response writer又はauditを証明しない。実GitHub/OpenAI、実認証情報、Internet DNS/TLS/system trust、Agent proxy/response writerはlive E2Eで別途確認する。
 
+## TLS終端後のHTTP入口
+
+`brokerhttp.Handler`はTLS終端済みのHTTP/1.1 origin-form requestだけを受け、trustedな`SubjectResolver`へはrequest contextだけを渡して、既存の`Exchange`を一回だけ呼び出す。Host又はmethodをresolverの主体解決へ渡さず、provider host/methodの意味、policy、capability、credentialの検証を入口で再実装しない。
+
+Exchangeへ到達する前に、origin-form、構造的に妥当なmethodとauthority、query/raw pathなし、既知のContent-Length、transfer/trailer/upgradeなしを検査する。CONNECTとこのHTTP構造条件に反するrequestは入口で拒否する。resolver、Exchange、又はresponseの検証に失敗した場合も、固定headerだけの空403へ縮退し、retry又は診断本文を生成しない。
+
+成功時はExchangeが返した2xx responseだけを、縮退済みContent-Typeとbody、固定`Cache-Control: no-store`と`X-Content-Type-Options: nosniff`、正確な`Content-Length`で返す。response write失敗後に上流処理を再試行しない。Handlerはlistener/TLS終端、production identity resolver、実provider client、実credential、DNS/system trust、Agent network namespaceを所有せず、それらはlive E2Eの別境界である。
+
 ## 適用限界
 
 このトランザクションはin-memoryの認可接続コアであり、実認証情報の読取・生成、GitHub App token交換、OpenAI key管理、HTTP listener、CONNECT/TLS終端、CA、DNS、上流通信、監査、永続化を実装しない。前記transportのhermetic testも、実GitHub/OpenAI、実Internet DNS、実system trust store、実proxy/firewallでの成功や認証情報非露出を証明しない。
@@ -63,5 +71,6 @@ policy又はAuthorizationの拒否はcapabilityを消費しない。capability�
 - [TASK-0045 HANDOVER](../../../tasks/TASK-0045-dev-agent-upstream-transport/HANDOVER.md)
 - [TASK-0047 HANDOVER](../../../tasks/TASK-0047-dev-agent-upstream-forwarder/HANDOVER.md)
 - [TASK-0048 HANDOVER](../../../tasks/TASK-0048-dev-agent-broker-exchange/HANDOVER.md)
+- [TASK-0049 HANDOVER](../../../tasks/TASK-0049-dev-agent-broker-http-handler/HANDOVER.md)
 - [Development Agent Harness Egress Policy](development-agent-harness-egress-policy.md)
 - [Development Agent Harness Capability Registry](development-agent-harness-capability-registry.md)

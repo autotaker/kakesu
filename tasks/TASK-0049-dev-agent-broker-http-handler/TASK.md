@@ -35,12 +35,12 @@ TLSを既に終端して正規の`net/http` requestへ変換したbroker内境�
 
 ### 受け入れ条件
 
-- [ ] AC-1: `New`は非nil Exchange、非nil trusted呼出元resolver、1〜1,048,576 byteのrequest body上限だけを受理し、immutable Handlerを返す。不正Rulesは固定errorになり、nil/zero Handlerもpanic、dependency detail、入力値を公開せず空403を返す。
-- [ ] AC-2: HandlerはHTTP/1.1 origin-formだけを受理する。nil URL、absolute/opaque/userinfo、query/fragment/raw又はpercent-encoded path、空/過長Host、HTTP/1.0/2、CONNECT/upgrade、transfer coding、trailer、未知又はbody長と一致しないContent-LengthをExchange前に拒否し、requestのHost/path/header/bodyを変更・保持しない。
-- [ ] AC-3: protocol検査後、呼出元resolverをrequest contextだけで一回呼ぶ。成功時はmethod、`https://` + Host + path、Content-Typeの0又は1値、Authorizationの全値、上限内bodyを新しい`egresstransaction.Request`へcopyし、解決済みSubjectとともにExchangeへ同期一回だけ渡す。RemoteAddr、Forwarded系header、Agent指定identity headerからSubjectを作らず、default Exchange、retry又はredirectを選ばない。
-- [ ] AC-4: Exchange成功時だけ2xx status、空又は正規`application/json` Content-Type、独立bodyを返す。response headerは必要時のContent-Type、固定Cache-Control/X-Content-Type-Options、正確なContent-Lengthだけに限定し、Exchange又はcaller bufferとaliasせず、次又は並行requestとstateを共有しない。
-- [ ] AC-5: mapping、body read、呼出元resolver又はExchangeの全失敗は、空body、Content-Length 0、固定no-store/nosniffだけの403へ畳む。opaque handle、credential、URL/path、Host、request/response body、呼出元、provider、下位errorをresponse、error又はformatへ出さず、Exchangeを複数回呼ばない。
-- [ ] AC-6: fake resolver/Exchange + `httptest`とreal Exchange + fake上流dependencyによるhermetic race testが両provider成功、HTTP/1.1 canonical mapping、protocol/framing/content/header/body拒否、呼出元非自己申告、resolver/Exchange単回、zero/empty deny、success header allowlist、input/output copy、並行隔離、fixed non-leakを検出する。`go test -count=1 -race ./internal/brokerhttp`、harness `make check`/`make distcheck`、README変更時のroot `make lint-docs`、candidate launcherのroot `make check`がPASSし、base...candidate差分は追加＋削除1,000行以下である。
+- [x] AC-1: `New`は非nil Exchange、非nil trusted呼出元resolver、1〜1,048,576 byteのrequest body上限だけを受理し、immutable Handlerを返す。不正Rulesは固定errorになり、nil/zero Handlerもpanic、dependency detail、入力値を公開せず空403を返す。
+- [x] AC-2: HandlerはHTTP/1.1 origin-formだけを受理する。nil URL、absolute/opaque/userinfo、query/fragment/raw又はpercent-encoded path、空/過長Host、HTTP/1.0/2、CONNECT/upgrade、transfer coding、trailer、未知又はbody長と一致しないContent-LengthをExchange前に拒否し、requestのHost/path/header/bodyを変更・保持しない。
+- [x] AC-3: protocol検査後、呼出元resolverをrequest contextだけで一回呼ぶ。成功時はmethod、`https://` + Host + path、Content-Typeの0又は1値、Authorizationの全値、上限内bodyを新しい`egresstransaction.Request`へcopyし、解決済みSubjectとともにExchangeへ同期一回だけ渡す。RemoteAddr、Forwarded系header、Agent指定identity headerからSubjectを作らず、default Exchange、retry又はredirectを選ばない。
+- [x] AC-4: Exchange成功時だけ2xx status、空又は正規`application/json` Content-Type、独立bodyを返す。response headerは必要時のContent-Type、固定Cache-Control/X-Content-Type-Options、正確なContent-Lengthだけに限定し、Exchange又はcaller bufferとaliasせず、次又は並行requestとstateを共有しない。
+- [x] AC-5: mapping、body read、呼出元resolver又はExchangeの全失敗は、空body、Content-Length 0、固定no-store/nosniffだけの403へ畳む。opaque handle、credential、URL/path、Host、request/response body、呼出元、provider、下位errorをresponse、error又はformatへ出さず、Exchangeを複数回呼ばない。
+- [x] AC-6: fake resolver/Exchange + `httptest`とreal Exchange + fake上流dependencyによるhermetic race testが両provider成功、HTTP/1.1 canonical mapping、protocol/framing/content/header/body拒否、呼出元非自己申告、resolver/Exchange単回、zero/empty deny、success header allowlist、input/output copy、並行隔離、fixed non-leakを検出する。`go test -count=1 -race ./internal/brokerhttp`、harness `make check`/`make distcheck`、README変更時のroot `make lint-docs`、candidate launcherのroot `make check`がPASSし、base...candidate差分は追加＋削除1,000行以下である。
 
 ### 安定した参照
 
@@ -95,10 +95,10 @@ ExchangeはtypedなSubject/Requestを受けてsafe responseを返せるが、TLS
 
 ## 完成の定義
 
-- [ ] 受け入れ条件を満たしている。
-- [ ] planning/candidate/completionの3 commit経路とcandidate一回のroot `make check`を満たしている。
-- [ ] 同一candidateの独立REVIEW/QAを完了し、実TLS/Agent/client/providerのlive E2E未実施境界をPASSと誤記していない。
-- [ ] 再利用可能な知識が生じた場合だけ意味Wikiを既存ページへ同化し、post-merge `task-check`をPASSしている。
+- [x] 受け入れ条件を満たしている。
+- [x] planning/candidate/completionの3 commit経路とcandidate一回のroot `make check`を満たしている。
+- [x] 同一candidateの独立REVIEW/QAを完了し、実TLS/Agent/client/providerのlive E2E未実施境界をPASSと誤記していない。
+- [x] 再利用可能な知識が生じた場合だけ意味Wikiを既存ページへ同化し、post-merge `task-check`をPASSしている。
 
 ## 関連コンテキスト
 
