@@ -1,11 +1,11 @@
 ---
 task_id: "TASK-0035"
 change_class: "product"
-status: draft
+status: approved
 qa_agent: "qa-agent-terra-medium"
-approved_by: ""
-approved_at: ""
-revision: 1
+approved_by: "main-agent-sol-high"
+approved_at: "2026-08-01T10:00:25+10:00"
+revision: 2
 implementation_reviewed_at: ""
 expectation_changed: false
 expectation_change_approved_by: ""
@@ -54,3 +54,4 @@ expectation_change_approved_by: ""
 | 改訂 | 日付 | 変更者 | 変更内容 | main承認 |
 |---:|---|---|---|---|
 | 1 | 2026-08-01 | qa-agent-terra-medium | TASK-firstの独立QA計画。AC-1〜AC-8へ8ケース（focused-rerun 7、evidence-review 1）を対応し、実環境依存は割り当てない。 | pending |
+| 2 | 2026-08-01 | qa-agent-terra-medium | 計画レビューP1に従い、V1の`allowlist`は不存在であり、空を含む入力をunknown fieldとして拒否する期待へ一意化した。 | main-agent-sol-high / 2026-08-01T10:00:25+10:00 |
