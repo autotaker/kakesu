@@ -872,3 +872,22 @@ tasks:
       dev: dev-agent-luna-xhigh
       reviewer: reviewer-agent-terra-medium
       qa: qa-agent-terra-medium
+  - id: TASK-0049
+    title: TLS終端後HTTP交換handlerを実装する
+    type: feature
+    change_class: product
+    epic: EPIC-001
+    status: plan
+    priority: P1
+    estimate_points: 1
+    task_dir: tasks/TASK-0049-dev-agent-broker-http-handler
+    depends_on:
+      - TASK-0048
+    branch: task/TASK-0049-dev-agent-broker-http-handler
+    worktree: worktrees/TASK-0049-dev-agent-broker-http-handler
+    assignees:
+      main: main-agent-sol-high
+      planner: planner-agent-terra-medium
+      dev: dev-agent-luna-xhigh
+      reviewer: reviewer-agent-terra-medium
+      qa: qa-agent-terra-medium
