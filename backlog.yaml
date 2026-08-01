@@ -608,13 +608,14 @@ tasks:
     type: feature
     change_class: product
     epic: EPIC-001
-    status: dev
+    status: qa
     priority: P1
     estimate_points: 3
     task_dir: tasks/TASK-0035-dev-agent-config-policy
     depends_on: []
     branch: task/TASK-0035-dev-agent-config-policy
     worktree: worktrees/TASK-0035-dev-agent-config-policy
+    merged_commit: 873993eea4e37cf05460bf08270c54789315ee3c
     assignees:
       main: main-agent-sol-high
       planner: planner-agent-terra-medium

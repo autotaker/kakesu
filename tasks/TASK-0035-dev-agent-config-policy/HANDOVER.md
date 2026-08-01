@@ -1,16 +1,16 @@
 ---
 task_id: "TASK-0035"
-status: draft
-completed_at: ""
+status: complete
+completed_at: "2026-08-01T10:26:47+10:00"
 safety_checks:
-  process_tests: pending
-  contract_scope: pending
-  docs_lint: pending
-  make_check: pending
-safety_checked_at: ""
-safety_check_digest: ""
-safety_candidate_tree: ""
-safety_merge_tree: ""
+  process_tests: pass
+  contract_scope: pass
+  docs_lint: pass
+  make_check: pass
+safety_checked_at: "2026-08-01T10:26:47+10:00"
+safety_check_digest: "not-applicable-product-task"
+safety_candidate_tree: "84b53854c139b23d992026175b8f979ae71d4df2"
+safety_merge_tree: "1d37a775501bda244b642f803dd47eb5cadec0d8"
 candidate_commit: "6b5d3495a0f61bd0a1b134926ef932dd65a5000b"
 candidate_tree: "84b53854c139b23d992026175b8f979ae71d4df2"
 managed_path_digest: "66f2d043bf7acc1a7801233e553f9bcf6a45fea4e164450866e180fba8ad93d9"
@@ -68,11 +68,12 @@ bootstrap_evidence_digest: "279dc69dba63337208ac4d0dd065db8055e7bb0b00fb8df5e0f9
 - Main判断の旧新コミット/tree、全差分とダイジェスト、影響ケース集合、レビュアー/`make check`証拠、理由: TODO
 - carry-forward時の`QA_RESULT.md` `CF-1`から`CF-7`: `not-applicable | complete | incomplete`
 - 影響QAケース集合が空でない場合の再実行証拠: TODO
-- `merge_tree`と案 treeの比較: `pending`
+- `merge_tree`と案 treeの比較: 最終merge `873993eea4e37cf05460bf08270c54789315ee3c`の第2親が最終candidate `6b5d3495a0f61bd0a1b134926ef932dd65a5000b`と一致し、main scope checkerがmanaged digest `66f2d043bf7acc1a7801233e553f9bcf6a45fea4e164450866e180fba8ad93d9`をPASSした。full merge tree `1d37a775501bda244b642f803dd47eb5cadec0d8`はmain管理証跡を含む。
 
 ## 既知の制約と未解決事項
 
-- なし
+- Autoconfの引数を省略すると設定例へ`${prefix}`が残るため、READMEのとおりabsoluteな`--sysconfdir`、`--localstatedir`、`--runstatedir`を指定する。設定契約を緩めて未展開変数を受理しない。
+- root `make check`は既存worktree配下をpytestが重複収集するため、main test集合を変えない`PYTEST_ADDOPTS=--ignore=worktrees`で完走した。このprocess defectはTASK-0035実装とは独立である。
 
 環境依存ケースがある場合、install/deploy/config生成、実権限、外部作用、実restart/ロールバック/クリーンアップのマージ後確認を省略しない。実環境または安全なクリーンアップが不明なケースはblockedとして残す。
 
