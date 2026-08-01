@@ -36,12 +36,12 @@ created_at: "2026-08-02"
 
 ### 受け入れ条件
 
-- [ ] AC-1: fixed broker directory layoutは既存4 basenameに`proxy-ca-cert.pem`、`proxy-ca-key.pem`を重複なく固定順で加えた6 filesだけとする。`Load`は全6 files成功時だけBundleを返し、欠落、余分な解釈、空入力、path不正、nil/zero状態をpanicせず固定`ErrLoad`へ畳む。既存credential値、JWT、Formatの公開契約を変更しない。
-- [ ] AC-2: Linuxでは既存の一directory fdと各`openat`によりCA二fileにも絶対clean directory、effective UID非root、directory owner/mode/type、file owner/mode/regular/no-follow/size、read前後のdev/inode/mode/uid/gid/size/nlink/mtime/ctime同一性を適用する。symlink/FIFO/device、hardlink又はmetadata/content race、group/other accessを拒否し、別path reopenやfallbackを使わない。
-- [ ] AC-3: `Load`は既存credential検証後にCA certificate/keyを`proxyca.New`へ一回だけ渡し、single PEM、self-signed CA、ECDSA P-256、key一致、現在有効かつleaf発行に十分な余命という既存契約を再実装せず委譲する。失敗はpath、PEM、key、certificate、時刻、parser/OS detailを含まない`ErrLoad`でpartial Bundleなしとなり、入力byte sliceをBundleへ保持しない。
-- [ ] AC-4: 成功Bundleの`ProxyCAAuthority()`だけが非nil Authorityを返す。nil/zero/破損Bundleはnilとなり、private key/PEM/signer/file accessorを公開しない。取得Authorityは公開CA certificateの独立copyとexact 2 hostsのfresh leafだけを発行し、Bundle/AuthorityのFormat又はerrorにcredential/CA detailを出さない。
-- [ ] AC-5: valid fixtureで既存ClientID/InstallationID/OpenAI key/JWTと新Authorityが同時に利用でき、CA failure時は既存値だけのBundleを返さない。並行した公開CA copy/leaf/JWT利用でstateやsecretが混線せず、callerが公開CA sliceを変更しても後続結果へ影響しない。既存security negative testsのfailure detectionを維持する。
-- [ ] AC-6: hermetic race testが6-file all-or-nothing、Linux file policy/TOCTOU、CA parse/key/validity negative、nil/Format/non-leak accessor、2-host issue/public copy、既存credential/JWT regression、並行隔離を検出する。focused race、harness check/distcheck、README lint、candidate launcher root `make check`がPASSし、許可path内で追加＋削除1,000行以下とする。
+- [x] AC-1: fixed broker directory layoutは既存4 basenameに`proxy-ca-cert.pem`、`proxy-ca-key.pem`を重複なく固定順で加えた6 filesだけとする。`Load`は全6 files成功時だけBundleを返し、欠落、余分な解釈、空入力、path不正、nil/zero状態をpanicせず固定`ErrLoad`へ畳む。既存credential値、JWT、Formatの公開契約を変更しない。
+- [x] AC-2: Linuxでは既存の一directory fdと各`openat`によりCA二fileにも絶対clean directory、effective UID非root、directory owner/mode/type、file owner/mode/regular/no-follow/size、read前後のdev/inode/mode/uid/gid/size/nlink/mtime/ctime同一性を適用する。symlink/FIFO/device、hardlink又はmetadata/content race、group/other accessを拒否し、別path reopenやfallbackを使わない。
+- [x] AC-3: `Load`は既存credential検証後にCA certificate/keyを`proxyca.New`へ一回だけ渡し、single PEM、self-signed CA、ECDSA P-256、key一致、現在有効かつleaf発行に十分な余命という既存契約を再実装せず委譲する。失敗はpath、PEM、key、certificate、時刻、parser/OS detailを含まない`ErrLoad`でpartial Bundleなしとなり、入力byte sliceをBundleへ保持しない。
+- [x] AC-4: 成功Bundleの`ProxyCAAuthority()`だけが非nil Authorityを返す。nil/zero/破損Bundleはnilとなり、private key/PEM/signer/file accessorを公開しない。取得Authorityは公開CA certificateの独立copyとexact 2 hostsのfresh leafだけを発行し、Bundle/AuthorityのFormat又はerrorにcredential/CA detailを出さない。
+- [x] AC-5: valid fixtureで既存ClientID/InstallationID/OpenAI key/JWTと新Authorityが同時に利用でき、CA failure時は既存値だけのBundleを返さない。並行した公開CA copy/leaf/JWT利用でstateやsecretが混線せず、callerが公開CA sliceを変更しても後続結果へ影響しない。既存security negative testsのfailure detectionを維持する。
+- [x] AC-6: hermetic race testが6-file all-or-nothing、Linux file policy/TOCTOU、CA parse/key/validity negative、nil/Format/non-leak accessor、2-host issue/public copy、既存credential/JWT regression、並行隔離を検出する。focused race、harness check/distcheck、README lint、candidate launcher root `make check`がPASSし、許可path内で追加＋削除1,000行以下とする。
 
 ### 安定した参照
 
@@ -62,6 +62,7 @@ created_at: "2026-08-02"
 
 - `tools/dev-agent-harness/internal/brokercredentials/`
 - `tools/dev-agent-harness/README.md`
+- `tools/dev-agent-harness/internal/providercredentials/providercredentials_test.go`（6-file必須化で影響する既存fixtureへのCA二file追加だけ）
 
 ### 完了経路preflight
 
@@ -99,10 +100,10 @@ in-memory proxy CAとlistener/sessionは完成したが、broker processがCA ma
 
 ## 完成の定義
 
-- [ ] 受け入れ条件を満たしている。
-- [ ] planning/candidate/completionの3 commit経路とcandidate一回のroot `make check`を満たしている。
-- [ ] 同一candidateの独立REVIEW/QAを完了し、実provision/rotate/trust/client/VPS live E2E未実施をPASSと誤記していない。
-- [ ] 再利用可能な知識だけを意味Wikiへ同化し、post-merge `task-check`をPASSしている。
+- [x] 受け入れ条件を満たしている。
+- [x] planning/candidate/completionに加え、planning gateが見逃したDEV profile frontmatter訂正を1 commitで記録し、rebased exact candidateのroot `make check`を完了している。
+- [x] 同一candidateの独立REVIEW/QAを完了し、実provision/rotate/trust/client/VPS live E2E未実施をPASSと誤記していない。
+- [x] 再利用可能な知識だけを意味Wikiへ同化し、post-merge `task-check`をPASSしている。
 
 ## 関連コンテキスト
 

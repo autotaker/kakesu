@@ -20,6 +20,8 @@ import (
 	"math"
 	"path/filepath"
 	"time"
+
+	"github.com/autotaker/kakesu/tools/dev-agent-harness/internal/proxyca"
 )
 
 // MaxFileSize is the upper bound applied before and during every secret file
@@ -35,6 +37,8 @@ const (
 	githubInstallID  = "github-installation-id"
 	githubPrivateKey = "github-private-key.pem"
 	openAIAPIKey     = "openai-api-key"
+	proxyCACert      = "proxy-ca-cert.pem"
+	proxyCAKey       = "proxy-ca-key.pem"
 )
 
 // ErrLoad is the only load failure exposed by this package. It intentionally
@@ -44,7 +48,7 @@ var ErrLoad = errors.New("credential load failed")
 // ErrJWT is the only JWT generation failure exposed by this package.
 var ErrJWT = errors.New("credential jwt failed")
 
-var basenames = [...]string{githubClientID, githubInstallID, githubPrivateKey, openAIAPIKey}
+var basenames = [...]string{githubClientID, githubInstallID, githubPrivateKey, openAIAPIKey, proxyCACert, proxyCAKey}
 
 // These seams are package-private and exist only to make boundary tests
 // deterministic. Production callers cannot replace either behavior.
@@ -64,6 +68,7 @@ type Bundle struct {
 	installationID int64
 	openAIKey      string
 	privateKey     *rsa.PrivateKey
+	proxyCA        *proxyca.Authority
 }
 
 // Format prevents accidental diagnostic formatting from exposing the private
@@ -73,7 +78,7 @@ func (b Bundle) Format(state fmt.State, verb rune) {
 	_, _ = io.WriteString(state, "brokercredentials.Bundle")
 }
 
-// Load reads the fixed four-file broker directory and validates every value.
+// Load reads the fixed six-file broker directory and validates every value.
 // A complete bundle is returned only when all files satisfy the policy.
 func Load(dir string) (*Bundle, error) {
 	files, err := readSecretFiles(dir)
@@ -96,7 +101,31 @@ func Load(dir string) (*Bundle, error) {
 	if !ok {
 		return nil, ErrLoad
 	}
-	return &Bundle{clientID: clientID, installationID: installationID, openAIKey: openAIKey, privateKey: key}, nil
+	clock := proxyca.ClockFunc(func() time.Time { return nowUTC().UTC() })
+	authority, err := proxyca.New(proxyca.Rules{
+		CACertificatePEM: files[4],
+		CAPrivateKeyPEM:  files[5],
+		Clock:            clock,
+	})
+	if err != nil || authority == nil {
+		return nil, ErrLoad
+	}
+	return &Bundle{clientID: clientID, installationID: installationID, openAIKey: openAIKey, privateKey: key, proxyCA: authority}, nil
+}
+
+// ProxyCAAuthority returns the validated in-memory proxy CA authority.
+// It is the only CA material accessor; raw PEM and private-key state remain
+// inside proxyca and are never exposed by this package.
+func (b *Bundle) ProxyCAAuthority() *proxyca.Authority {
+	if b == nil || b.clientID == "" || b.installationID <= 0 || b.openAIKey == "" || b.privateKey == nil || b.privateKey.N == nil || len(b.privateKey.Primes) < 2 || b.proxyCA == nil {
+		return nil
+	}
+	// A Bundle can only be constructed in this package, but keep the accessor
+	// fail-closed if a zero/corrupt authority is ever observed in memory.
+	if len(b.proxyCA.PublicCertificatePEM()) == 0 {
+		return nil
+	}
+	return b.proxyCA
 }
 
 // ClientID returns the validated GitHub App client ID for trusted broker use.

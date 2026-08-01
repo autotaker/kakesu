@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "task_id": "TASK-0053",
+  "handover_sha256": "d33823e0745b75756dba7a6652ae2e4b226ce8acf56934d8c0a86f6f4fea1fb7",
+  "ingested_at": "2026-08-01T15:21:50Z",
+  "updated_pages": [
+    "wiki/semantic/schemas/development-agent-harness-broker-credentials.md"
+  ],
+  "created_decisions": [],
+  "deferred": [
+    "CA fileの生成・書込み・rotate・reload・watch、Agent trust、実OS user/permission、listener composition、実GitHub/OpenAI/network、VPS live E2E、および実配置のrestart/rollback/cleanupは未実装・未確認である。hermetic PASSで代替しない。"
+  ]
+}

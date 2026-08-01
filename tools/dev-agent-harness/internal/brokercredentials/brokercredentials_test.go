@@ -8,16 +8,22 @@ import (
 	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/base64"
 	"encoding/json"
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"math/big"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
+	"sync"
 	"testing"
 	"time"
+
+	"github.com/autotaker/kakesu/tools/dev-agent-harness/internal/proxyca"
 )
 
 func TestLoadAndJWT(t *testing.T) {
@@ -101,6 +107,14 @@ func TestLoadPolicyAndFixedErrors(t *testing.T) {
 				t.Fatal(err)
 			}
 		}},
+		{"ca-group-permission", func(t *testing.T, dir string) { chmod(t, filepath.Join(dir, proxyCACert), 0o620) }},
+		{"ca-read-permission", func(t *testing.T, dir string) { chmod(t, filepath.Join(dir, proxyCACert), 0o200) }},
+		{"ca-execute-permission", func(t *testing.T, dir string) { chmod(t, filepath.Join(dir, proxyCACert), 0o700) }},
+		{"ca-oversize", func(t *testing.T, dir string) {
+			if err := os.WriteFile(filepath.Join(dir, proxyCAKey), make([]byte, MaxFileSize+1), 0o600); err != nil {
+				t.Fatal(err)
+			}
+		}},
 		{"missing", func(t *testing.T, dir string) {
 			if err := os.Remove(filepath.Join(dir, githubClientID)); err != nil {
 				t.Fatal(err)
@@ -108,6 +122,15 @@ func TestLoadPolicyAndFixedErrors(t *testing.T) {
 		}},
 		{"symlink", func(t *testing.T, dir string) {
 			path := filepath.Join(dir, githubClientID)
+			if err := os.Remove(path); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.Symlink(filepath.Join(dir, "other"), path); err != nil {
+				t.Skipf("symlink unsupported: %v", err)
+			}
+		}},
+		{"ca-symlink", func(t *testing.T, dir string) {
+			path := filepath.Join(dir, proxyCACert)
 			if err := os.Remove(path); err != nil {
 				t.Fatal(err)
 			}
@@ -142,6 +165,164 @@ func TestReadMetadataChangeIsRejected(t *testing.T) {
 	if _, err := Load(dir); !errors.Is(err, ErrLoad) {
 		t.Fatalf("metadata mutation accepted: %v", err)
 	}
+}
+
+func TestFixedSixFileLayoutAndAtomicLoad(t *testing.T) {
+	requireNonRoot(t)
+	want := [...]string{githubClientID, githubInstallID, githubPrivateKey, openAIAPIKey, proxyCACert, proxyCAKey}
+	if basenames != want {
+		t.Fatalf("basenames=%q want=%q", basenames, want)
+	}
+	for _, mode := range []string{"missing", "empty"} {
+		for _, basename := range basenames {
+			t.Run(mode+"-"+basename, func(t *testing.T) {
+				_, dir := validFixture(t, "RSA PRIVATE KEY")
+				path := filepath.Join(dir, basename)
+				if mode == "missing" {
+					if err := os.Remove(path); err != nil {
+						t.Fatal(err)
+					}
+				} else {
+					writeBrokerFixtureFile(t, dir, basename, nil)
+				}
+				if bundle, err := Load(dir); bundle != nil || !errors.Is(err, ErrLoad) {
+					t.Fatalf("Load=%p,%v; want nil, ErrLoad", bundle, err)
+				}
+			})
+		}
+	}
+}
+
+func TestLinuxHardlinkAndCAMetadataAreRejected(t *testing.T) {
+	requireNonRoot(t)
+	if runtime.GOOS != "linux" {
+		t.Skip("Linux nlink policy")
+	}
+	_, dir := validFixture(t, "RSA PRIVATE KEY")
+	if err := os.Link(filepath.Join(dir, proxyCACert), filepath.Join(dir, "proxy-ca-cert-copy")); err != nil {
+		t.Skipf("hardlink unsupported: %v", err)
+	}
+	if bundle, err := Load(dir); bundle != nil || !errors.Is(err, ErrLoad) {
+		t.Fatalf("hardlinked CA accepted: bundle=%p err=%v", bundle, err)
+	}
+
+	_, dir = validFixture(t, "RSA PRIVATE KEY")
+	path := filepath.Join(dir, proxyCACert)
+	previousHook := readCompleteHook
+	hookCalls := 0
+	var chmodErr error
+	readCompleteHook = func() {
+		hookCalls++
+		if hookCalls == len(basenames[:4])+1 {
+			chmodErr = os.Chmod(path, 0o640)
+		}
+	}
+	defer func() { readCompleteHook = previousHook }()
+	if bundle, err := Load(dir); bundle != nil || !errors.Is(err, ErrLoad) {
+		t.Fatalf("CA metadata mutation accepted: bundle=%p err=%v", bundle, err)
+	}
+	if hookCalls != len(basenames[:4])+1 || chmodErr != nil {
+		t.Fatalf("CA metadata hook calls=%d chmodErr=%v", hookCalls, chmodErr)
+	}
+}
+
+func TestCAFailuresFoldToErrLoadWithoutPartialBundle(t *testing.T) {
+	requireNonRoot(t)
+	validCert, validKey := brokerValidProxyCAFixture(t)
+	otherCert, _ := brokerProxyCAFixture(t, elliptic.P256(), 2*time.Hour, true)
+	p384Cert, p384Key := brokerProxyCAFixture(t, elliptic.P384(), 2*time.Hour, true)
+	expiredCert, expiredKey := brokerProxyCAFixture(t, elliptic.P256(), -time.Second, true)
+	shortCert, shortKey := brokerProxyCAFixture(t, elliptic.P256(), 5*time.Minute, true)
+	nonCACert, nonCAKey := brokerProxyCAFixture(t, elliptic.P256(), 2*time.Hour, false)
+	cases := []struct {
+		name string
+		cert []byte
+		key  []byte
+	}{
+		{"malformed", []byte("not-a-certificate"), validKey},
+		{"multiple", append(append([]byte(nil), validCert...), validCert...), validKey},
+		{"mismatch", otherCert, validKey},
+		{"non-p256", p384Cert, p384Key},
+		{"non-ca", nonCACert, nonCAKey},
+		{"expired", expiredCert, expiredKey},
+		{"insufficient-lifetime", shortCert, shortKey},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			_, dir := validFixture(t, "RSA PRIVATE KEY")
+			writeBrokerFixtureFile(t, dir, proxyCACert, tc.cert)
+			writeBrokerFixtureFile(t, dir, proxyCAKey, tc.key)
+			if bundle, err := Load(dir); bundle != nil || !errors.Is(err, ErrLoad) || err.Error() != ErrLoad.Error() {
+				t.Fatalf("CA failure=%p,%v; want nil, fixed ErrLoad", bundle, err)
+			}
+		})
+	}
+}
+
+func TestProxyCAAccessorClockCopyHostsAndParallelIsolation(t *testing.T) {
+	requireNonRoot(t)
+	previousNow := nowUTC
+	current := time.Now().UTC().Truncate(time.Second)
+	nowUTC = func() time.Time { return current }
+	defer func() { nowUTC = previousNow }()
+	_, dir := validFixture(t, "RSA PRIVATE KEY")
+	bundle, err := Load(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	authority := bundle.ProxyCAAuthority()
+	if authority == nil {
+		t.Fatal("valid Bundle returned nil Authority")
+	}
+	public := authority.PublicCertificatePEM()
+	if len(public) == 0 {
+		t.Fatal("public CA copy is empty")
+	}
+	public[0] ^= 0xff
+	if authority.PublicCertificatePEM()[0] == public[0] {
+		t.Fatal("public CA copy aliases Authority")
+	}
+	current = current.Add(30 * time.Minute)
+	for _, host := range []string{"api.github.com", "api.openai.com"} {
+		leaf, issueErr := authority.Issue(host)
+		if issueErr != nil || leaf.Leaf == nil || len(leaf.Leaf.DNSNames) != 1 || leaf.Leaf.DNSNames[0] != host || !leaf.Leaf.NotBefore.After(current.Add(-2*time.Minute)) {
+			t.Fatalf("dynamic issue host=%q leaf=%v err=%v", host, leaf.Leaf, issueErr)
+		}
+	}
+	for _, host := range []string{"", "api.example.com", "api.github.com:443"} {
+		if leaf, issueErr := authority.Issue(host); leaf.Certificate != nil || !errors.Is(issueErr, proxyca.ErrDenied) {
+			t.Fatalf("denied host=%q leaf=%v err=%v", host, leaf, issueErr)
+		}
+	}
+	var nilBundle *Bundle
+	if nilBundle.ProxyCAAuthority() != nil || (&Bundle{}).ProxyCAAuthority() != nil {
+		t.Fatal("nil/zero Bundle returned Authority")
+	}
+	corrupt := *bundle
+	corrupt.proxyCA = &proxyca.Authority{}
+	if corrupt.ProxyCAAuthority() != nil {
+		t.Fatal("corrupt Authority returned from Bundle")
+	}
+
+	var wg sync.WaitGroup
+	for i := 0; i < 8; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for j := 0; j < 8; j++ {
+				if token, jwtErr := bundle.GitHubAppJWT(); jwtErr != nil || token == "" {
+					t.Errorf("parallel JWT err=%v", jwtErr)
+				}
+				if got := bundle.ProxyCAAuthority().PublicCertificatePEM(); len(got) == 0 {
+					t.Error("parallel public CA copy empty")
+				}
+				if leaf, issueErr := bundle.ProxyCAAuthority().Issue("api.github.com"); issueErr != nil || leaf.Leaf == nil {
+					t.Errorf("parallel issue err=%v", issueErr)
+				}
+			}
+		}()
+	}
+	wg.Wait()
 }
 
 func TestTextAndKeyBoundaries(t *testing.T) {
@@ -279,6 +460,9 @@ func validFixture(t *testing.T, pemType string) (*rsa.PrivateKey, string) {
 		githubClientID: []byte("Iv1.test-client\n"), githubInstallID: []byte("123456\n"),
 		githubPrivateKey: pemBytes, openAIAPIKey: []byte("test-openai-key\n"),
 	}
+	caCert, caKey := brokerValidProxyCAFixture(t)
+	contents[proxyCACert] = caCert
+	contents[proxyCAKey] = caKey
 	for name, data := range contents {
 		path := filepath.Join(dir, name)
 		if err := os.WriteFile(path, data, 0o600); err != nil {
@@ -289,6 +473,51 @@ func validFixture(t *testing.T, pemType string) (*rsa.PrivateKey, string) {
 		}
 	}
 	return key, dir
+}
+
+func brokerValidProxyCAFixture(t *testing.T) ([]byte, []byte) {
+	return brokerProxyCAFixture(t, elliptic.P256(), 2*time.Hour, true)
+}
+
+func brokerProxyCAFixture(t *testing.T, curve elliptic.Curve, remaining time.Duration, isCA bool) ([]byte, []byte) {
+	t.Helper()
+	now := nowUTC().UTC()
+	if now.IsZero() {
+		now = time.Now().UTC()
+	}
+	key, err := ecdsa.GenerateKey(curve, rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	template := &x509.Certificate{
+		SerialNumber:          big.NewInt(1),
+		Subject:               pkix.Name{CommonName: "fixture-proxy-ca"},
+		NotBefore:             now.Add(-time.Hour),
+		NotAfter:              now.Add(remaining),
+		IsCA:                  isCA,
+		BasicConstraintsValid: true,
+		KeyUsage:              x509.KeyUsageCertSign,
+	}
+	der, err := x509.CreateCertificate(rand.Reader, template, template, &key.PublicKey, key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	keyDER, err := x509.MarshalECPrivateKey(key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der}), pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: keyDER})
+}
+
+func writeBrokerFixtureFile(t *testing.T, dir, basename string, data []byte) {
+	t.Helper()
+	path := filepath.Join(dir, basename)
+	if err := os.WriteFile(path, data, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(path, 0o600); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func chmod(t *testing.T, path string, mode os.FileMode) {

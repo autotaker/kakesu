@@ -97,7 +97,7 @@ func validLinuxDirectory(st syscall.Stat_t) bool {
 }
 
 func validLinuxFile(st linuxMeta, uid uint64) bool {
-	if st.uid != uid || st.mode&uint64(syscall.S_IFMT) != uint64(syscall.S_IFREG) {
+	if st.uid != uid || st.mode&uint64(syscall.S_IFMT) != uint64(syscall.S_IFREG) || st.nlink != 1 {
 		return false
 	}
 	perm := st.mode & 0o777

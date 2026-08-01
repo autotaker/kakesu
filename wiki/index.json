@@ -98,7 +98,9 @@
       "title": "Development Agent Harness ブローカー認証情報",
       "links": [
         "../../../tasks/TASK-0042-dev-agent-broker-credentials/HANDOVER.md",
-        "development-agent-harness-egress-transaction.md"
+        "../../../tasks/TASK-0053-dev-agent-broker-proxy-ca-files/HANDOVER.md",
+        "development-agent-harness-egress-transaction.md",
+        "development-agent-harness-proxy-ca.md"
       ]
     },
     {

@@ -1,13 +1,17 @@
 package providercredentials
 
 import (
+	"crypto/ecdsa"
+	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/pem"
 	"errors"
 	"fmt"
 	"io"
+	"math/big"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -93,6 +97,9 @@ func fixtureBundle(t *testing.T) *brokercredentials.Bundle {
 		"github-private-key.pem": pem.EncodeToMemory(&pem.Block{Type: "RSA PRIVATE KEY", Bytes: der}),
 		"openai-api-key":         []byte("sk-runtime-fixture\n"),
 	}
+	caCert, caKey := fixtureProxyCA(t)
+	files["proxy-ca-cert.pem"] = caCert
+	files["proxy-ca-key.pem"] = caKey
 	for name, data := range files {
 		path := filepath.Join(dir, name)
 		if err := os.WriteFile(path, data, 0o600); err != nil {
@@ -104,6 +111,29 @@ func fixtureBundle(t *testing.T) *brokercredentials.Bundle {
 		t.Fatalf("fixture bundle load: %v", err)
 	}
 	return bundle
+}
+
+func fixtureProxyCA(t *testing.T) ([]byte, []byte) {
+	t.Helper()
+	now := time.Now().UTC()
+	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	template := &x509.Certificate{
+		SerialNumber: big.NewInt(1), Subject: pkix.Name{CommonName: "provider-fixture-ca"},
+		NotBefore: now.Add(-time.Hour), NotAfter: now.Add(2 * time.Hour), IsCA: true,
+		BasicConstraintsValid: true, KeyUsage: x509.KeyUsageCertSign,
+	}
+	der, err := x509.CreateCertificate(rand.Reader, template, template, &key.PublicKey, key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	keyDER, err := x509.MarshalECPrivateKey(key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der}), pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: keyDER})
 }
 
 func fixedResolver(t *testing.T, transport http.RoundTripper, now time.Time) *Resolver {
