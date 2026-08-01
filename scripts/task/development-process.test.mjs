@@ -106,9 +106,6 @@ function createDoneTaskFixture({
     planned_implementation_files: 1,
     planned_implementation_lines: 1,
     estimate_points: 1,
-    planning_reviewed_by: "reviewer",
-    planning_review_decision: "pass",
-    planning_reviewed_at: "2026-07-20T00:00:00Z",
     classification_approved_by: "main",
     classification_approved_at: "2026-07-20T00:00:00Z",
     classification_approval_reason: "fixture classification",
@@ -359,16 +356,18 @@ test("new product Done accepts a completion merge in progress and schema leaves 
   }
 });
 
-test("legacy safety_contract plan remains on legacy validation without v2 opt-in", () => {
+test("legacy safety_contract planning review fields remain compatible without v2 opt-in", () => {
   const fixture = createDoneTaskFixture({ taskId: "TASK-0024", changeClass: "safety_contract", legacyTask0024: true });
   try {
     fs.rmSync(path.join(fixture.root, "wiki"), { recursive: true, force: true });
     writeTaskEvidence(fixture.taskDir, "REVIEW_RESULT.md", { task_id: fixture.taskId, decision: "pending" });
     writeTaskEvidence(fixture.taskDir, "QA_RESULT.md", { task_id: fixture.taskId, decision: "pending" });
     assert.deepEqual(checkTask(fixture.root, fixture.backlog, fixture.taskId), []);
-    const plan = path.join(fixture.taskDir, "PLAN.md");
-    fs.writeFileSync(plan, fs.readFileSync(plan, "utf8").replace('planning_review_decision: "pass"', 'planning_review_decision: "pending"'));
-    assert.ok(checkTask(fixture.root, fixture.backlog, fixture.taskId).some((error) => error.includes("planning review PASS")));
+    fixture.planMetadata.planning_reviewed_by = "other";
+    fixture.planMetadata.planning_review_decision = "pending";
+    fixture.planMetadata.planning_reviewed_at = "not-a-timestamp";
+    writeTaskEvidence(fixture.taskDir, "PLAN.md", fixture.planMetadata);
+    assert.deepEqual(checkTask(fixture.root, fixture.backlog, fixture.taskId), []);
   } finally {
     fs.rmSync(fixture.root, { recursive: true, force: true });
   }
@@ -445,7 +444,6 @@ test("safety_contract rejects rename, copy, and non-no-ff spoofing", async (t) =
 
 test("safety_contract rejects missing or inconsistent planning evidence", async (t) => {
   const mutations = {
-    "reviewer mismatch": (fixture) => { fixture.planMetadata.planning_reviewed_by = "other"; },
     "PLAN class mismatch": (fixture) => { fixture.planMetadata.change_class = "product"; },
     "QA PLAN class mismatch": (fixture) => { fixture.qaPlanMetadata.change_class = "product"; },
     "classification reason missing": (fixture) => { delete fixture.planMetadata.classification_approval_reason; },
@@ -516,6 +514,12 @@ test("replaceTemplate rejects unknown placeholders", () => {
   assert.equal(replaceTemplate("{{TASK_ID}}", { TASK_ID: "TASK-0001" }), "TASK-0001");
   assert.equal(replaceTemplate("title: {{TITLE_YAML}}", { TITLE_YAML: JSON.stringify('quote " title') }), 'title: "quote \\" title"');
   assert.throws(() => replaceTemplate("{{UNKNOWN}}", {}), /Missing template value/);
+});
+
+test("PLAN template uses Main approval without an independent planning review", () => {
+  const template = fs.readFileSync(path.join(REPO_ROOT, "templates/task/PLAN.md"), "utf8");
+  assert.doesNotMatch(template, /planning_reviewed_(?:by|at)|planning_review_decision/);
+  assert.match(template, /MainはPLAN\/QA_PLANの意図・スコープ・受け入れ経路を確認し/);
 });
 
 test("work repository lock rejects active owners and recovers stale owners", () => {

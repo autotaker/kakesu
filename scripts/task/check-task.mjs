@@ -175,11 +175,6 @@ function checkSafetyContractDone({ root, taskDir, task, taskId, planContract }) 
   if (plan.change_class !== "safety_contract" || qaPlan.change_class !== "safety_contract") {
     errors.push(`${taskId}: safety_contract change_class must match in PLAN.md and QA_PLAN.md`);
   }
-  if (plan.planning_reviewed_by !== task.assignees?.reviewer
-      || plan.planning_review_decision !== "pass"
-      || !isTimestamp(plan.planning_reviewed_at)) {
-    errors.push(`${taskId}: safety_contract requires the assigned Reviewer planning review PASS`);
-  }
   if (plan.classification_approved_by !== task.assignees?.main
       || !String(plan.classification_approval_reason ?? "").trim()
       || !isTimestamp(plan.classification_approved_at)) {
@@ -188,12 +183,11 @@ function checkSafetyContractDone({ root, taskDir, task, taskId, planContract }) 
   if (qaPlan.qa_agent !== task.assignees?.qa || qaPlan.approved_by !== task.assignees?.main) {
     errors.push(`${taskId}: safety_contract requires a TASK-first QA PLAN approved by the assigned main Agent`);
   }
-  const approvalTimes = [plan.planning_reviewed_at, plan.approved_at, qaPlan.approved_at, plan.classification_approved_at]
+  const approvalTimes = [plan.approved_at, qaPlan.approved_at, plan.classification_approved_at]
     .map((value) => Date.parse(value));
   if (approvalTimes.some(Number.isNaN)
-      || approvalTimes[0] > approvalTimes[1]
-      || approvalTimes[1] > approvalTimes[3]
-      || approvalTimes[2] > approvalTimes[3]) {
+      || approvalTimes[0] > approvalTimes[2]
+      || approvalTimes[1] > approvalTimes[2]) {
     errors.push(`${taskId}: safety_contract approval timestamps are inconsistent`);
   }
   const safetyChecks = handover.safety_checks;

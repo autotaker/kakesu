@@ -17,6 +17,6 @@ Main Agentは`backlog`、`planning-gate`、`completion-gate`を所有する。Pl
 
 ## 安全契約変更
 
-製品成果物を変更しない安全契約Taskは、TASK-firstの独立計画レビューと契約検査を行う。安全契約専用の既存証跡があるTaskでは、そのTaskの検査に必要なfieldsをPLAN承認時に明示する。製品Taskのtemplateへ安全契約専用fieldsを戻さない。
+製品成果物を変更しない安全契約Taskは、TASK-firstの独立QA_PLAN、Mainによる意図・スコープ・受け入れ経路確認、契約検査を行う。安全契約専用の既存証跡があるTaskでは、そのTaskの検査に必要なfieldsをPLAN承認時に明示する。製品Taskのtemplateへ安全契約専用fieldsを戻さない。
 
 既存の振り返りを10 Taskごとに実施し、ルールの検出価値、誤検知、時間、保守費を確認する。低価値のルールは削除または警告化する。

@@ -4,7 +4,7 @@
 
 ## 計画
 
-MainがTask 雛形、ブランチ、ワークツリーを作成する。`task-start`はmainへコミットしない。PlannerとQAはTASKのplanning 入力 packetだけを入力にし、承認済みのPLANとQA_PLANを作成する。`planning-gate`は変更された計画部分集合を最終状態で検証し、mainへ一回のplanning コミットを作り、Task ブランチ/ワークツリーをそのコミットへ分岐なしで進める。
+MainがTask 雛形、ブランチ、ワークツリーを作成する。`task-start`はmainへコミットしない。PlannerとQAはTASKのplanning 入力 packetだけを入力にし、承認済みのPLANとQA_PLANを作成する。MainはDEV開始前に両者の意図・スコープ・受け入れ経路を確認する。`planning-gate`は変更された計画部分集合を最終状態で検証し、mainへ一回のplanning コミットを作り、Task ブランチ/ワークツリーをそのコミットへ分岐なしで進める。
 
 ## DEV
 
@@ -22,7 +22,7 @@ Main側のHANDOVERに案 コミットを記録し、REVIEW/QA PASSと承認済�
 
 ## 安全契約変更
 
-製品成果物を変更しない安全契約変更は、TASK本文だけから独立QA_PLANと計画レビューを作る。製品用のDEV/REVIEW/QA PASSを代用せず、契約に必要な統制文書だけを検査する。既存安全契約Taskの専用検査は後方互換のため維持する。
+製品成果物を変更しない安全契約変更は、TASK本文だけから独立QA_PLANを作り、MainがPLAN/QA_PLANの意図・スコープ・受け入れ経路を確認する。製品用のDEV/REVIEW/QA PASSを代用せず、契約に必要な統制文書だけを検査する。既存安全契約Taskの専用検査は後方互換のため維持する。
 
 既存の振り返りで10 Taskごとにルールの誤検知、検出価値、時間、保守費を見直す。低価値ルールは削除または警告化し、専用checklistやバージョン フィールドを追加しない。
 
