@@ -3,6 +3,9 @@ task_id: "TASK-0053"
 change_class: "product_change"
 status: approved
 planner_agent: "planner-agent-terra-medium"
+approved_dev_profile: "luna-xhigh"
+approved_dev_profile_reason: "既存brokercredentialsとproxycaの局所合成およびhermetic fixture更新に限定し、新しいservice、依存、外部作用を追加しないため。"
+approved_dev_profile_risk_signals: []
 approved_by: "main-agent-sol-high"
 approved_at: "2026-08-01T14:36:24Z"
 planning_reviewed_by: ""
