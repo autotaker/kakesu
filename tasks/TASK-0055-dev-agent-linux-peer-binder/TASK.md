@@ -38,11 +38,11 @@ created_at: "2026-08-02"
 
 <!-- AC-IDはTask内で一意かつ安定させ、観測可能な結果をここに一度だけ記載する。 -->
 
-- [ ] AC-1: `New`はUIDが正数かつplatformのUID範囲内で、AgentInstanceID/WorkspaceIDが1〜128 byte、先頭ASCII英数字、残りASCII英数字又は`._-`の一つのBindingだけを受理し、値とreaderを内部copyしたimmutable Binderを返す。invalid rules、nil/zero/corrupt Binderはpanicせず固定errorとなり、Format/errorへidentity、UID、socket、下位errorを含めない。
-- [ ] AC-2: `Bind`は具体的なnon-nil `*net.UnixConn`に対してpeer readerを一回だけ同期呼出しし、取得UIDとexpected UIDが完全一致する場合だけ固定した`brokerlistener.Subject`の独立copyを返す。non-Unix/wrapped/nil connection、reader failure、UID不一致では空subjectと固定errorを返し、RemoteAddr、socket path、payload、PID/GID又はcaller自己申告値からidentityを生成・補完しない。
-- [ ] AC-3: nil/typed-nil又は既にcancelled/deadline超過のcontextはreader前に拒否し、reader中にcancelされた場合もreader後にsubjectを返さない。readerをgoroutineへ逃がすtimeout、retry、cache、logを追加せず、呼出しごとに一回のboundedなOS照合を行う。
-- [ ] AC-4: Linux adapterは`*net.UnixConn.SyscallConn`の`Control`内で標準libraryの`GetsockoptUcred(fd, SOL_SOCKET, SO_PEERCRED)`だけを一回使い、control/getsockopt failureを固定errorへ畳む。非Linux adapterは常にfail closedとする。hermetic testはconstructor、exact UID、拒否、copy、context前後cancel、single call、固定診断を失敗検出し、Linux限定testは実Unix socketで接続peer UIDを確認する。Linux cross-compileもPASSする。
-- [ ] AC-5: focused package test、Linux cross-compile、harness `make check`/`make distcheck`、README lint、candidate launcherのroot `make check`、`git diff --check`がPASSする。変更は許可pathだけ、追加＋削除700行以下とし、外部dependency、設定、build/generated artifactを増やさない。
+- [x] AC-1: `New`はUIDが正数かつplatformのUID範囲内で、AgentInstanceID/WorkspaceIDが1〜128 byte、先頭ASCII英数字、残りASCII英数字又は`._-`の一つのBindingだけを受理し、値とreaderを内部copyしたimmutable Binderを返す。invalid rules、nil/zero/corrupt Binderはpanicせず固定errorとなり、Format/errorへidentity、UID、socket、下位errorを含めない。
+- [x] AC-2: `Bind`は具体的なnon-nil `*net.UnixConn`に対してpeer readerを一回だけ同期呼出しし、取得UIDとexpected UIDが完全一致する場合だけ固定した`brokerlistener.Subject`の独立copyを返す。non-Unix/wrapped/nil connection、reader failure、UID不一致では空subjectと固定errorを返し、RemoteAddr、socket path、payload、PID/GID又はcaller自己申告値からidentityを生成・補完しない。
+- [x] AC-3: nil/typed-nil又は既にcancelled/deadline超過のcontextはreader前に拒否し、reader中にcancelされた場合もreader後にsubjectを返さない。readerをgoroutineへ逃がすtimeout、retry、cache、logを追加せず、呼出しごとに一回のboundedなOS照合を行う。
+- [x] AC-4: Linux adapterは`*net.UnixConn.SyscallConn`の`Control`内で標準libraryの`GetsockoptUcred(fd, SOL_SOCKET, SO_PEERCRED)`だけを一回使い、control/getsockopt failureを固定errorへ畳む。非Linux adapterは常にfail closedとする。hermetic testはconstructor、exact UID、拒否、copy、context前後cancel、single call、固定診断を失敗検出し、Linux限定testは実Unix socketで接続peer UIDを確認する。Linux cross-compileもPASSする。
+- [x] AC-5: focused package test、Linux cross-compile、harness `make check`/`make distcheck`、README lint、candidate launcherのroot `make check`、`git diff --check`がPASSする。変更は許可pathだけ、追加＋削除700行以下とし、外部dependency、設定、build/generated artifactを増やさない。
 
 ### 安定した参照
 
@@ -98,9 +98,9 @@ TASK-0052でaccept/concurrency/private context lifecycleは完成したが、唯
 
 ## 完成の定義
 
-- [ ] 受け入れ条件を満たしている。
-- [ ] planning/candidate/completionの3 commitsとcandidate一回のroot `make check`を満たしている。
-- [ ] 同一candidateの独立REVIEW/QAを完了し、実UID分離/socket permission/namespace/VPSのlive E2E未実施境界をPASSと誤記していない。
+- [x] 受け入れ条件を満たしている。
+- [x] planning/candidate/completionの3 commitsとcandidate一回のroot `make check`を満たしている。
+- [x] 同一candidateの独立REVIEW/QAを完了し、実UID分離/socket permission/namespace/VPSのlive E2E未実施境界をPASSと誤記していない。
 - [ ] 安全契約変更の場合: 独立計画レビュー、契約検査、許可された統制文書差分の確認が完了している。
 
 ## 関連コンテキスト

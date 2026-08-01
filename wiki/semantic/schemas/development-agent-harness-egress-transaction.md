@@ -73,13 +73,15 @@ Sessionはcaller contextをそのままhandlerへ渡すが、CONNECT header、Re
 
 `brokerlistener.Server`は注入済みの`net.Listener`を所有し、trustedな`PeerBinder`が得たSubjectを検証し、独立copyをprivate context keyへ束縛してから、一接続だけを扱う既存`Session`へ渡す。`Resolver`はこのprivate contextからのみSubjectの独立copyを一回返す。公開setter、`RemoteAddr`、CONNECT/TLS/HTTP headerによる主体の補完はしない。
 
+productionの`PeerBinder`はlistener lifetimeごとに、ownerが検証して固定した一つのSubjectと期待UIDだけをimmutableに保持する。`Bind`はconcreteな受理済み`*net.UnixConn`からLinux kernelの`SO_PEERCRED` UIDを一回だけ同期取得し、contextの前後確認を通り期待UIDと完全一致した場合だけfresh Subject copyを返す。wrapper、TCP、nil/corrupt connection、不正rules、credential read失敗、UID不一致、non-Linuxは、空Subjectと固定拒否に縮退する。接続内容、socket path、PID、GIDからAgentInstanceID又はWorkspaceIDを導出せず、複数SubjectをUIDから引くmapも持たない。Binder自体はconnectionをcloseせず、Serverがlifecycleを所有する。
+
 SubjectはUID正数、identifierは1〜128 byte、先頭は英数字、残りは英数字又は`._-`に制限する。binderが拒否したSubject、無効なSubject、binder又はSessionのerror/panicは当該connectionをcloseして次のacceptを継続する。
 
 Serverは1〜64の同時接続上限をslot-before-Acceptで適用し、slot取得後にもcancelを再確認してからAcceptする。caller cancel/deadline又はunexpected Accept failureではlistenerを一回だけcloseし、全active connection contextをcancelして、協調するBinder/Sessionのreturnをdrainする。任意の非協調callbackを強制停止したり、timeout用goroutineでleakを隠したりはしない。
 
 ## 適用限界
 
-このトランザクションはin-memoryの認可接続コアであり、実認証情報の読取・生成、GitHub App token交換、OpenAI key管理、実socket生成/bind、OS peer identity、DNS、上流通信、監査、永続化を実装しない。CONNECT/TLS/HTTPの一接続処理、Agent向けTLS interceptionのCA検証とhost限定leaf発行は別境界である。実socket bind、Linux peer credential、Agent/UID/workspace mapping、network namespace、systemd、実client/VPS、実GitHub/OpenAI、実Internet DNS/system trust、CA file lifecycle/rotate/trust install、実配置のrestart/rollback/cleanupはなおlive E2Eで確認する。前記transport、CA、Session又はlistenerのhermetic testは、これらのlive E2E又は認証情報非露出の証明にならない。
+このトランザクションはin-memoryの認可接続コアであり、実認証情報の読取・生成、GitHub App token交換、OpenAI key管理、実socket生成/bind、実UID分離、DNS、上流通信、監査、永続化を実装しない。CONNECT/TLS/HTTPの一接続処理、Agent向けTLS interceptionのCA検証とhost限定leaf発行、受理済みUnix connectionのLinux peer UID照合は別境界である。実socket bind、別UIDでのpeer credential拒否、socket owner/mode、Agent/UID/workspaceの動的mapping、network namespace、systemd、実client/VPS、実GitHub/OpenAI、実Internet DNS/system trust、CA file lifecycle/rotate/trust install、実配置のrestart/rollback/cleanupはなおlive E2Eで確認する。前記transport、CA、Session、listener又はpeer binderのhermetic testとcross-compileは、これらのlive E2E又は認証情報非露出の証明にならない。
 
 ## 関連
 
@@ -90,6 +92,7 @@ Serverは1〜64の同時接続上限をslot-before-Acceptで適用し、slot取�
 - [TASK-0049 HANDOVER](../../../tasks/TASK-0049-dev-agent-broker-http-handler/HANDOVER.md)
 - [TASK-0051 HANDOVER](../../../tasks/TASK-0051-dev-agent-connect-session/HANDOVER.md)
 - [TASK-0052 HANDOVER](../../../tasks/TASK-0052-dev-agent-listener/HANDOVER.md)
+- [TASK-0055 HANDOVER](../../../tasks/TASK-0055-dev-agent-linux-peer-binder/HANDOVER.md)
 - [Development Agent Harness Egress Policy](development-agent-harness-egress-policy.md)
 - [Development Agent Harness Capability Registry](development-agent-harness-capability-registry.md)
 - [Development Agent Harness Proxy CA](development-agent-harness-proxy-ca.md)

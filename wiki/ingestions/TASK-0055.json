@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "task_id": "TASK-0055",
+  "handover_sha256": "e07809799f01c930c60ac7553f534b24d68168dd8cca053a76c4e910cf072084",
+  "ingested_at": "2026-08-01T16:18:39Z",
+  "updated_pages": [
+    "wiki/semantic/schemas/development-agent-harness-egress-transaction.md"
+  ],
+  "created_decisions": [],
+  "deferred": [
+    "実Agent/broker別UID、socket pathのowner/mode、listener作成/permission、namespace、systemd composition、実client/VPS、および実配置のrestart/rollback/cleanupは未実装・未確認である。Linux socket testのcross-compile又はhermetic PASSで代替しない。"
+  ]
+}

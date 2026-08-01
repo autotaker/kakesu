@@ -6,7 +6,8 @@ qa_agent: "qa-agent-terra-medium"
 qa_role: "independent-qa"
 approved_by: "main-agent-sol-high"
 approved_at: "2026-08-01T15:55:37Z"
-revision: 1
+revision: 2
+implementation_reviewed_at: "2026-08-01T16:15:08Z"
 expectation_changed: false
 ---
 
@@ -39,7 +40,7 @@ QA-001〜003 と package-level failure detection、および Linux cross-compile
 `tools/dev-agent-harness` を cwd として次だけを一回実行する。
 
 ```sh
-GOCACHE=$PWD/.build/go-cache go test -count=1 ./internal/peerbinder && GOOS=linux GOARCH=amd64 GOCACHE=$PWD/.build/go-cache go test -run '^$' -exec /bin/true ./internal/peerbinder
+GOCACHE=$PWD/.build/go-cache go test -count=1 ./internal/peerbinder && GOOS=linux GOARCH=amd64 GOCACHE=$PWD/.build/go-cache go test -run '^$' -exec /usr/bin/true ./internal/peerbinder
 ```
 
 後半は Linux test binary を compile するだけで macOS 上で実行しない。QA-004 と QA-005 の evidence-review は candidate source/test、README、HANDOVER、
@@ -59,14 +60,15 @@ binding/independent copy、context 前後 cancel、fixed non-leak diagnostics、
 
 ## 実装後の再確認
 
-- [ ] candidate source/test、README、HANDOVER、DEV check evidence を独立確認する。
-- [ ] 指定 focused-rerun を candidate で一回だけ実行し、package test と Linux cross-compile を確認する。
-- [ ] constructor/binding copy、exact UID/UnixConn、context 前後 cancel、single synchronous call、fixed diagnostics、Linux adapter/non-Linux fail-closed の failure detection を確認する。
-- [ ] 変更が許可 path、追加＋削除700行以内、dependency/config/generated artifact 無しに収まることを確認する。
-- [ ] real Linux UID/socket permission/namespace/systemd/dev-agent/broker/client/VPS live-e2e を PASS に置換せず、期待値又は scope を変更していないことを確認する。
+- [x] candidate source/test、README、HANDOVER、DEV check evidence を独立確認する。
+- [x] 指定 focused-rerun を candidate で一回だけ実行し、package test と Linux cross-compile を確認する。
+- [x] constructor/binding copy、exact UID/UnixConn、context 前後 cancel、single synchronous call、fixed diagnostics、Linux adapter/non-Linux fail-closed の failure detection を確認する。
+- [x] 変更が許可 path、追加＋削除700行以内、dependency/config/generated artifact 無しに収まることを確認する。
+- [x] real Linux UID/socket permission/namespace/systemd/dev-agent/broker/client/VPS live-e2e を PASS に置換せず、期待値又は scope を変更していないことを確認する。
 
 ## 改訂履歴
 
 | 改訂 | 日付 | 変更者 | 変更内容 | main承認 |
 |---:|---|---|---|---|
 | 1 | 2026-08-02 | qa-agent-terra-medium | Planning input packet に基づく独立 QA 計画 | `approved` |
+| 2 | 2026-08-02 | qa-agent-terra-medium | macOS host に `/bin/true` が存在しない environment issue のため、focused-rerun の同一 compile-only executor を `/usr/bin/true` に補正。期待値・mode・case は不変。 | `approved` |
