@@ -1,7 +1,7 @@
 ---
 task_id: "TASK-0044"
 title: "make checkの文書lintをfail-fast化する"
-status: plan
+status: done
 created_at: "2026-08-01"
 ---
 
@@ -33,10 +33,10 @@ created_at: "2026-08-01"
 
 ### 受け入れ条件
 
-- [ ] AC-1: `make -n check`で`validate-terminology.py`、`pnpm lint:docs`、文書用`git diff --check`が、core/memory/governanceのbuild/test/lintより前に現れる。viewer data生成と最終`git diff --check`は従来どおり最後に残る。
-- [ ] AC-2: `check`が実行する既存target/command集合は順序以外で増減せず、`lint`その他の公開targetは変更されない。新しいrule、script、test、glossary、文書は追加されない。
-- [ ] AC-3: 文書lint commandを意図的に即時失敗させた標準`make check`はproduct build/test commandへ到達せずnonzeroで終了する。fault injectionはrepository fileを変更せず、実product command、network、dependency更新を実行しない。
-- [ ] AC-4: 通常のcandidate launcherによるroot `make check`、`git diff --check`がPASSし、base...candidateの変更はroot `Makefile`だけ、追加＋削除10行以下である。
+- [x] AC-1: `make -n check`で`validate-terminology.py`、`pnpm lint:docs`、文書用`git diff --check`が、core/memory/governanceのbuild/test/lintより前に現れる。viewer data生成と最終`git diff --check`は従来どおり最後に残る。
+- [x] AC-2: `check`が実行する既存target/command集合は順序以外で増減せず、`lint`その他の公開targetは変更されない。新しいrule、script、test、glossary、文書は追加されない。
+- [x] AC-3: 文書lint commandを意図的に即時失敗させた標準`make check`はproduct build/test commandへ到達せずnonzeroで終了する。fault injectionはrepository fileを変更せず、実product command、network、dependency更新を実行しない。
+- [x] AC-4: 通常のcandidate launcherによるroot `make check`、`git diff --check`がPASSし、base...candidateの変更はroot `Makefile`だけ、追加＋削除10行以下である。
 
 ### 安定した参照
 
@@ -88,10 +88,10 @@ root `Makefile`は`check: build test lint`であり、`lint-docs`は`lint`の最
 
 ## 完成の定義
 
-- [ ] 受け入れ条件を満たしている。
-- [ ] planning/candidate/completionの3 commit経路と`make check`を満たしている。
-- [ ] 同一candidateの独立REVIEW/QAを完了し、post-merge `task-check`をcompletion後に実行する。
-- [ ] 新しい品質rule又はSemantic知識を追加していないため、glossary/Wiki/恒久testを更新していない。
+- [x] 受け入れ条件を満たしている。
+- [x] planning/candidate/completionの3 commit経路と`make check`を満たしている。
+- [x] 同一candidateの独立REVIEW/QAを完了し、post-merge `task-check`をcompletion後に実行する。
+- [x] 新しい品質rule又はSemantic知識を追加していないため、glossary/Wiki/恒久testを更新していない。
 
 ## 関連コンテキスト
 

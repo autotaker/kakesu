@@ -80,7 +80,7 @@ lint-docs: node-deps
 	$(PNPM) lint:docs
 	git diff --check
 
-check: build test lint
+check: lint-docs build test lint-core lint-memory lint-governance
 	$(NODE) scripts/build-tabletop-viewer-data.mjs
 	git diff --check
 
