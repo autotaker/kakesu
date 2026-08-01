@@ -1,7 +1,7 @@
 ---
 task_id: "TASK-0036"
-status: draft
-completed_at: ""
+status: complete
+completed_at: "2026-08-01T11:16:28+10:00"
 safety_checks:
   process_tests: pass
   contract_scope: pass
@@ -10,7 +10,7 @@ safety_checks:
 safety_checked_at: "2026-08-01T11:04:28+10:00"
 safety_check_digest: "not-applicable-product-task"
 safety_candidate_tree: "287f382df73a489707d9920086ae164b894b8c7d"
-safety_merge_tree: ""
+safety_merge_tree: "c5fa0c3e8c28ca644551e8df6d90c9218ec9e7d6"
 candidate_commit: "8f07079e03e8b408e4450bb94b79915646f923a7"
 candidate_tree: "287f382df73a489707d9920086ae164b894b8c7d"
 managed_path_digest: "9667121cb08ea80927dcba823f843d05cd92b08934121194fd026c45cc38fde3"
@@ -70,7 +70,7 @@ bootstrap_evidence_digest: "279dc69dba63337208ac4d0dd065db8055e7bb0b00fb8df5e0f9
 - Main判断の旧新コミット/tree、全差分とダイジェスト、影響ケース集合、レビュアー/`make check`証拠、理由: 現時点は`not-applicable`。独立REVIEW/QA後にcandidate変更がある場合だけ更新する。
 - carry-forward時の`QA_RESULT.md` `CF-1`から`CF-7`: `not-applicable`
 - 影響QAケース集合が空でない場合の再実行証拠: 現時点は該当なし。
-- `merge_tree`と案 treeの比較: `pending`
+- `merge_tree`と案 treeの比較: merge `0efd3a1b7fcf2ecc452bfda97cecdeee907c4b4d`の第2親はcandidate `8f07079e03e8b408e4450bb94b79915646f923a7`と一致した。full merge tree `c5fa0c3e8c28ca644551e8df6d90c9218ec9e7d6`はmain管理証跡を含み、`scope-check --allow-merge true`はcandidate bindingとproduct pathをPASSした。
 
 ## 既知の制約と未解決事項
 

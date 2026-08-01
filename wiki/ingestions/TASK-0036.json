@@ -1,8 +1,8 @@
 {
   "version": 1,
   "task_id": "TASK-0036",
-  "handover_sha256": "553d3d35dbcec67c02d2edf8fc9739e847b5339994a6f33a847272c65f5e324e",
-  "ingested_at": "2026-08-01T11:15:31+10:00",
+  "handover_sha256": "dea1ab85caba20cb4beae461e5e6a262ae667a9d87d5498b95d4ddd19842e0d8",
+  "ingested_at": "2026-08-01T11:17:28+10:00",
   "updated_pages": [
     "wiki/semantic/schemas/development-agent-harness-provision-manifest.md"
   ],
