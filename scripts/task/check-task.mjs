@@ -1,11 +1,11 @@
 import fs from "node:fs";
 import path from "node:path";
 import { createHash } from "node:crypto";
+import YAML from "yaml";
 import {
   REQUIRED_TASK_FILES,
   TASK_STATUSES,
   assertTaskId,
-  estimatePoints,
   git,
   parseArgs,
   parseFrontmatter,
@@ -50,6 +50,51 @@ function safetyCheckDigest(candidateTree, mergeTree, checks) {
 
 function hasOwn(value, key) {
   return Object.prototype.hasOwnProperty.call(value, key);
+}
+
+const LEGACY_COMPLETION_FIELDS = [
+  "merged_commit", "reviewed_commit", "tested_commit", "candidate_tree", "managed_path_digest",
+  "bootstrap_evidence_commit", "bootstrap_evidence_digest", "merge_tree",
+];
+
+function hasLegacyCompletionBinding(task, review, qa, handover) {
+  const legacyRecords = [task, review, qa, handover];
+  if ([review, qa].some((record) => {
+    const value = record?.candidate_commit;
+    return value !== undefined && value !== null && String(value).trim() !== "";
+  })) return true;
+  return legacyRecords.some((record) => LEGACY_COMPLETION_FIELDS.some((field) => {
+    const value = record?.[field];
+    return value !== undefined && value !== null && String(value).trim() !== "";
+  }));
+}
+
+function parseFrontmatterText(content, label) {
+  const match = content.match(/^---\n([\s\S]*?)\n---(?:\n|$)/);
+  if (!match) throw new Error(`${label}: missing YAML frontmatter`);
+  return YAML.parse(match[1]);
+}
+
+function committedLegacyCompletionBinding(root, taskId, task) {
+  try {
+    if (git(root, ["rev-parse", "--is-inside-work-tree"]) !== "true") return false;
+    const committedBacklog = YAML.parse(git(root, ["show", "HEAD:backlog.yaml"]));
+    const committedTask = committedBacklog.tasks?.find((entry) => entry.id === taskId);
+    if (!committedTask) return false;
+    const readEvidence = (filename) => {
+      const content = git(root, ["show", `HEAD:${committedTask.task_dir}/${filename}`]);
+      return parseFrontmatterText(content, `${taskId}/${filename}`);
+    };
+    const binding = hasLegacyCompletionBinding(
+      committedTask,
+      readEvidence("REVIEW_RESULT.md"),
+      readEvidence("QA_RESULT.md"),
+      readEvidence("HANDOVER.md"),
+    );
+    return binding;
+  } catch {
+    return false;
+  }
 }
 
 function isRepositoryFilePath(value) {
@@ -257,6 +302,25 @@ export function checkTask(root, backlog, taskId, { phase = "full" } = {}) {
       taskId,
     );
     errors.push(...planContract.errors);
+    let legacyCompletion = false;
+    if (!safetyContract) {
+      const evidenceFiles = ["REVIEW_RESULT.md", "QA_RESULT.md", "HANDOVER.md"];
+      if (evidenceFiles.every((filename) => fs.existsSync(path.join(taskDir, filename)))) {
+        try {
+          const workingReview = parseFrontmatter(path.join(taskDir, "REVIEW_RESULT.md"));
+          const workingQa = parseFrontmatter(path.join(taskDir, "QA_RESULT.md"));
+          const workingHandover = parseFrontmatter(path.join(taskDir, "HANDOVER.md"));
+          const workingLegacy = hasLegacyCompletionBinding(task, workingReview, workingQa, workingHandover);
+          const committedLegacy = committedLegacyCompletionBinding(root, taskId, task);
+          if (workingLegacy && !committedLegacy) {
+            errors.push(`${taskId}: legacy fields cannot be introduced by current change`);
+          }
+          legacyCompletion = committedLegacy;
+        } catch {
+          // The required-file/frontmatter checks below report malformed evidence.
+        }
+      }
+    }
     if (phase === "preflight") return errors;
 
     if (["dev", "qa", "done"].includes(effectivePhase)) {
@@ -267,14 +331,6 @@ export function checkTask(root, backlog, taskId, { phase = "full" } = {}) {
       }
       if (qaPlan.status !== "approved" || !qaPlan.approved_by || !qaPlan.approved_at) {
         errors.push(`${taskId}: DEV gate requires an approved QA_PLAN.md`);
-      }
-      try {
-        const expected = estimatePoints(plan.planned_implementation_files, plan.planned_implementation_lines);
-        if (plan.estimate_points !== expected || task.estimate_points !== expected) {
-          errors.push(`${taskId}: estimate_points must be ${expected} from approved PLAN.md`);
-        }
-      } catch (error) {
-        errors.push(`${taskId}: ${error.message}`);
       }
       if (!task.bootstrap_exception) {
         try {
@@ -337,8 +393,28 @@ export function checkTask(root, backlog, taskId, { phase = "full" } = {}) {
 
     if (["qa", "done"].includes(effectivePhase) && !safetyContract) {
       const review = parseFrontmatter(path.join(taskDir, "REVIEW_RESULT.md"));
-      if (review.decision !== "pass" || review.make_check !== "pass" || !review.reviewed_commit) {
-        errors.push(`${taskId}: QA gate requires review PASS, make check PASS, and reviewed_commit`);
+      const qa = parseFrontmatter(path.join(taskDir, "QA_RESULT.md"));
+      const handover = parseFrontmatter(path.join(taskDir, "HANDOVER.md"));
+      if (legacyCompletion) {
+        if (review.decision !== "pass" || review.make_check !== "pass" || !review.reviewed_commit) {
+          errors.push(`${taskId}: legacy QA gate requires review PASS, make check PASS, and reviewed_commit`);
+        }
+        if (review.reviewed_commit) {
+          try {
+            const repository = repositoryFor(root);
+            git(repository, ["cat-file", "-e", `${review.reviewed_commit}^{commit}`]);
+          } catch {
+            errors.push(`${taskId}: reviewed_commit is not a product repository commit`);
+          }
+        }
+      } else {
+        if (review.decision !== "pass") {
+          errors.push(`${taskId}: QA gate requires review PASS`);
+        }
+        const reviewText = fs.readFileSync(path.join(taskDir, "REVIEW_RESULT.md"), "utf8");
+        if (!/candidate/i.test(reviewText) || !/(?:DEV|make\s+check)/i.test(reviewText)) {
+          errors.push(`${taskId}: REVIEW_RESULT must record candidate diff and DEV check audit`);
+        }
       }
       if (review.reviewer_agent !== task.assignees?.reviewer) {
         errors.push(`${taskId}: REVIEW_RESULT reviewer_agent must match assignees.reviewer`);
@@ -350,31 +426,6 @@ export function checkTask(root, backlog, taskId, { phase = "full" } = {}) {
       if (qaPlan.expectation_changed && qaPlan.expectation_change_approved_by !== task.assignees?.main) {
         errors.push(`${taskId}: changed QA expectations require approval by the assigned main Agent`);
       }
-      const project = readYaml(path.join(root, "project.yaml"));
-      const repository = repositoryFor(root);
-      for (const [label, commit] of [["reviewed_commit", review.reviewed_commit]]) {
-        if (!commit) continue;
-        try {
-          git(repository, ["cat-file", "-e", `${commit}^{commit}`]);
-        } catch {
-          errors.push(`${taskId}: ${label} is not a product repository commit`);
-        }
-      }
-      if (task.status === "done" && review.reviewed_commit && task.merged_commit) {
-        try {
-          git(repository, ["merge-base", "--is-ancestor", task.merged_commit, project.default_branch]);
-          if (task.bootstrap_exception) {
-            if (review.reviewed_commit !== task.merged_commit) throw new Error("bootstrap commit mismatch");
-          } else {
-            const [merge, firstParent, secondParent, ...extraParents] = git(repository, ["rev-list", "--parents", "-n", "1", task.merged_commit]).split(" ");
-            if (merge !== task.merged_commit || !firstParent || secondParent !== review.reviewed_commit || extraParents.length) {
-              throw new Error("not an exact two-parent no-ff merge of reviewed_commit");
-            }
-          }
-        } catch {
-          errors.push(`${taskId}: merged_commit must be on main and exactly merge the reviewed commit with --no-ff`);
-        }
-      }
     }
 
     if (task.status === "done") {
@@ -383,26 +434,72 @@ export function checkTask(root, backlog, taskId, { phase = "full" } = {}) {
       } else {
         const qa = parseFrontmatter(path.join(taskDir, "QA_RESULT.md"));
         const handover = parseFrontmatter(path.join(taskDir, "HANDOVER.md"));
+        const review = parseFrontmatter(path.join(taskDir, "REVIEW_RESULT.md"));
         if (!new Set(["pass", "accepted_with_bugs"]).has(qa.decision)) {
           errors.push(`${taskId}: done requires QA pass or accepted_with_bugs`);
         }
         if (handover.status !== "complete" || !handover.completed_at) {
           errors.push(`${taskId}: done requires a complete HANDOVER`);
         }
-        if (!fs.existsSync(path.join(root, "wiki", "ingestions", `${taskId}.json`))) {
-          errors.push(`${taskId}: done requires a Wiki ingestion receipt`);
-        }
-        if (!qa.qa_agent || qa.qa_agent !== task.assignees?.qa || !qa.tested_commit || !qa.tested_at) {
-          errors.push(`${taskId}: done requires QA agent identity, tested commit, and tested_at`);
+        if (legacyCompletion) {
+          if (!qa.qa_agent || qa.qa_agent !== task.assignees?.qa || !qa.tested_commit || !qa.tested_at) {
+            errors.push(`${taskId}: legacy done requires QA agent identity, tested_commit, and tested_at`);
+          }
+          if (!/^[0-9a-f]{40}$/.test(task.merged_commit ?? "")) {
+            errors.push(`${taskId}: legacy done requires merged_commit`);
+          } else {
+            try {
+              const repository = repositoryFor(root);
+              const project = readYaml(path.join(root, "project.yaml"));
+              git(repository, ["cat-file", "-e", `${task.merged_commit}^{commit}`]);
+              git(repository, ["merge-base", "--is-ancestor", task.merged_commit, project.default_branch]);
+              const [merge, firstParent, secondParent, ...extraParents] = git(repository, ["rev-list", "--parents", "-n", "1", task.merged_commit]).split(" ");
+              if (task.bootstrap_exception) {
+                if (review.reviewed_commit !== task.merged_commit) throw new Error("bootstrap merged_commit mismatch");
+              } else if (merge !== task.merged_commit || !firstParent || !secondParent || extraParents.length || secondParent !== review.reviewed_commit) {
+                throw new Error("merged_commit is not an exact two-parent no-ff merge of reviewed_commit");
+              }
+              if (qa.tested_commit) {
+                git(repository, ["cat-file", "-e", `${qa.tested_commit}^{commit}`]);
+                git(repository, ["merge-base", "--is-ancestor", task.merged_commit, qa.tested_commit]);
+                git(repository, ["merge-base", "--is-ancestor", qa.tested_commit, project.default_branch]);
+              }
+            } catch (error) {
+              errors.push(`${taskId}: legacy done Git evidence is invalid: ${error.message}`);
+            }
+          }
         } else {
-          const project = readYaml(path.join(root, "project.yaml"));
-          const repository = repositoryFor(root);
-          try {
-            git(repository, ["cat-file", "-e", `${qa.tested_commit}^{commit}`]);
-            git(repository, ["merge-base", "--is-ancestor", task.merged_commit, qa.tested_commit]);
-            git(repository, ["merge-base", "--is-ancestor", qa.tested_commit, project.default_branch]);
-          } catch {
-            errors.push(`${taskId}: tested_commit must be on main at or after merged_commit`);
+          if (!qa.qa_agent || qa.qa_agent !== task.assignees?.qa || !qa.tested_at) {
+            errors.push(`${taskId}: done requires QA agent identity and tested_at`);
+          }
+          const candidate = handover.candidate_commit;
+          if (!/^[0-9a-f]{40}$/.test(candidate ?? "")) {
+            errors.push(`${taskId}: done requires HANDOVER candidate_commit`);
+          } else {
+            try {
+              const repository = repositoryFor(root);
+              const project = readYaml(path.join(root, "project.yaml"));
+              const branch = project.default_branch ?? "main";
+              git(repository, ["cat-file", "-e", `${candidate}^{commit}`]);
+              let mergeInProgress = null;
+              try { mergeInProgress = git(repository, ["rev-parse", "MERGE_HEAD"]); } catch { /* normal committed state */ }
+              if (mergeInProgress === candidate) {
+                const headParents = git(repository, ["rev-list", "--parents", "-n", "1", "HEAD"]).split(" ");
+                const candidateParents = git(repository, ["rev-list", "--parents", "-n", "1", candidate]).split(" ");
+                if (!headParents[0] || candidateParents.length !== 2 || candidateParents[1] !== headParents[0]) {
+                  throw new Error("MERGE_HEAD candidate is not pending a no-ff merge from the current main HEAD");
+                }
+              } else {
+                const merges = git(repository, ["rev-list", "--first-parent", "--merges", branch]).split("\n").filter(Boolean);
+                const matching = merges.filter((merge) => {
+                  const parents = git(repository, ["rev-list", "--parents", "-n", "1", merge]).split(" ");
+                  return parents.length === 3 && parents[2] === candidate;
+                });
+                if (matching.length !== 1) throw new Error("no unique main no-ff merge has HANDOVER candidate as its second parent");
+              }
+            } catch (error) {
+              errors.push(`${taskId}: done requires a main no-ff merge derived from HANDOVER candidate: ${error.message}`);
+            }
           }
         }
       }

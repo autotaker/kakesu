@@ -10,6 +10,8 @@ import { acquireWorkRepoLock, dateInTimezone, estimatePoints, git, replaceTempla
 import { rollbackWorkRepository, validateDevSelection } from "./agent-routing.mjs";
 import { runWorkConfigSync } from "./run-work-config-sync.mjs";
 
+const REPO_ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), "../..");
+
 test("estimatePoints uses implementation file and line scores", () => {
   assert.equal(estimatePoints(2, 80), 1);
   assert.equal(estimatePoints(5, 250), 2);
@@ -56,6 +58,7 @@ function createDoneTaskFixture({
   copySpoof = false,
   nonNoFf = false,
   legacyTask0024 = false,
+  legacyProduct = false,
   safetyContractV2 = false,
   plannedPaths,
   generatedPaths,
@@ -142,24 +145,28 @@ function createDoneTaskFixture({
   const reviewMetadata = {
     task_id: taskId,
     reviewer_agent: "reviewer",
-    reviewed_commit: candidateCommit,
     decision: "pass",
-    make_check: "pass",
   };
-  writeTaskEvidence(taskDir, "REVIEW_RESULT.md", reviewMetadata);
+  if (legacyProduct) {
+    reviewMetadata.reviewed_commit = candidateCommit;
+    reviewMetadata.make_check = "pass";
+    reviewMetadata.reviewed_at = "2026-07-20T00:00:00Z";
+  }
+  writeTaskEvidence(taskDir, "REVIEW_RESULT.md", reviewMetadata, "Audited candidate diff and DEV make check evidence.\n");
   const qaResultMetadata = {
     task_id: taskId,
     qa_agent: "qa",
-    tested_commit: mergedCommit,
     tested_at: "2026-07-20T00:00:00Z",
     decision: "pass",
   };
+  if (legacyProduct) qaResultMetadata.tested_commit = mergedCommit;
   writeTaskEvidence(taskDir, "QA_RESULT.md", qaResultMetadata);
   const safetyChecks = Object.fromEntries(SAFETY_CHECK_KEYS.map((key) => [key, "pass"]));
   const handoverMetadata = {
     task_id: taskId,
     status: "complete",
     completed_at: "2026-07-20T00:00:00Z",
+    candidate_commit: candidateCommit,
     safety_checks: safetyChecks,
     safety_checked_at: "2026-07-20T00:00:00Z",
     safety_check_digest: safetyCheckDigest(candidateTree, mergeTree, safetyChecks),
@@ -174,11 +181,19 @@ function createDoneTaskFixture({
     status: "done",
     estimate_points: 1,
     task_dir: path.relative(root, taskDir),
-    merged_commit: mergedCommit,
     assignees: { main: "main", planner: "planner", dev: "dev-sol-high", reviewer: "reviewer", qa: "qa" },
   };
+  if (legacyProduct || changeClass === "safety_contract") task.merged_commit = mergedCommit;
   if (changeClass !== undefined) task.change_class = changeClass;
-  return { root, taskDir, backlog: { tasks: [task] }, taskId, planMetadata, qaPlanMetadata, reviewMetadata, qaResultMetadata, handoverMetadata };
+  if (legacyProduct) {
+    fs.writeFileSync(path.join(root, "backlog.yaml"), JSON.stringify({ version: 1, project: "agent-harness", epics: [], tasks: [task] }));
+    git(root, ["init", "-b", "main"]);
+    git(root, ["config", "user.name", "fixture"]);
+    git(root, ["config", "user.email", "fixture@example.invalid"]);
+    git(root, ["add", "backlog.yaml", "project.yaml", "tasks"]);
+    git(root, ["commit", "-m", "legacy evidence baseline"]);
+  }
+  return { root, repository, taskDir, backlog: { tasks: [task] }, taskId, candidateCommit, mergedCommit, planMetadata, qaPlanMetadata, reviewMetadata, qaResultMetadata, handoverMetadata };
 }
 
 function createSafetyPreflightFixture(planOverrides = {}) {
@@ -265,9 +280,9 @@ test("product Done gates remain required and missing change_class stays product"
   try {
     assert.deepEqual(checkTask(fixture.root, fixture.backlog, fixture.taskId), []);
     fs.rmSync(path.join(fixture.root, "wiki", "ingestions", `${fixture.taskId}.json`));
-    assert.ok(checkTask(fixture.root, fixture.backlog, fixture.taskId).some((error) => error.includes("Wiki ingestion receipt")));
-    fs.mkdirSync(path.join(fixture.root, "wiki", "ingestions"), { recursive: true });
-    fs.writeFileSync(path.join(fixture.root, "wiki", "ingestions", `${fixture.taskId}.json`), "{}\n");
+    assert.deepEqual(checkTask(fixture.root, fixture.backlog, fixture.taskId), []);
+    fixture.backlog.tasks[0].estimate_points = 13;
+    assert.deepEqual(checkTask(fixture.root, fixture.backlog, fixture.taskId), []);
     writeTaskEvidence(fixture.taskDir, "REVIEW_RESULT.md", { ...fixture.reviewMetadata, decision: "pending" });
     assert.ok(checkTask(fixture.root, fixture.backlog, fixture.taskId).some((error) => error.includes("review PASS")));
     fixture.backlog.tasks[0].change_class = "unknown";
@@ -281,12 +296,9 @@ test("product Done rejects each representative QA, HANDOVER, and commit omission
   const mutations = {
     "QA decision": (fixture) => { fixture.qaResultMetadata.decision = "pending"; },
     "QA identity": (fixture) => { fixture.qaResultMetadata.qa_agent = "other"; },
-    "QA tested commit missing": (fixture) => { delete fixture.qaResultMetadata.tested_commit; },
     "HANDOVER status": (fixture) => { fixture.handoverMetadata.status = "draft"; },
     "HANDOVER completed_at": (fixture) => { delete fixture.handoverMetadata.completed_at; },
-    "merged commit missing": (fixture) => { delete fixture.backlog.tasks[0].merged_commit; },
-    "reviewed commit invalid": (fixture) => { fixture.reviewMetadata.reviewed_commit = "0".repeat(40); },
-    "tested commit invalid": (fixture) => { fixture.qaResultMetadata.tested_commit = "0".repeat(40); },
+    "candidate missing": (fixture) => { delete fixture.handoverMetadata.candidate_commit; },
   };
   for (const [name, mutate] of Object.entries(mutations)) {
     await t.test(name, () => {
@@ -301,6 +313,61 @@ test("product Done rejects each representative QA, HANDOVER, and commit omission
         fs.rmSync(fixture.root, { recursive: true, force: true });
       }
     });
+  }
+});
+
+test("legacy product Done accepts old bindings without the new candidate contract", () => {
+  const fixture = createDoneTaskFixture({ legacyProduct: true });
+  try {
+    assert.match(git(fixture.root, ["show", "HEAD:backlog.yaml"]), /merged_commit/);
+    assert.match(git(fixture.root, ["show", "HEAD:tasks/TASK-0090-fixture/REVIEW_RESULT.md"]), /reviewed_commit/);
+    delete fixture.handoverMetadata.candidate_commit;
+    writeTaskEvidence(fixture.taskDir, "HANDOVER.md", fixture.handoverMetadata);
+    writeTaskEvidence(fixture.taskDir, "REVIEW_RESULT.md", fixture.reviewMetadata, "Legacy review evidence.\n");
+    assert.deepEqual(checkTask(fixture.root, fixture.backlog, fixture.taskId), []);
+    fixture.backlog.tasks[0].merged_commit = "0".repeat(40);
+    fs.writeFileSync(path.join(fixture.root, "backlog.yaml"), JSON.stringify({ version: 1, project: "agent-harness", epics: [], tasks: fixture.backlog.tasks }));
+    git(fixture.root, ["add", "backlog.yaml"]);
+    git(fixture.root, ["commit", "-m", "invalid committed legacy binding"]);
+    assert.ok(checkTask(fixture.root, fixture.backlog, fixture.taskId).some((error) => error.includes("legacy done Git evidence is invalid")));
+  } finally {
+    fs.rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test("uncommitted legacy field injection remains on the new contract", () => {
+  const fixture = createDoneTaskFixture();
+  try {
+    fs.writeFileSync(path.join(fixture.root, "backlog.yaml"), JSON.stringify({ version: 1, project: "agent-harness", epics: [], tasks: fixture.backlog.tasks }));
+    git(fixture.root, ["init", "-b", "main"]);
+    git(fixture.root, ["config", "user.name", "fixture"]);
+    git(fixture.root, ["config", "user.email", "fixture@example.invalid"]);
+    git(fixture.root, ["add", "backlog.yaml", "project.yaml", "tasks"]);
+    git(fixture.root, ["commit", "-m", "new contract baseline"]);
+    fixture.backlog.tasks[0].merged_commit = fixture.mergedCommit;
+    delete fixture.handoverMetadata.candidate_commit;
+    writeTaskEvidence(fixture.taskDir, "HANDOVER.md", fixture.handoverMetadata);
+    for (const status of ["plan", "dev"]) {
+      fixture.backlog.tasks[0].status = status;
+      assert.ok(checkTask(fixture.root, fixture.backlog, fixture.taskId).some((error) => error.includes("legacy fields cannot be introduced")));
+    }
+    fixture.backlog.tasks[0].status = "done";
+    assert.ok(checkTask(fixture.root, fixture.backlog, fixture.taskId).some((error) => error.includes("done requires HANDOVER candidate_commit")));
+  } finally {
+    fs.rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test("new product Done accepts a completion merge in progress and schema leaves binding cross-file", () => {
+  const fixture = createDoneTaskFixture();
+  try {
+    git(fixture.repository, ["reset", "--hard", `${fixture.candidateCommit}^`]);
+    git(fixture.repository, ["merge", "--no-ff", "--no-commit", fixture.candidateCommit]);
+    assert.deepEqual(checkTask(fixture.root, fixture.backlog, fixture.taskId), []);
+    const schema = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, "schemas/operations/backlog.schema.json"), "utf8"));
+    assert.equal(schema.$defs.task.allOf.some((rule) => rule.then?.required?.includes("merged_commit")), false);
+  } finally {
+    fs.rmSync(fixture.root, { recursive: true, force: true });
   }
 });
 

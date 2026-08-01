@@ -20,7 +20,7 @@ UV_ENV := UV_CACHE_DIR=$(CURDIR)/.build/uv-cache
 .PHONY: test test-core test-memory test-governance test-tabletop test-docs test-process
 .PHONY: lint lint-core lint-memory lint-governance lint-docs
 .PHONY: check clean explorer-agent task-start task-check task-preflight work-check backlog-view wiki-index wiki-context wiki-ingest
-.PHONY: evidence-commit task-pr task-scope-check sync bootstrap-plan bootstrap-apply bootstrap-verify bootstrap-freeze bootstrap-unfreeze
+.PHONY: evidence-commit planning-gate candidate-commit completion-gate task-pr task-scope-check sync bootstrap-plan bootstrap-apply bootstrap-verify bootstrap-freeze bootstrap-unfreeze
 
 build: build-core build-memory build-governance
 
@@ -99,6 +99,18 @@ evidence-commit: node-deps
 	@test -n "$(ACTION)" || (echo "ACTION is required" >&2; exit 1)
 	$(NODE) scripts/task/unified-lifecycle.mjs --action evidence-commit --main-root "$(MAIN_ROOT)" --task "$(TASK)" --evidence-action "$(ACTION)" --message "$(or $(MESSAGE),task: $(ACTION) $(TASK))" --push "$(if $(NO_PUSH),false,true)"
 
+planning-gate: node-deps
+	@test -n "$(TASK)" || (echo "TASK is required" >&2; exit 1)
+	$(NODE) scripts/task/unified-lifecycle.mjs --action planning-gate --main-root "$(MAIN_ROOT)" --task "$(TASK)" --message "$(or $(MESSAGE),task: planning $(TASK))" --push "$(if $(NO_PUSH),false,true)"
+
+candidate-commit: node-deps
+	@test -n "$(TASK)" || (echo "TASK is required" >&2; exit 1)
+	$(NODE) scripts/task/unified-lifecycle.mjs --action candidate-commit --main-root "$(MAIN_ROOT)" --task "$(TASK)" $(if $(CANDIDATE_ROOT),--candidate-root "$(CANDIDATE_ROOT)",) --message "$(or $(MESSAGE),task: candidate $(TASK))"
+
+completion-gate: node-deps
+	@test -n "$(TASK)" || (echo "TASK is required" >&2; exit 1)
+	$(NODE) scripts/task/unified-lifecycle.mjs --action completion-gate --main-root "$(MAIN_ROOT)" --task "$(TASK)" --message "$(or $(MESSAGE),task: complete $(TASK))" --validate "$(if $(NO_VALIDATE),false,true)" --push "$(if $(NO_PUSH),false,true)"
+
 task-pr: node-deps
 	@test -n "$(TASK)" || (echo "TASK is required" >&2; exit 1)
 	$(NODE) scripts/task/unified-lifecycle.mjs --action task-pr --main-root "$(MAIN_ROOT)" --task "$(TASK)" --repo "$(or $(REPO),autotaker/kakesu)" --dry-run "$(if $(DRY_RUN),true,false)"
@@ -130,7 +142,7 @@ wiki-ingest: node-deps
 	$(NODE) scripts/task/run-wiki-agent.mjs --work-root "$(MAIN_ROOT)" --task "$(TASK)" --action ingest $(if $(WIKI_PROFILE),--profile "$(WIKI_PROFILE)",) $(if $(WIKI_MODEL),--model "$(WIKI_MODEL)",) $(if $(WIKI_EFFORT),--effort "$(WIKI_EFFORT)",)
 
 task-scope-check: node-deps
-	$(NODE) scripts/task/unified-lifecycle.mjs --action scope-check --main-root "$(MAIN_ROOT)" --event "$(EVENT)" --base "$(BASE)" --head "$(HEAD)"
+	$(NODE) scripts/task/unified-lifecycle.mjs --action scope-check --main-root "$(MAIN_ROOT)" --event "$(EVENT)" --base "$(BASE)" --head "$(HEAD)" --allow-merge "$(if $(filter 1,$(ALLOW_MERGE)),true,false)"
 
 sync: node-deps
 	$(NODE) scripts/task/unified-lifecycle.mjs --action sync --main-root "$(MAIN_ROOT)" --fast "$(or $(FAST),0)" --repo "$(or $(REPO),autotaker/kakesu)" --push "$(if $(NO_PUSH),false,true)"

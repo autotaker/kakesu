@@ -61,7 +61,6 @@
       "allOf": [
         { "if": { "properties": { "type": { "const": "bug" } }, "required": ["type"] }, "then": { "required": ["origin_task"] } },
         { "if": { "properties": { "status": { "const": "blocked" } }, "required": ["status"] }, "then": { "required": ["resume_status"] }, "else": { "not": { "required": ["resume_status"] } } },
-        { "if": { "properties": { "status": { "const": "done" } }, "required": ["status"] }, "then": { "required": ["merged_commit"] } },
         { "if": { "properties": { "bootstrap_exception": { "const": true } }, "required": ["bootstrap_exception"] }, "then": { "properties": { "id": { "const": "TASK-0001" } } } }
       ]
     }

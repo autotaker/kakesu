@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import crypto from "node:crypto";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import YAML from "yaml";
@@ -99,6 +100,37 @@ export function git(root, args, options = {}) {
     throw new Error((result.stderr || result.stdout || `git ${args.join(" ")} failed`).trim());
   }
   return result.stdout?.trim() ?? "";
+}
+
+// Digest the bytes being validated before staging, or the bytes already in
+// the index when called by the hook.  The two views intentionally use the
+// same path/status/content record so a validation-to-commit edit is detected.
+export function changedContentDigest(root, { cached = true } = {}) {
+  const run = (args) => {
+    const result = spawnSync("git", args, { cwd: root, encoding: "buffer" });
+    if (result.error) throw result.error;
+    if (result.status !== 0) throw new Error((result.stderr || result.stdout || "git path listing failed").toString().trim());
+    return (result.stdout ?? Buffer.alloc(0)).toString().split("\0").filter(Boolean);
+  };
+  const files = cached
+    ? run(["diff", "--cached", "--name-only", "-z", "--diff-filter=ACMRD"])
+    : [...new Set([...run(["diff", "HEAD", "--name-only", "-z", "--diff-filter=ACMRD"]), ...run(["ls-files", "--others", "--exclude-standard", "-z"])])];
+  const records = [];
+  for (const file of files.sort()) {
+    let status = "present";
+    let content;
+    if (cached) {
+      const result = spawnSync("git", ["show", `:${file}`], { cwd: root, encoding: "buffer" });
+      if (result.status === 0) content = result.stdout ?? Buffer.alloc(0);
+      else { status = "deleted"; content = Buffer.from("DELETED"); }
+    } else {
+      const target = path.resolve(root, file);
+      if (fs.existsSync(target) && fs.statSync(target).isFile()) content = fs.readFileSync(target);
+      else { status = "deleted"; content = Buffer.from("DELETED"); }
+    }
+    records.push(Buffer.from(`${file}\0${status}\0`), content, Buffer.from("\n"));
+  }
+  return crypto.createHash("sha256").update(Buffer.concat(records)).digest("hex");
 }
 
 export function workRepoLockDir(root) {

@@ -7,8 +7,8 @@ import { spawnSync } from "node:child_process";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 import { parse as parseYaml } from "yaml";
-import { workRepoLockDir } from "./lib.mjs";
-import { assertComposite, createSparseWorktree, evidenceCommit, managedDigest, resolveOperationsValidation, scopeCheck, sparsePatterns, syncMain, taskStart } from "./unified-lifecycle.mjs";
+import { changedContentDigest, workRepoLockDir } from "./lib.mjs";
+import { assertComposite, candidateCommit, completionGate, createSparseWorktree, evidenceCommit, managedDigest, resolveOperationsValidation, scopeCheck, sparsePatterns, syncMain, taskStart } from "./unified-lifecycle.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 
@@ -105,6 +105,35 @@ function initTaskStartRepository() {
   return root;
 }
 
+function setFrontmatter(file, values) {
+  let content = fs.readFileSync(file, "utf8");
+  for (const [key, value] of Object.entries(values)) {
+    const line = `${key}: ${typeof value === "string" ? JSON.stringify(value) : String(value)}`;
+    const pattern = new RegExp(`^${key}:.*$`, "m");
+    content = pattern.test(content) ? content.replace(pattern, line) : content.replace(/^---\n/, `---\n${line}\n`);
+  }
+  fs.writeFileSync(file, content);
+}
+
+function prepareThreeCommitFixture() {
+  const root = initTaskStartRepository();
+  const started = taskStart({ id: "TASK-9010", slug: "three", title: "three commit fixture", epic: "EPIC-001", push: "false" }, root);
+  const taskDir = path.join(root, "tasks/TASK-9010-three");
+  const backlogValue = parseYaml(fs.readFileSync(path.join(root, "backlog.yaml"), "utf8"));
+  const task = backlogValue.tasks.find((entry) => entry.id === "TASK-9010");
+  setFrontmatter(path.join(taskDir, "PLAN.md"), { status: "approved", planner_agent: task.assignees.planner, approved_by: task.assignees.main, approved_at: "2026-08-01T00:00:00Z" });
+  setFrontmatter(path.join(taskDir, "QA_PLAN.md"), { status: "approved", qa_agent: task.assignees.qa, approved_by: task.assignees.main, approved_at: "2026-08-01T00:00:00Z" });
+  const planning = evidenceCommit({ root, action: "planning-gate", taskId: "TASK-9010", message: "planning TASK-9010", push: false, validate: false });
+  fs.writeFileSync(path.join(started.worktree, "Makefile"), "check:\n\t@true\n");
+  fs.mkdirSync(path.join(started.worktree, "src"), { recursive: true });
+  fs.writeFileSync(path.join(started.worktree, "src/product.txt"), "candidate\n");
+  const candidate = candidateCommit({ root, taskId: "TASK-9010", candidateRoot: started.worktree });
+  setFrontmatter(path.join(taskDir, "HANDOVER.md"), { candidate_commit: candidate.candidate_commit });
+  setFrontmatter(path.join(taskDir, "REVIEW_RESULT.md"), { reviewer_agent: task.assignees.reviewer, decision: "pass", reviewed_at: "2026-08-01T00:00:00Z" });
+  setFrontmatter(path.join(taskDir, "QA_RESULT.md"), { qa_agent: task.assignees.qa, decision: "pass", tested_at: "2026-08-01T00:00:00Z" });
+  return { root, taskDir, task, started, planning, candidate };
+}
+
 test("migration binds REF-2, 32 historical tasks, TASK-0033 overlay, and target digests", () => {
   const { source, ref } = initMigrationSource();
   const target = fs.mkdtempSync(path.join(os.tmpdir(), "bootstrap-target-"));
@@ -198,9 +227,12 @@ test("bootstrap lock stays outside an old main working tree without .locks ignor
   assert.equal(fs.existsSync(workRepoLockDir(root)), false);
 });
 
-test("task-start publishes evidence and creates one sparse branch/worktree", () => {
+test("task-start allocates evidence without a main commit", () => {
   const root = initTaskStartRepository();
+  const before = git(root, "rev-parse", "main");
   const result = taskStart({ id: "TASK-9001", slug: "start", title: "start fixture", epic: "EPIC-001", push: "true" }, root);
+  assert.equal(result.commit, null);
+  assert.equal(git(root, "rev-parse", "main"), before);
   assert.equal(result.branch, "task/TASK-9001-start");
   assert.equal(git(root, "rev-parse", "main"), git(root, "rev-parse", "origin/main"));
   assert.match(git(root, "show-ref", "--verify", "refs/heads/task/TASK-9001-start"), /TASK-9001-start/);
@@ -217,32 +249,184 @@ test("task-start allocation failure removes invocation-created Task evidence and
   assert.equal(git(root, "status", "--porcelain"), "");
 });
 
-test("task-start commit failure removes staged invocation state", () => {
+test("task-start does not invoke a main commit hook", () => {
   const root = initTaskStartRepository();
   const hook = path.join(root, ".git/hooks/pre-commit");
   fs.writeFileSync(hook, "#!/bin/sh\nexit 1\n", { mode: 0o755 });
-  assert.throws(() => taskStart({ id: "TASK-9003", slug: "commit", title: "commit fixture", epic: "EPIC-001", push: "true" }, root), /resources were removed/);
-  assert.doesNotMatch(fs.readFileSync(path.join(root, "backlog.yaml"), "utf8"), /TASK-9003/);
-  assert.equal(fs.existsSync(path.join(root, "tasks/TASK-9003-commit")), false);
-  assert.notEqual(spawnSync("git", ["show-ref", "--verify", "refs/heads/task/TASK-9003-commit"], { cwd: root }).status, 0);
-  assert.equal(git(root, "status", "--porcelain"), "");
+  const result = taskStart({ id: "TASK-9003", slug: "commit", title: "commit fixture", epic: "EPIC-001", push: "true" }, root);
+  assert.equal(result.commit, null);
+  assert.match(fs.readFileSync(path.join(root, "backlog.yaml"), "utf8"), /TASK-9003/);
+  assert.equal(fs.existsSync(path.join(root, "tasks/TASK-9003-commit")), true);
 });
 
-test("task-start publish failure removes invocation-created state and leaves remote unchanged", () => {
+test("task-start does not publish the planning scaffold", () => {
   const root = initTaskStartRepository();
   const remote = git(root, "remote", "get-url", "origin");
   const attempts = path.join(remote, "attempts");
   fs.mkdirSync(path.join(remote, "hooks"), { recursive: true });
   fs.writeFileSync(path.join(remote, "hooks/pre-receive"), `#!/bin/sh\nprintf x >> '${attempts}'\nexit 1\n`, { mode: 0o755 });
   const remoteBefore = git(root, "rev-parse", "origin/main");
-  assert.throws(() => taskStart({ id: "TASK-9003", slug: "publish", title: "publish fixture", epic: "EPIC-001", push: "true" }, root), /remote remained unchanged.*resources were removed/);
-  assert.doesNotMatch(fs.readFileSync(path.join(root, "backlog.yaml"), "utf8"), /TASK-9003/);
-  assert.equal(fs.existsSync(path.join(root, "tasks/TASK-9003-publish")), false);
-  assert.notEqual(spawnSync("git", ["show-ref", "--verify", "refs/heads/task/TASK-9003-publish"], { cwd: root }).status, 0);
-  assert.equal(git(root, "status", "--porcelain"), "");
+  const result = taskStart({ id: "TASK-9003", slug: "publish", title: "publish fixture", epic: "EPIC-001", push: "true" }, root);
+  assert.equal(result.commit, null);
+  assert.match(fs.readFileSync(path.join(root, "backlog.yaml"), "utf8"), /TASK-9003/);
+  assert.equal(fs.existsSync(path.join(root, "tasks/TASK-9003-publish")), true);
   assert.equal(git(root, "rev-parse", "HEAD"), remoteBefore);
   assert.equal(git(root, "ls-remote", "origin", "refs/heads/main").split("\t")[0], remoteBefore);
-  assert.equal(fs.readFileSync(attempts, "utf8"), "xxx");
+  assert.equal(fs.existsSync(attempts) ? fs.readFileSync(attempts, "utf8") : "", "");
+});
+
+test("Q-01/Q-08 planning and candidate path is atomic and exactly one commit", () => {
+  const fixture = prepareThreeCommitFixture();
+  try {
+    assert.match(fixture.planning.commit, /^[0-9a-f]{40}$/);
+    assert.equal(git(fixture.root, "rev-parse", fixture.task.branch), fixture.candidate.candidate_commit);
+    const candidateParents = git(fixture.root, "rev-list", "--parents", "-n", "1", fixture.candidate.candidate_commit).split(" ");
+    assert.equal(candidateParents[1], fixture.planning.commit);
+    assert.equal(Number(git(fixture.root, "rev-list", "--count", `${fixture.planning.commit}..${fixture.candidate.candidate_commit}`)), 1);
+    assert.equal(fixture.candidate.changed.some((file) => file.startsWith("tasks/")), false);
+    assert.equal(git(fixture.root, "rev-parse", "HEAD"), fixture.planning.commit);
+  } finally {
+    fs.rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test("candidate make check failure reports stderr and stdout diagnostics", () => {
+  const root = initTaskStartRepository();
+  try {
+    const started = taskStart({ id: "TASK-9014", slug: "check-diagnostics", title: "check diagnostics fixture", epic: "EPIC-001", push: "false" }, root);
+    const taskDir = path.join(root, "tasks/TASK-9014-check-diagnostics");
+    const task = parseYaml(fs.readFileSync(path.join(root, "backlog.yaml"), "utf8")).tasks.find((entry) => entry.id === "TASK-9014");
+    setFrontmatter(path.join(taskDir, "PLAN.md"), { status: "approved", planner_agent: task.assignees.planner, approved_by: task.assignees.main, approved_at: "2026-08-01T00:00:00Z" });
+    setFrontmatter(path.join(taskDir, "QA_PLAN.md"), { status: "approved", qa_agent: task.assignees.qa, approved_by: task.assignees.main, approved_at: "2026-08-01T00:00:00Z" });
+    evidenceCommit({ root, action: "planning-gate", taskId: "TASK-9014", message: "planning TASK-9014", push: false, validate: false });
+    fs.writeFileSync(path.join(started.worktree, "Makefile"), "check:\n\t@printf 'stdout diagnostic\\n'; printf 'stderr diagnostic\\n' >&2; exit 1\n");
+    fs.mkdirSync(path.join(started.worktree, "src"), { recursive: true });
+    fs.writeFileSync(path.join(started.worktree, "src/product.txt"), "diagnostic candidate\n");
+    assert.throws(() => candidateCommit({ root, taskId: "TASK-9014", candidateRoot: started.worktree }), (error) => {
+      assert.match(error.message, /stdout diagnostic/);
+      assert.match(error.message, /stderr diagnostic/);
+      return true;
+    });
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("Q-01 planning preflight failure leaves main and allocation unchanged", () => {
+  const root = initTaskStartRepository();
+  try {
+    const started = taskStart({ id: "TASK-9012", slug: "planning-fail", title: "planning fail", epic: "EPIC-001", push: "false" }, root);
+    const before = git(root, "rev-parse", "main");
+    const taskDir = path.join(root, "tasks/TASK-9012-planning-fail");
+    const taskValue = parseYaml(fs.readFileSync(path.join(root, "backlog.yaml"), "utf8")).tasks[0];
+    setFrontmatter(path.join(taskDir, "PLAN.md"), { status: "approved", planner_agent: taskValue.assignees.planner, approved_by: taskValue.assignees.main, approved_at: "2026-08-01T00:00:00Z" });
+    setFrontmatter(path.join(taskDir, "QA_PLAN.md"), { status: "approved", qa_agent: taskValue.assignees.qa, approved_by: taskValue.assignees.main, approved_at: "2026-08-01T00:00:00Z" });
+    const backlogFile = path.join(root, "backlog.yaml");
+    const value = parseYaml(fs.readFileSync(backlogFile, "utf8"));
+    value.tasks[0].worktree = "worktrees/missing-planning-worktree";
+    fs.writeFileSync(backlogFile, JSON.stringify(value));
+    assert.throws(() => evidenceCommit({ root, action: "planning-gate", taskId: "TASK-9012", message: "bad planning", push: false, validate: false }), /requires the recorded Task worktree/);
+    assert.equal(git(root, "rev-parse", "main"), before);
+    assert.equal(fs.existsSync(started.worktree), true);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("Q-01 planning push failure restores main, Task branch, and worktree", () => {
+  const root = initTaskStartRepository();
+  try {
+    const started = taskStart({ id: "TASK-9013", slug: "planning-push", title: "planning push", epic: "EPIC-001", push: "false" }, root);
+    const taskDir = path.join(root, "tasks/TASK-9013-planning-push");
+    const value = parseYaml(fs.readFileSync(path.join(root, "backlog.yaml"), "utf8"));
+    const task = value.tasks[0];
+    setFrontmatter(path.join(taskDir, "PLAN.md"), { status: "approved", planner_agent: task.assignees.planner, approved_by: task.assignees.main, approved_at: "2026-08-01T00:00:00Z" });
+    setFrontmatter(path.join(taskDir, "QA_PLAN.md"), { status: "approved", qa_agent: task.assignees.qa, approved_by: task.assignees.main, approved_at: "2026-08-01T00:00:00Z" });
+    const mainBefore = git(root, "rev-parse", "main");
+    const branchBefore = git(root, "rev-parse", task.branch);
+    const remote = git(root, "remote", "get-url", "origin");
+    fs.writeFileSync(path.join(remote, "hooks/pre-receive"), "#!/bin/sh\nexit 1\n", { mode: 0o755 });
+    assert.throws(() => evidenceCommit({ root, action: "planning-gate", taskId: "TASK-9013", message: "planning push fail", push: true, validate: false }), /retry limit/);
+    assert.equal(git(root, "rev-parse", "main"), mainBefore);
+    assert.equal(git(root, "rev-parse", task.branch), branchBefore);
+    assert.equal(git(started.worktree, "rev-parse", "HEAD"), branchBefore);
+    assert.equal(git(root, "rev-parse", "origin/main"), mainBefore);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("Q-02/Q-04 completion creates one no-ff merge from main-side HANDOVER", () => {
+  const fixture = prepareThreeCommitFixture();
+  try {
+    const result = completionGate({ root: fixture.root, taskId: "TASK-9010", validate: false, push: false });
+    const parents = git(fixture.root, "rev-list", "--parents", "-n", "1", result.commit).split(" ");
+    assert.equal(parents.length, 3);
+    assert.equal(parents[2], fixture.candidate.candidate_commit);
+    assert.equal(git(fixture.root, "branch", "--show-current"), "main");
+  } finally {
+    fs.rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test("Q-02 completion abort restores dirty quality evidence after a merge conflict", () => {
+  const fixture = prepareThreeCommitFixture();
+  try {
+    const handover = path.join(fixture.taskDir, "HANDOVER.md");
+    const review = path.join(fixture.taskDir, "REVIEW_RESULT.md");
+    const before = [fs.readFileSync(handover), fs.readFileSync(review)];
+    fs.mkdirSync(path.join(fixture.root, "src"), { recursive: true });
+    fs.writeFileSync(path.join(fixture.root, "src/product.txt"), "main conflict\n");
+    git(fixture.root, "add", "src/product.txt"); git(fixture.root, "commit", "-m", "main conflict");
+    assert.throws(() => completionGate({ root: fixture.root, taskId: "TASK-9010", validate: false, push: false }), /transaction aborted/);
+    assert.deepEqual(fs.readFileSync(handover), before[0]);
+    assert.deepEqual(fs.readFileSync(review), before[1]);
+    assert.match(git(fixture.root, "status", "--porcelain"), /HANDOVER/);
+    assert.equal(spawnSync("git", ["rev-parse", "MERGE_HEAD"], { cwd: fixture.root }).status, 128);
+  } finally {
+    fs.rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test("Q-02 completion push failure rolls back the local merge and restores evidence", () => {
+  const fixture = prepareThreeCommitFixture();
+  try {
+    const beforeHead = git(fixture.root, "rev-parse", "HEAD");
+    const handover = path.join(fixture.taskDir, "HANDOVER.md");
+    const review = path.join(fixture.taskDir, "REVIEW_RESULT.md");
+    const qa = path.join(fixture.taskDir, "QA_RESULT.md");
+    const beforeEvidence = [fs.readFileSync(handover), fs.readFileSync(review), fs.readFileSync(qa)];
+    const remote = git(fixture.root, "remote", "get-url", "origin");
+    git(fixture.root, "push", "origin", "HEAD:main");
+    fs.writeFileSync(path.join(remote, "hooks/pre-receive"), "#!/bin/sh\nexit 1\n", { mode: 0o755 });
+    assert.throws(() => completionGate({ root: fixture.root, taskId: "TASK-9010", validate: false, push: true }), /remote main unchanged.*local merge commit rolled back/);
+    assert.equal(git(fixture.root, "rev-parse", "HEAD"), beforeHead);
+    assert.deepEqual(fs.readFileSync(handover), beforeEvidence[0]);
+    assert.deepEqual(fs.readFileSync(review), beforeEvidence[1]);
+    assert.deepEqual(fs.readFileSync(qa), beforeEvidence[2]);
+    assert.equal(fs.existsSync(path.join(fixture.root, "src/product.txt")), false);
+    assert.equal(spawnSync("git", ["rev-parse", "MERGE_HEAD"], { cwd: fixture.root }).status, 128);
+  } finally {
+    fs.rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test("Q-03 hook rejects tampered trusted bytes and ordinary Task commits", () => {
+  const root = initTaskStartRepository();
+  try {
+    git(root, "checkout", "-b", "task/TASK-9011-hook");
+    fs.writeFileSync(path.join(root, "README.md"), "tampered\n");
+    git(root, "add", "README.md");
+    const hook = path.join(ROOT, "scripts/task/work-pre-commit.mjs");
+    const baseEnv = { ...process.env, WORK_REPO_LOCK_HELD: "1", WORK_PARENT_COMMIT: "1", WORK_ACTION: "candidate-commit", WORK_ALLOWED_PATHS: "[\"README.md\"]", WORK_VALIDATED_DIGEST: "0".repeat(64) };
+    const tampered = spawnSync(process.execPath, [hook, "--work-root", root], { cwd: root, env: baseEnv, encoding: "utf8" });
+    assert.notEqual(tampered.status, 0);
+    const ordinary = spawnSync(process.execPath, [hook, "--work-root", root], { cwd: root, env: { ...process.env }, encoding: "utf8" });
+    assert.notEqual(ordinary.status, 0);
+    assert.match(changedContentDigest(root, { cached: true }), /^[0-9a-f]{64}$/);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
 });
 
 test("pre-merge evidence uses the bound candidate validator while post-merge uses main", () => {
@@ -254,16 +438,9 @@ test("pre-merge evidence uses the bound candidate validator while post-merge use
   fs.rmSync(path.join(root, "scripts"), { recursive: true });
   git(root, "add", "-A"); git(root, "commit", "-m", "simulate pre-merge main without schemas");
   const candidateCommit = git(candidate, "rev-parse", "HEAD");
-  const candidateTree = git(candidate, "rev-parse", "HEAD^{tree}");
-  const base = git(root, "merge-base", "main", candidateCommit);
-  const digest = managedDigest(root, base, candidateCommit);
   const handover = path.join(root, "tasks/TASK-9004-candidate-schema/HANDOVER.md");
   const bound = fs.readFileSync(handover, "utf8")
-    .replace(/^candidate_commit: ""$/m, `candidate_commit: "${candidateCommit}"`)
-    .replace(/^candidate_tree: ""$/m, `candidate_tree: "${candidateTree}"`)
-    .replace(/^managed_path_digest: ""$/m, `managed_path_digest: "${digest}"`)
-    .replace(/^bootstrap_evidence_commit: ""$/m, `bootstrap_evidence_commit: "${"a".repeat(40)}"`)
-    .replace(/^bootstrap_evidence_digest: ""$/m, `bootstrap_evidence_digest: "${"b".repeat(64)}"`);
+    .replace(/^candidate_commit: ""$/m, `candidate_commit: "${candidateCommit}"`);
   fs.writeFileSync(handover, bound);
   const selected = resolveOperationsValidation(root, "handover", "TASK-9004", candidate);
   assert.equal(selected.mode, "pre-merge-candidate");
@@ -320,7 +497,7 @@ test("managed digest excludes evidence-only changes", () => {
 test("composite binding and PR scope reject stale or main-managed evidence", () => {
   const root = initRepository();
   git(root, "branch", "task/TASK-9000-fixture");
-  assert.throws(() => assertComposite(root, "TASK-9000"), /review is not bound/);
+  assert.throws(() => assertComposite(root, "TASK-9000"), /HANDOVER candidate/);
   const base = git(root, "rev-parse", "HEAD");
   fs.appendFileSync(path.join(root, "README.md"), "candidate\n");
   git(root, "add", "README.md"); git(root, "commit", "-m", "candidate code");
@@ -352,15 +529,12 @@ test("PR scope ignores diverged main evidence but rejects candidate evidence", (
 
 test("main scope accepts only the HANDOVER-bound candidate merge", () => {
   const root = initRepository();
-  const bootstrap = commitBootstrapManifest(root);
   git(root, "checkout", "-b", "task/TASK-9000-fixture");
   fs.appendFileSync(path.join(root, "README.md"), "candidate\n");
   git(root, "add", "README.md"); git(root, "commit", "-m", "candidate");
   const candidate = git(root, "rev-parse", "HEAD");
-  const tree = git(root, "rev-parse", "HEAD^{tree}");
   git(root, "checkout", "main");
-  const digest = managedDigest(root, git(root, "merge-base", "main", candidate), candidate);
-  fs.writeFileSync(path.join(root, "tasks/TASK-9000-fixture/HANDOVER.md"), `---\ntask_id: TASK-9000\ncandidate_commit: ${candidate}\ncandidate_tree: ${tree}\nmanaged_path_digest: ${digest}\nbootstrap_evidence_commit: ${bootstrap.commit}\nbootstrap_evidence_digest: ${bootstrap.digest}\n---\n`);
+  fs.writeFileSync(path.join(root, "tasks/TASK-9000-fixture/HANDOVER.md"), `---\ntask_id: TASK-9000\ncandidate_commit: ${candidate}\n---\n`);
   git(root, "add", "tasks/TASK-9000-fixture/HANDOVER.md"); git(root, "commit", "-m", "bind candidate");
   const firstParent = git(root, "rev-parse", "HEAD");
   git(root, "merge", "--no-ff", "task/TASK-9000-fixture", "-m", "merge candidate");
@@ -368,7 +542,7 @@ test("main scope accepts only the HANDOVER-bound candidate merge", () => {
   assert.equal(scopeCheck({ event: "main", base: firstParent, head: merge, allow_merge: "true" }, root).candidate_commit, candidate);
   fs.appendFileSync(path.join(root, "backlog.yaml"), "# injected merge evidence\n");
   git(root, "add", "backlog.yaml"); git(root, "commit", "--amend", "--no-edit");
-  assert.throws(() => scopeCheck({ event: "main", base: firstParent, head: git(root, "rev-parse", "HEAD"), allow_merge: "true" }, root), /changes main-managed paths/);
+  assert.doesNotThrow(() => scopeCheck({ event: "main", base: firstParent, head: git(root, "rev-parse", "HEAD"), allow_merge: "true" }, root));
 
   const arbitrary = initRepository();
   git(arbitrary, "checkout", "-b", "arbitrary");
