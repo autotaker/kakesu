@@ -1,7 +1,7 @@
 ---
 task_id: "TASK-0039"
 title: "GitHub/OpenAIのegress allowlist policyを実装する"
-status: plan
+status: done
 created_at: "2026-08-01"
 ---
 
@@ -36,12 +36,12 @@ Development Agent HarnessのTLS終端後に使う、GitHub repository-scoped RES
 
 ### 受け入れ条件
 
-- [ ] AC-1: valid Rulesからpolicyを生成できる。GitHub repositoryはlowercase `owner/repo`、OpenAI modelは安全なASCII identifierとして一意かつnon-emptyであり、各provider allowlist、body上限、output token上限の空/重複/不正を固定Rules errorで拒否する。入力sliceは内部へcopyし、生成後にcallerが変更してもpolicy結果は変わらない。
-- [ ] AC-2: GitHub requestはcanonical `https` URL、host `api.github.com`、port省略または443、userinfo/fragment/queryなし、method `GET`/`HEAD`、path `/repos/{owner}/{repo}`またはnon-empty child segmentだけを候補とする。owner/repoがRulesへ完全一致した場合だけ`allow/github-rest-read`を返し、HTTP、別host/port、別method、root/user/org/GraphQL、allowlist外、percent encoding、dot/empty segment、4 KiB超URLは固定denyを返す。
-- [ ] AC-3: OpenAI requestはcanonical `POST https://api.openai.com[:443]/v1/responses`、userinfo/fragment/queryなし、parameterなし`application/json`、non-emptyかつRules上限内bodyだけを候補とする。strict objectが許可fieldを正しい型で一度ずつ持ち、allowed model、non-empty string input、explicit falseのstore/stream、positiveかつRules上限内max_output_tokensを満たす場合だけ`allow/openai-responses-text`を返す。
-- [ ] AC-4: malformed/trailing JSON、duplicate/unknown field、非許可model、欠落/型違い/空input、欠落またはtrueのstore/stream、欠落/0/小数/過大max_output_tokens、別request surface、空/過大bodyを同じ固定denyで拒否する。optional instructionsはstringだけを許し、tool/file/image/background/continuation等を別schemaで先取りせずunknownとして拒否する。
-- [ ] AC-5: deny decision/errorはURL、repository、model、body、Credentialらしい入力値やparser/OS errorを文字列化しない。nil/zero policyとinvalid requestはallowにならない。policyはfile/environment/process/network/DNS/TLS/clock/randomを使わず、Request bodyを保持・変更しない。
-- [ ] AC-6: table-driven unit testsがAC-1〜5の代表的なallow/deny境界、non-leak、Rules/Request/body不変性を検出する。harness `make check`、`make distcheck`、root `make check`がPASSし、変更は`internal/egresspolicy/`とREADMEに限定する。実network、Credential、TLSのPASSを主張しない。
+- [x] AC-1: valid Rulesからpolicyを生成できる。GitHub repositoryはlowercase `owner/repo`、OpenAI modelは安全なASCII identifierとして一意かつnon-emptyであり、各provider allowlist、body上限、output token上限の空/重複/不正を固定Rules errorで拒否する。入力sliceは内部へcopyし、生成後にcallerが変更してもpolicy結果は変わらない。
+- [x] AC-2: GitHub requestはcanonical `https` URL、host `api.github.com`、port省略または443、userinfo/fragment/queryなし、method `GET`/`HEAD`、path `/repos/{owner}/{repo}`またはnon-empty child segmentだけを候補とする。owner/repoがRulesへ完全一致した場合だけ`allow/github-rest-read`を返し、HTTP、別host/port、別method、root/user/org/GraphQL、allowlist外、percent encoding、dot/empty segment、4 KiB超URLは固定denyを返す。
+- [x] AC-3: OpenAI requestはcanonical `POST https://api.openai.com[:443]/v1/responses`、userinfo/fragment/queryなし、parameterなし`application/json`、non-emptyかつRules上限内bodyだけを候補とする。strict objectが許可fieldを正しい型で一度ずつ持ち、allowed model、non-empty string input、explicit falseのstore/stream、positiveかつRules上限内max_output_tokensを満たす場合だけ`allow/openai-responses-text`を返す。
+- [x] AC-4: malformed/trailing JSON、duplicate/unknown field、非許可model、欠落/型違い/空input、欠落またはtrueのstore/stream、欠落/0/小数/過大max_output_tokens、別request surface、空/過大bodyを同じ固定denyで拒否する。optional instructionsはstringだけを許し、tool/file/image/background/continuation等を別schemaで先取りせずunknownとして拒否する。
+- [x] AC-5: deny decision/errorはURL、repository、model、body、Credentialらしい入力値やparser/OS errorを文字列化しない。nil/zero policyとinvalid requestはallowにならない。policyはfile/environment/process/network/DNS/TLS/clock/randomを使わず、Request bodyを保持・変更しない。
+- [x] AC-6: table-driven unit testsがAC-1〜5の代表的なallow/deny境界、non-leak、Rules/Request/body不変性を検出する。harness `make check`、`make distcheck`、root `make check`がPASSし、変更は`internal/egresspolicy/`とREADMEに限定する。実network、Credential、TLSのPASSを主張しない。
 
 ### 安定した参照
 
@@ -96,9 +96,9 @@ Phase 1でproxy、Opaque capability、Credential置換を同時に作ると、re
 
 ## 完成の定義
 
-- [ ] 受け入れ条件を満たしている。
-- [ ] 製品変更の3 commit経路、同一candidateの独立REVIEW/QA、root check一回、post-merge Task checkを満たしている。
-- [ ] provider別allow surfaceとpure policy/proxy責務分離を再利用可能なSemantic Wikiへ記録している。
+- [x] 受け入れ条件を満たしている。
+- [x] 製品変更の3 commit経路、同一candidateの独立REVIEW/QA、root check一回、post-merge Task checkを満たしている。
+- [x] provider別allow surfaceとpure policy/proxy責務分離を再利用可能なSemantic Wikiへ記録している。
 
 ## 関連コンテキスト
 

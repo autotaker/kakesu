@@ -101,6 +101,15 @@
       ]
     },
     {
+      "path": "wiki/semantic/schemas/development-agent-harness-egress-policy.md",
+      "kind": "schema",
+      "title": "Development Agent Harness Egress Policy",
+      "links": [
+        "../../../tasks/TASK-0039-dev-agent-egress-policy/HANDOVER.md",
+        "development-agent-harness-config.md"
+      ]
+    },
+    {
       "path": "wiki/semantic/schemas/development-agent-harness-provision-manifest.md",
       "kind": "schema",
       "title": "Development Agent Harness Provision Manifest",
