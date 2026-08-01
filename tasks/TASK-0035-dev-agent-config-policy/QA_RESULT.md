@@ -2,15 +2,15 @@
 task_id: "TASK-0035"
 status: passed
 qa_agent: "qa-agent-terra-medium"
-tested_commit: "6b5d3495a0f61bd0a1b134926ef932dd65a5000b"
+tested_commit: "873993eea4e37cf05460bf08270c54789315ee3c"
 candidate_commit: "6b5d3495a0f61bd0a1b134926ef932dd65a5000b"
 candidate_tree: "84b53854c139b23d992026175b8f979ae71d4df2"
 managed_path_digest: "66f2d043bf7acc1a7801233e553f9bcf6a45fea4e164450866e180fba8ad93d9"
 bootstrap_evidence_commit: "a063f6d461bbc6ce752d93306f83e4939e299d1e"
 bootstrap_evidence_digest: "279dc69dba63337208ac4d0dd065db8055e7bb0b00fb8df5e0f9024d9f283329"
-merge_tree: ""
+merge_tree: "1d37a775501bda244b642f803dd47eb5cadec0d8"
 decision: pass
-tested_at: "2026-08-01T10:20:00+10:00"
+tested_at: "2026-08-01T10:26:47+10:00"
 ---
 
 # TASK-0035 QA RESULT
@@ -51,7 +51,8 @@ tested_at: "2026-08-01T10:20:00+10:00"
 - `CF-5`: complete。独立Reviewerは最終candidateのharness `make check`、candidate README textlint、旧新diff検査をPASSし、挙動・test・安全契約への影響なしを確認した。
 - `CF-6`: complete。QA FAIL、認証認可、秘密、sudo/PAM、IPC/Schema/設定/依存、並行性/lifecycle/persistence/error/fail-closed、test削除/弱体化、影響不明、binding不一致はいずれも偽。
 - `CF-7`: complete。Mainが旧新commit/tree、全差分digest、空の影響集合、Reviewer証拠、docs lint起因の表記訂正である理由を本sectionへ記録した。
-- `merge_tree`はマージ前のため未設定。Mainはmerge後にcandidate treeとの同一性を確認する。本Taskにlive-e2eケースはない。
+- 最終no-ff merge `873993eea4e37cf05460bf08270c54789315ee3c`の第2親は最終candidate `6b5d3495a0f61bd0a1b134926ef932dd65a5000b`である。main管理証跡を含むmerge treeは`1d37a775501bda244b642f803dd47eb5cadec0d8`で、merge scope checkerは製品差分がHANDOVERのmanaged digestと一致することをPASSした。
+- merge後の`PYTEST_ADDOPTS=--ignore=worktrees make check`はexit 0。除外対象は別worktreeの重複pytest収集だけで、mainの全product/process/docs検査を実行した。本Taskにlive-e2eケースはない。
 
 ## 結論
 
