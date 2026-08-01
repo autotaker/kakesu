@@ -2,11 +2,61 @@ package command
 
 import (
 	"bytes"
+	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 )
+
+func TestEgressServeArgumentsAndFixedFailure(t *testing.T) {
+	old := runEgressService
+	defer func() { runEgressService = old }()
+	var gotContext context.Context
+	var gotPath string
+	runEgressService = func(ctx context.Context, path string) error {
+		gotContext, gotPath = ctx, path
+		return errors.New("secret path and cause")
+	}
+	var stdout, stderr bytes.Buffer
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if code := RunContext(ctx, "dev-agent-egress", []string{"serve", "--config", "/etc/secret.json"}, &stdout, &stderr); code != 1 {
+		t.Fatalf("code=%d stderr=%q", code, stderr.String())
+	}
+	if gotContext != ctx || gotPath != "/etc/secret.json" || stdout.Len() != 0 || stderr.String() != "dev-agent-egress: service start failed\n" {
+		t.Fatalf("context/path/output mismatch ctx=%v path=%q stdout=%q stderr=%q", gotContext, gotPath, stdout.String(), stderr.String())
+	}
+	if strings.Contains(stderr.String(), "secret") || strings.Contains(stderr.String(), "cause") {
+		t.Fatalf("diagnostic leaked detail: %q", stderr.String())
+	}
+}
+
+func TestEgressServePassesCanceledContextAsCleanSuccess(t *testing.T) {
+	old := runEgressService
+	defer func() { runEgressService = old }()
+	var got context.Context
+	runEgressService = func(ctx context.Context, _ string) error { got = ctx; return nil }
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	var stdout, stderr bytes.Buffer
+	if code := RunContext(ctx, "dev-agent-egress", []string{"serve", "--config", "/etc/harness.json"}, &stdout, &stderr); code != 0 || got != ctx || stdout.Len() != 0 || stderr.Len() != 0 {
+		t.Fatalf("code=%d got=%v stdout=%q stderr=%q", code, got, stdout.String(), stderr.String())
+	}
+}
+
+func TestEgressServeRejectsNonExactArguments(t *testing.T) {
+	old := runEgressService
+	defer func() { runEgressService = old }()
+	runEgressService = func(context.Context, string) error { t.Fatal("service called for invalid args"); return nil }
+	for _, args := range [][]string{{"serve"}, {"serve", "--config"}, {"serve", "--config", ""}, {"serve", "--other", "/tmp/config"}, {"start", "--config", "/tmp/config"}} {
+		var stdout, stderr bytes.Buffer
+		if code := RunContext(context.Background(), "dev-agent-egress", args, &stdout, &stderr); code != 2 || stdout.Len() != 0 || !strings.Contains(stderr.String(), "invalid serve arguments") {
+			t.Fatalf("args=%v code=%d stdout=%q stderr=%q", args, code, stdout.String(), stderr.String())
+		}
+	}
+}
 
 func TestVersion(t *testing.T) {
 	var stdout bytes.Buffer
@@ -33,7 +83,7 @@ func TestOperationalInvocationFailsClosed(t *testing.T) {
 func TestSetupCheckConfig(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "harness.json")
-	input := `{"version":1,"paths":{"config_dir":"/etc/dev-agent","state_dir":"/var/lib/dev-agent","runtime_dir":"/run/dev-agent"},"users":{"agent":"dev-agent","runtime":"dev-runtime","broker":"dev-broker"},"identity":{"workspace_id":"workspace-1"},"network":{"default":"deny"}}`
+	input := `{"version":1,"paths":{"config_dir":"/etc/dev-agent","state_dir":"/var/lib/dev-agent","runtime_dir":"/run/dev-agent"},"users":{"agent":"dev-agent","runtime":"dev-runtime","broker":"dev-broker"},"identity":{"workspace_id":"workspace-1"},"network":{"default":"deny"},"egress":{"github_repositories":["octo/repo"],"openai_models":["gpt-4o-mini"]}}`
 	if err := os.WriteFile(path, []byte(input), 0600); err != nil {
 		t.Fatal(err)
 	}
@@ -72,7 +122,7 @@ func TestSetupPlanProvision(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "harness.json")
 	root := filepath.Join(dir, "target")
-	input := `{"version":1,"paths":{"config_dir":"/etc/dev-agent","state_dir":"/var/lib/dev-agent","runtime_dir":"/run/dev-agent"},"users":{"agent":"dev-agent","runtime":"dev-runtime","broker":"dev-broker"},"identity":{"workspace_id":"workspace-1"},"network":{"default":"deny"}}`
+	input := `{"version":1,"paths":{"config_dir":"/etc/dev-agent","state_dir":"/var/lib/dev-agent","runtime_dir":"/run/dev-agent"},"users":{"agent":"dev-agent","runtime":"dev-runtime","broker":"dev-broker"},"identity":{"workspace_id":"workspace-1"},"network":{"default":"deny"},"egress":{"github_repositories":["octo/repo"],"openai_models":["gpt-4o-mini"]}}`
 	if err := os.WriteFile(path, []byte(input), 0600); err != nil {
 		t.Fatal(err)
 	}
@@ -80,10 +130,10 @@ func TestSetupPlanProvision(t *testing.T) {
 	if code := Run("dev-agent-harness-setup", []string{"plan-provision", "--config", path, "--target-root", root}, &stdout, &stderr); code != 0 {
 		t.Fatalf("plan-provision returned %d: %q", code, stderr.String())
 	}
-	if stderr.Len() != 0 || len(strings.Split(strings.TrimSuffix(stdout.String(), "\n"), "\n")) != 11 {
+	if stderr.Len() != 0 || len(strings.Split(strings.TrimSuffix(stdout.String(), "\n"), "\n")) != 12 {
 		t.Fatalf("unexpected output stdout=%q stderr=%q", stdout.String(), stderr.String())
 	}
-	if !strings.Contains(stdout.String(), `"kind":"manifest"`) || !strings.Contains(stdout.String(), `"action_count":10`) {
+	if !strings.Contains(stdout.String(), `"kind":"manifest"`) || !strings.Contains(stdout.String(), `"action_count":11`) {
 		t.Fatal("manifest header missing")
 	}
 	if strings.Contains(stdout.String(), path) || stderr.Len() != 0 {
@@ -95,7 +145,7 @@ func TestSetupPlanProvisionRejectsArgumentsAndInputs(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "harness.json")
 	root := filepath.Join(dir, "target")
-	input := `{"version":1,"paths":{"config_dir":"/etc/dev-agent","state_dir":"/var/lib/dev-agent","runtime_dir":"/run/dev-agent"},"users":{"agent":"dev-agent","runtime":"dev-runtime","broker":"dev-broker"},"identity":{"workspace_id":"workspace-1"},"network":{"default":"deny"}}`
+	input := `{"version":1,"paths":{"config_dir":"/etc/dev-agent","state_dir":"/var/lib/dev-agent","runtime_dir":"/run/dev-agent"},"users":{"agent":"dev-agent","runtime":"dev-runtime","broker":"dev-broker"},"identity":{"workspace_id":"workspace-1"},"network":{"default":"deny"},"egress":{"github_repositories":["octo/repo"],"openai_models":["gpt-4o-mini"]}}`
 	if err := os.WriteFile(path, []byte(input), 0600); err != nil {
 		t.Fatal(err)
 	}
@@ -141,7 +191,7 @@ func (w *failingOutput) Write(p []byte) (int, error) {
 func TestPlanProvisionWriterFailureIsNotRetried(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "harness.json")
-	input := `{"version":1,"paths":{"config_dir":"/etc/dev-agent","state_dir":"/var/lib/dev-agent","runtime_dir":"/run/dev-agent"},"users":{"agent":"dev-agent","runtime":"dev-runtime","broker":"dev-broker"},"identity":{"workspace_id":"workspace-1"},"network":{"default":"deny"}}`
+	input := `{"version":1,"paths":{"config_dir":"/etc/dev-agent","state_dir":"/var/lib/dev-agent","runtime_dir":"/run/dev-agent"},"users":{"agent":"dev-agent","runtime":"dev-runtime","broker":"dev-broker"},"identity":{"workspace_id":"workspace-1"},"network":{"default":"deny"},"egress":{"github_repositories":["octo/repo"],"openai_models":["gpt-4o-mini"]}}`
 	if err := os.WriteFile(path, []byte(input), 0600); err != nil {
 		t.Fatal(err)
 	}
@@ -157,7 +207,7 @@ func TestSetupVerifyProvision(t *testing.T) {
 	path := filepath.Join(dir, "harness.json")
 	manifest := filepath.Join(dir, "manifest.jsonl")
 	root := filepath.Join(dir, "target")
-	input := `{"version":1,"paths":{"config_dir":"/etc/dev-agent","state_dir":"/var/lib/dev-agent","runtime_dir":"/run/dev-agent"},"users":{"agent":"dev-agent","runtime":"dev-runtime","broker":"dev-broker"},"identity":{"workspace_id":"workspace-1"},"network":{"default":"deny"}}`
+	input := `{"version":1,"paths":{"config_dir":"/etc/dev-agent","state_dir":"/var/lib/dev-agent","runtime_dir":"/run/dev-agent"},"users":{"agent":"dev-agent","runtime":"dev-runtime","broker":"dev-broker"},"identity":{"workspace_id":"workspace-1"},"network":{"default":"deny"},"egress":{"github_repositories":["octo/repo"],"openai_models":["gpt-4o-mini"]}}`
 	if err := os.WriteFile(path, []byte(input), 0600); err != nil {
 		t.Fatal(err)
 	}
@@ -172,7 +222,7 @@ func TestSetupVerifyProvision(t *testing.T) {
 	if code := Run("dev-agent-harness-setup", []string{"verify-provision", "--config", path, "--manifest", manifest, "--target-root", root}, &stdout, &stderr); code != 0 {
 		t.Fatalf("verify-provision returned %d: %q", code, stderr.String())
 	}
-	if stdout.String() != "provision manifest version=1 actions=10 verified\n" || stderr.Len() != 0 {
+	if stdout.String() != "provision manifest version=1 actions=11 verified\n" || stderr.Len() != 0 {
 		t.Fatalf("unexpected output stdout=%q stderr=%q", stdout.String(), stderr.String())
 	}
 	if strings.Contains(stdout.String(), path) || strings.Contains(stdout.String(), "dev-agent") {
@@ -196,7 +246,7 @@ func TestSetupVerifyProvisionArgumentsAndFailures(t *testing.T) {
 	path := filepath.Join(dir, "harness.json")
 	manifest := filepath.Join(dir, "manifest.jsonl")
 	root := filepath.Join(dir, "target")
-	input := `{"version":1,"paths":{"config_dir":"/etc/dev-agent","state_dir":"/var/lib/dev-agent","runtime_dir":"/run/dev-agent"},"users":{"agent":"dev-agent","runtime":"dev-runtime","broker":"dev-broker"},"identity":{"workspace_id":"workspace-1"},"network":{"default":"deny"}}`
+	input := `{"version":1,"paths":{"config_dir":"/etc/dev-agent","state_dir":"/var/lib/dev-agent","runtime_dir":"/run/dev-agent"},"users":{"agent":"dev-agent","runtime":"dev-runtime","broker":"dev-broker"},"identity":{"workspace_id":"workspace-1"},"network":{"default":"deny"},"egress":{"github_repositories":["octo/repo"],"openai_models":["gpt-4o-mini"]}}`
 	if err := os.WriteFile(path, []byte(input), 0600); err != nil {
 		t.Fatal(err)
 	}

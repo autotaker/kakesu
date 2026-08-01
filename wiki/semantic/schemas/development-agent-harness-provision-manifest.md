@@ -11,7 +11,7 @@ Development Agent Harness がOS上の配置を実行せずに、再現可能で�
 
 ## Manifest V1 の生成契約
 
-`dev-agent-harness-setup plan-provision --config PATH --target-root PATH`は、対象OSのuser、directory、serviceの望ましい状態を出力する。V1はheader一行の後にaction十行を置く決定的JSONLであり、fieldとrecord順序はexact-bytes testで固定する。互換性を伴う拡張は既存versionを曖昧に維持せず、別Taskでversionを定義する。
+`dev-agent-harness-setup plan-provision --config PATH --target-root PATH`は、対象OSのuser、directory、serviceの望ましい状態を出力する。V1はheader一行の後にaction十一行を置く決定的JSONLであり、fieldとrecord順序はexact-bytes testで固定する。action 8は`config_dir/credentials`をbroker:broker、`0700`で配置し、service actionは9〜11に続く。互換性を伴う拡張は既存versionを曖昧に維持せず、別Taskでversionを定義する。
 
 全recordはwriterを呼ぶ前に構築、検証、serializeする。出力adapterは一回だけwriteし、retryやre-emitをしない。このcommandはtarget rootとhostを変更せず、process、network、IPCも開始しない。executor、install、deploy、および設定生成はこの境界の外にある。
 

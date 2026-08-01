@@ -15,5 +15,9 @@
   },
   "network": {
     "default": "deny"
+  },
+  "egress": {
+    "github_repositories": ["octo/repo"],
+    "openai_models": ["gpt-4o-mini"]
   }
 }

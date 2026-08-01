@@ -13,6 +13,8 @@ Agentへ実認証情報を見せず、ブローカーだけがGitHub App秘密�
 
 ブローカーは次の固定6ファイルだけを一つのstartup snapshotとして読む。
 
+provision manifestはこの固定入力を置く`config_dir/credentials`をbroker:broker、`0700`で作成する。serviceはそのbroker-owned directoryをcredentials/CA authorityの唯一の入力として使い、Agentのread surfaceへ広げない。
+
 - `github-client-id`
 - `github-installation-id`
 - `github-private-key.pem`

@@ -1,18 +1,30 @@
 package command
 
 import (
+	"context"
 	"fmt"
 	"io"
 
 	"github.com/autotaker/kakesu/tools/dev-agent-harness/internal/config"
+	"github.com/autotaker/kakesu/tools/dev-agent-harness/internal/egressservice"
 	"github.com/autotaker/kakesu/tools/dev-agent-harness/internal/provision"
 )
 
 // Version is replaced by the build system for release builds.
 var Version = "devel"
 
+// runEgressService is package-private so command tests can exercise argument,
+// cancellation, and fixed-diagnostic handling without starting systemd.
+var runEgressService = egressservice.Serve
+
 // Run implements the fail-closed command surface shared by scaffold binaries.
 func Run(name string, args []string, stdout, stderr io.Writer) int {
+	return RunContext(context.Background(), name, args, stdout, stderr)
+}
+
+// RunContext is the command boundary used by binaries that translate
+// termination signals into cooperative context cancellation.
+func RunContext(ctx context.Context, name string, args []string, stdout, stderr io.Writer) int {
 	if name == "dev-agent-harness-setup" && len(args) > 0 && args[0] == "check-config" {
 		return checkConfig(args[1:], stdout, stderr)
 	}
@@ -28,11 +40,34 @@ func Run(name string, args []string, stdout, stderr io.Writer) int {
 	}
 	if len(args) == 1 && (args[0] == "--help" || args[0] == "-h") {
 		fmt.Fprintf(stdout, "usage: %s --version\n", name)
-		fmt.Fprintln(stdout, "scaffold only: operational commands are not implemented")
+		if name == "dev-agent-egress" {
+			fmt.Fprintln(stdout, "usage: dev-agent-egress serve --config PATH")
+		} else {
+			fmt.Fprintln(stdout, "scaffold only: operational commands are not implemented")
+		}
 		return 0
+	}
+	if name == "dev-agent-egress" && len(args) > 0 {
+		if args[0] != "serve" {
+			fmt.Fprintln(stderr, "dev-agent-egress: invalid serve arguments")
+			return 2
+		}
+		return serveEgress(ctx, args[1:], stderr)
 	}
 	fmt.Fprintf(stderr, "%s: operational behavior is not implemented; refusing to start\n", name)
 	return 78
+}
+
+func serveEgress(ctx context.Context, args []string, stderr io.Writer) int {
+	if len(args) != 2 || args[0] != "--config" || args[1] == "" {
+		fmt.Fprintln(stderr, "dev-agent-egress: invalid serve arguments")
+		return 2
+	}
+	if err := runEgressService(ctx, args[1]); err != nil {
+		fmt.Fprintln(stderr, "dev-agent-egress: service start failed")
+		return 1
+	}
+	return 0
 }
 
 func planProvision(args []string, stdout, stderr io.Writer) int {
@@ -68,7 +103,7 @@ func verifyProvision(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "dev-agent-harness-setup: provision verification failed (%s)\n", provision.ClassOf(err))
 		return 1
 	}
-	fmt.Fprintln(stdout, "provision manifest version=1 actions=10 verified")
+	fmt.Fprintln(stdout, "provision manifest version=1 actions=11 verified")
 	return 0
 }
 

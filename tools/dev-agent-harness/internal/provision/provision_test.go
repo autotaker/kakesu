@@ -24,6 +24,7 @@ func testConfig() *config.Config {
 		Users:    config.Users{Agent: "dev-agent", Runtime: "dev-runtime", Broker: "dev-broker"},
 		Identity: config.Identity{WorkspaceID: "workspace-1"},
 		Network:  config.Network{Default: "deny"},
+		Egress:   config.Egress{GitHubRepositories: []string{"octo/repo"}, OpenAIModels: []string{"gpt-4o-mini"}},
 	}
 }
 
@@ -62,19 +63,19 @@ func TestBuildCanonicalManifest(t *testing.T) {
 		t.Fatalf("manifest is not deterministic:\n%s\n%s", one, two)
 	}
 	lines := jsonLines(t, one)
-	if len(lines) != 11 {
-		t.Fatalf("record count=%d, want 11", len(lines))
+	if len(lines) != 12 {
+		t.Fatalf("record count=%d, want 12", len(lines))
 	}
 	header := lines[0]
 	for key, want := range map[string]any{
 		"kind": "manifest", "version": float64(1), "platform": "ubuntu",
-		"default": "deny", "target_root": root, "action_count": float64(10),
+		"default": "deny", "target_root": root, "action_count": float64(11),
 	} {
 		if header[key] != want {
 			t.Errorf("header[%q]=%v, want %v", key, header[key], want)
 		}
 	}
-	wantActions := []string{"user", "user", "user", "directory", "directory", "directory", "directory", "service", "service", "service"}
+	wantActions := []string{"user", "user", "user", "directory", "directory", "directory", "directory", "directory", "service", "service", "service"}
 	for i, action := range lines[1:] {
 		if action["kind"] != "action" || action["sequence"] != float64(i+1) || action["action"] != wantActions[i] {
 			t.Errorf("action %d common fields=%v", i+1, action)
@@ -84,7 +85,7 @@ func TestBuildCanonicalManifest(t *testing.T) {
 		t.Fatal("header fields are not canonical and compact")
 	}
 	want := strings.Join([]string{
-		fmt.Sprintf(`{"kind":"manifest","version":1,"platform":"ubuntu","default":"deny","target_root":%q,"action_count":10}`, root),
+		fmt.Sprintf(`{"kind":"manifest","version":1,"platform":"ubuntu","default":"deny","target_root":%q,"action_count":11}`, root),
 		`{"kind":"action","sequence":1,"action":"user","role":"agent","name":"dev-agent","home":"/nonexistent","shell":"/usr/sbin/nologin","locked":true,"create_home":false}`,
 		`{"kind":"action","sequence":2,"action":"user","role":"runtime","name":"dev-runtime","home":"/nonexistent","shell":"/usr/sbin/nologin","locked":true,"create_home":false}`,
 		`{"kind":"action","sequence":3,"action":"user","role":"broker","name":"dev-broker","home":"/nonexistent","shell":"/usr/sbin/nologin","locked":true,"create_home":false}`,
@@ -92,9 +93,10 @@ func TestBuildCanonicalManifest(t *testing.T) {
 		fmt.Sprintf(`{"kind":"action","sequence":5,"action":"directory","logical_path":"/var/lib/dev-agent-harness","target_path":%q,"mode":"0750","owner":"dev-broker","group":"dev-broker"}`, filepath.Join(root, "var/lib/dev-agent-harness")),
 		fmt.Sprintf(`{"kind":"action","sequence":6,"action":"directory","logical_path":"/run/dev-agent-harness","target_path":%q,"mode":"0710","owner":"dev-broker","group":"dev-agent"}`, filepath.Join(root, "run/dev-agent-harness")),
 		fmt.Sprintf(`{"kind":"action","sequence":7,"action":"directory","logical_path":"/var/lib/dev-agent-harness/audit","target_path":%q,"mode":"0750","owner":"dev-broker","group":"dev-broker"}`, filepath.Join(root, "var/lib/dev-agent-harness/audit")),
-		`{"kind":"action","sequence":8,"action":"service","name":"dev-agent-broker","user":"dev-broker","enabled":false,"started":false}`,
-		`{"kind":"action","sequence":9,"action":"service","name":"dev-agent-egress","user":"dev-broker","enabled":false,"started":false}`,
-		`{"kind":"action","sequence":10,"action":"service","name":"dev-agent-approval","user":"dev-broker","enabled":false,"started":false}`,
+		fmt.Sprintf(`{"kind":"action","sequence":8,"action":"directory","logical_path":"/etc/dev-agent-harness/credentials","target_path":%q,"mode":"0700","owner":"dev-broker","group":"dev-broker"}`, filepath.Join(root, "etc/dev-agent-harness/credentials")),
+		`{"kind":"action","sequence":9,"action":"service","name":"dev-agent-broker","user":"dev-broker","enabled":false,"started":false}`,
+		`{"kind":"action","sequence":10,"action":"service","name":"dev-agent-egress","user":"dev-broker","enabled":false,"started":false}`,
+		`{"kind":"action","sequence":11,"action":"service","name":"dev-agent-approval","user":"dev-broker","enabled":false,"started":false}`,
 	}, "\n") + "\n"
 	if string(one) != want {
 		t.Fatalf("canonical JSONL mismatch:\n got: %s\nwant: %s", one, want)
@@ -120,6 +122,7 @@ func TestBuildUsersDirectoriesAndServices(t *testing.T) {
 		{"/var/lib/dev-agent-harness", "dev-broker", "dev-broker"},
 		{"/run/dev-agent-harness", "dev-broker", "dev-agent"},
 		{"/var/lib/dev-agent-harness/audit", "dev-broker", "dev-broker"},
+		{"/etc/dev-agent-harness/credentials", "dev-broker", "dev-broker"},
 	}
 	for i, want := range wantDirs {
 		action := lines[i+4]
@@ -130,6 +133,8 @@ func TestBuildUsersDirectoriesAndServices(t *testing.T) {
 		wantMode := "0750"
 		if i == 2 {
 			wantMode = "0710"
+		} else if i == 4 {
+			wantMode = "0700"
 		}
 		if action["logical_path"] != want.logical || action["target_path"] != mapped || action["mode"] != wantMode || action["owner"] != want.owner || action["group"] != want.group {
 			t.Errorf("directory %d=%v", i, action)
@@ -137,7 +142,7 @@ func TestBuildUsersDirectoriesAndServices(t *testing.T) {
 	}
 	wantServices := []string{"dev-agent-broker", "dev-agent-egress", "dev-agent-approval"}
 	for i, name := range wantServices {
-		action := lines[i+8]
+		action := lines[i+9]
 		if action["name"] != name || action["user"] != "dev-broker" || action["enabled"] != false || action["started"] != false {
 			t.Errorf("service %d=%v", i, action)
 		}
@@ -246,7 +251,7 @@ func TestWriteSingleCallAndWriterFailures(t *testing.T) {
 	if err := Write(testConfig(), root, &good); err != nil {
 		t.Fatalf("Write: %v", err)
 	}
-	if good.calls != 1 || len(jsonLines(t, good.Bytes())) != 11 {
+	if good.calls != 1 || len(jsonLines(t, good.Bytes())) != 12 {
 		t.Fatalf("successful writer calls=%d bytes=%d", good.calls, good.Len())
 	}
 	for _, tc := range []struct {

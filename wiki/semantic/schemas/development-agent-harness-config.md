@@ -15,6 +15,8 @@ version 1 の設定は strict JSON として扱う。unknown field、duplicate k
 
 意味検証は parser の成功と別に行う。network の既定は deny であり、path、user、network、allowlist の制約に反する値は拒否する。許可される `check-config` は設定値を出力せず、成功時には固定された検証結果だけを返す。通常の起動経路は fail-closed のままとする。
 
+V1ではGitHub repository allowlistとOpenAI model allowlistの双方を必須とし、それぞれ1〜32件だけを受理する。設定は受理済み値をcopyして既存の`egresspolicy` Rulesへ渡す。設定readerとpolicyで別々の許可規則を持たず、request surfaceの正本はpolicyに置く。
+
 ## 設定ファイルの FD 基準 policy
 
 設定ファイルは 64 KiB を上限として、regular file だけを対象にする。open 時は no-follow と nonblocking を併用し、read 前後に同じ FD の属性を検査する。symlink、directory、FIFO、size や mode の不正な file は拒否する。

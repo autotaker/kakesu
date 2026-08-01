@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "task_id": "TASK-0058",
+  "handover_sha256": "fc928342d9086153532a2a7784395eaecb4377244fce758258508a883c501ee6",
+  "ingested_at": "2026-08-01T22:06:52Z",
+  "updated_pages": [
+    "wiki/semantic/schemas/development-agent-harness-config.md",
+    "wiki/semantic/schemas/development-agent-harness-provision-manifest.md",
+    "wiki/semantic/schemas/development-agent-harness-broker-credentials.md",
+    "wiki/semantic/schemas/development-agent-harness-egress-transaction.md"
+  ],
+  "created_decisions": [],
+  "deferred": [
+    "実Linux NSS/systemd FD 3/socket permission、実secret、実GitHub/OpenAI、VPS live E2E、および実配置のrestart/rollback/cleanupは承認済み環境と安全なcleanupが未指定のため未確認である。hermetic test又はLinux cross-compileのPASSで代替しない。",
+    "capability issuer/deliveryはこのTaskの対象外であり、Registryは意図的に空のままである。trusted発行経路は後続Taskで扱う。"
+  ]
+}

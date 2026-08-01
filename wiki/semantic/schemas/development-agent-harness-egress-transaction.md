@@ -95,6 +95,12 @@ root-owned config V1は`identity.workspace_id`を必須とし、1〜128 byteのA
 
 後続service compositionはこの一つのsnapshotからsocket activationへbroker UID/agent GIDを、PeerBinderへagent UID/Subjectを渡す。複数箇所でusername lookupやinstance ID生成をやり直さない。実Linux NSS、別broker/agent UID/GID、sysusers、service restart、VPSはなおlive E2E境界であり、fake seam又はLinux cross-compileで代替しない。
 
+## egress serviceの一回限りの起動graph
+
+`dev-agent-egress serve --config PATH`は、config、runtime identity、broker-owned credentials/CA authority、policy、empty capability Registry、transaction/HTTP/connect/listener constructor、socket activation、Serveをこの順で一回ずつ合成する。欠落又は失敗は固定errorへ縮退し、補助binaryのfail-closed契約を維持する。signal cancellationはServeのcontextへ渡すが、起動済みの依存を再生成しない。
+
+同一のruntime identity snapshotだけをPeerBinderとsocket receiverへ、同一のCA authority snapshotだけをCONNECT sessionへ渡す。現在Registryは意図的に空であり、未知handleは拒否する。capabilityのissuer又はdeliveryをserviceが補完せず、trusted発行経路は後続境界として残る。
+
 ## 適用限界
 
 このトランザクションはin-memoryの認可接続コアであり、実認証情報の読取・生成、GitHub App token交換、OpenAI key管理、実UID分離、DNS、上流通信、監査、永続化を実装しない。CONNECT/TLS/HTTPの一接続処理、Agent向けTLS interceptionのCA検証とhost限定leaf発行、受理済みUnix connectionのLinux peer UID照合、systemd継承FDの受領は別境界である。実systemd managerによるFD 3配送、実broker/agent別UID/GID、socket permission/connect、停止時cleanup、network namespace、実client/VPS、実GitHub/OpenAI、実Internet DNS/system trust、CA file lifecycle/rotate/trust install、実配置のrestart/rollback/cleanupはなおlive E2Eで確認する。前記transport、CA、Session、listener、peer binder又はsocket activationのhermetic testとcross-compileは、これらのlive E2E又は認証情報非露出の証明にならない。
@@ -111,6 +117,7 @@ root-owned config V1は`identity.workspace_id`を必須とし、1〜128 byteのA
 - [TASK-0055 HANDOVER](../../../tasks/TASK-0055-dev-agent-linux-peer-binder/HANDOVER.md)
 - [TASK-0056 HANDOVER](../../../tasks/TASK-0056-dev-agent-systemd-socket-activation/HANDOVER.md)
 - [TASK-0057 HANDOVER](../../../tasks/TASK-0057-dev-agent-runtime-identity/HANDOVER.md)
+- [TASK-0058 HANDOVER](../../../tasks/TASK-0058-dev-agent-egress-service/HANDOVER.md)
 - [Development Agent Harness Egress Policy](development-agent-harness-egress-policy.md)
 - [Development Agent Harness Capability Registry](development-agent-harness-capability-registry.md)
 - [Development Agent Harness Proxy CA](development-agent-harness-proxy-ca.md)

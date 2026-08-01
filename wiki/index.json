@@ -144,6 +144,7 @@
         "../../../tasks/TASK-0055-dev-agent-linux-peer-binder/HANDOVER.md",
         "../../../tasks/TASK-0056-dev-agent-systemd-socket-activation/HANDOVER.md",
         "../../../tasks/TASK-0057-dev-agent-runtime-identity/HANDOVER.md",
+        "../../../tasks/TASK-0058-dev-agent-egress-service/HANDOVER.md",
         "development-agent-harness-egress-policy.md",
         "development-agent-harness-capability-registry.md",
         "development-agent-harness-proxy-ca.md"

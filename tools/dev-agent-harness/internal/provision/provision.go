@@ -15,11 +15,12 @@ import (
 	"strings"
 
 	"github.com/autotaker/kakesu/tools/dev-agent-harness/internal/config"
+	"github.com/autotaker/kakesu/tools/dev-agent-harness/internal/egresspolicy"
 )
 
 const (
 	Version     = 1
-	ActionCount = 10
+	ActionCount = 11
 	platform    = "ubuntu"
 	defaultMode = "0750"
 	runtimeMode = "0710"
@@ -206,6 +207,7 @@ func build(c *config.Config, targetRoot string) (manifest, error) {
 		{c.Paths.StateDir, c.Users.Broker, c.Users.Broker, defaultMode},
 		{c.Paths.RuntimeDir, c.Users.Broker, c.Users.Agent, runtimeMode},
 		{filepath.Join(c.Paths.StateDir, "audit"), c.Users.Broker, c.Users.Broker, defaultMode},
+		{filepath.Join(c.Paths.ConfigDir, "credentials"), c.Users.Broker, c.Users.Broker, "0700"},
 	}
 	directories := make([]DirectoryAction, 0, len(logical))
 	for i, item := range logical {
@@ -219,9 +221,9 @@ func build(c *config.Config, targetRoot string) (manifest, error) {
 		})
 	}
 	services := []ServiceAction{
-		{Kind: "action", Sequence: 8, Action: "service", Name: "dev-agent-broker", User: c.Users.Broker, Enabled: false, Started: false},
-		{Kind: "action", Sequence: 9, Action: "service", Name: "dev-agent-egress", User: c.Users.Broker, Enabled: false, Started: false},
-		{Kind: "action", Sequence: 10, Action: "service", Name: "dev-agent-approval", User: c.Users.Broker, Enabled: false, Started: false},
+		{Kind: "action", Sequence: 9, Action: "service", Name: "dev-agent-broker", User: c.Users.Broker, Enabled: false, Started: false},
+		{Kind: "action", Sequence: 10, Action: "service", Name: "dev-agent-egress", User: c.Users.Broker, Enabled: false, Started: false},
+		{Kind: "action", Sequence: 11, Action: "service", Name: "dev-agent-approval", User: c.Users.Broker, Enabled: false, Started: false},
 	}
 	return manifest{
 		header: Header{Kind: "manifest", Version: Version, Platform: platform, Default: "deny", TargetRoot: targetRoot, ActionCount: ActionCount},
@@ -231,6 +233,17 @@ func build(c *config.Config, targetRoot string) (manifest, error) {
 
 func validConfig(c *config.Config) bool {
 	if c.Version != Version || c.Network.Default != "deny" || !validWorkspaceID(c.Identity.WorkspaceID) {
+		return false
+	}
+	if len(c.Egress.GitHubRepositories) < 1 || len(c.Egress.GitHubRepositories) > 32 || len(c.Egress.OpenAIModels) < 1 || len(c.Egress.OpenAIModels) > 32 {
+		return false
+	}
+	if _, err := egresspolicy.New(egresspolicy.Rules{
+		GitHubRepositories: c.Egress.GitHubRepositories,
+		OpenAIModels:       c.Egress.OpenAIModels,
+		MaxBodyBytes:       64 * 1024,
+		MaxOutputTokens:    4096,
+	}); err != nil {
 		return false
 	}
 	paths := []string{c.Paths.ConfigDir, c.Paths.StateDir, c.Paths.RuntimeDir}
@@ -292,7 +305,7 @@ func validateManifest(m manifest) error {
 	if m.header.Kind != "manifest" || m.header.Version != Version || m.header.Platform != platform || m.header.Default != "deny" || m.header.ActionCount != ActionCount || !validAbsoluteClean(m.header.TargetRoot) {
 		return fail(ClassInvalidRecord)
 	}
-	if len(m.users) != 3 || len(m.directories) != 4 || len(m.services) != 3 {
+	if len(m.users) != 3 || len(m.directories) != 5 || len(m.services) != 3 {
 		return fail(ClassInvalidRecord)
 	}
 	for i, action := range m.users {
@@ -309,6 +322,8 @@ func validateManifest(m manifest) error {
 		wantMode := defaultMode
 		if i == 2 {
 			wantMode = runtimeMode
+		} else if i == 4 {
+			wantMode = "0700"
 		}
 		if action.Kind != "action" || action.Action != "directory" || action.Sequence != i+4 || !validAbsoluteClean(action.LogicalPath) || action.TargetPath == "" || action.Mode != wantMode || action.Owner == "" || action.Group == "" {
 			return fail(ClassInvalidRecord)
@@ -328,12 +343,15 @@ func validateManifest(m manifest) error {
 			return fail(ClassInvalidRecord)
 		}
 	}
-	if len(m.directories) == 4 && (filepath.Dir(m.directories[3].LogicalPath) != m.directories[1].LogicalPath || filepath.Base(m.directories[3].LogicalPath) != "audit") {
+	if len(m.directories) == 5 && (filepath.Dir(m.directories[3].LogicalPath) != m.directories[1].LogicalPath || filepath.Base(m.directories[3].LogicalPath) != "audit") {
+		return fail(ClassInvalidRecord)
+	}
+	if len(m.directories) == 5 && (filepath.Dir(m.directories[4].LogicalPath) != m.directories[0].LogicalPath || filepath.Base(m.directories[4].LogicalPath) != "credentials" || m.directories[4].Mode != "0700" || m.directories[4].Owner != broker || m.directories[4].Group != broker) {
 		return fail(ClassInvalidRecord)
 	}
 	wantNames := [...]string{"dev-agent-broker", "dev-agent-egress", "dev-agent-approval"}
 	for i, action := range m.services {
-		if action.Kind != "action" || action.Action != "service" || action.Sequence != i+8 || action.Name != wantNames[i] || action.User != broker || action.Enabled || action.Started {
+		if action.Kind != "action" || action.Action != "service" || action.Sequence != i+9 || action.Name != wantNames[i] || action.User != broker || action.Enabled || action.Started {
 			return fail(ClassInvalidRecord)
 		}
 	}

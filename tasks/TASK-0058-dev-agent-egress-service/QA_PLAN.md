@@ -6,7 +6,7 @@ qa_agent: "qa-agent-terra-medium"
 approved_by: "main-agent-sol-high"
 approved_at: "2026-08-01T18:08:34Z"
 revision: 1
-implementation_reviewed_at: ""
+implementation_reviewed_at: "2026-08-01T18:45:08Z"
 expectation_changed: false
 expectation_change_approved_by: ""
 ---
@@ -55,10 +55,10 @@ QA_RESULTには各ケースの判定、focused rerunのcommand/result、QA-005�
 
 ## 実装後の再確認
 
-- [ ] 同一candidateに対しQA-001〜005を独立に評価し、指定focused rerunを一回だけ実行した。
-- [ ] strict config/manifest、startup exact order、identity共有、empty Registry deny、listener ownership、CLI/diagnostic/systemd wiringのnegative failure-detectionを確認した。
-- [ ] root/harness checksはDEV candidate evidenceとしてだけ監査し、QAが重複実行していない。
-- [ ] QA-006の実Linux/systemd/secret/provider/VPSをblockedのままとし、期待値又はscopeを変更していない。
+- [x] 同一candidateに対しQA-001〜005を独立に評価し、指定focused rerunを一回だけ実行した。
+- [x] strict config/manifest、startup exact order、identity共有、empty Registry deny、listener ownership、CLI/diagnostic/systemd wiringのnegative failure-detectionを確認した。
+- [x] root/harness checksはDEV candidate evidenceとしてだけ監査し、QAが重複実行していない。
+- [x] QA-006の実Linux/systemd/secret/provider/VPSをblockedのままとし、期待値又はscopeを変更していない。
 
 ## 改訂履歴
 

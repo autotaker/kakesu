@@ -1,7 +1,7 @@
 ---
 task_id: "TASK-0058"
 title: "外向き通信serviceのproduction compositionを実装する"
-status: draft
+status: complete
 created_at: "2026-08-02"
 ---
 
@@ -40,11 +40,11 @@ created_at: "2026-08-02"
 
 <!-- AC-IDはTask内で一意かつ安定させ、観測可能な結果をここに一度だけ記載する。 -->
 
-- [ ] AC-1: config V1は必須egress allowlistsをstrictにparse/validate/copyし、exampleとcommand/provision fixtureを同期する。provisionは`config_dir/credentials`をbroker-owned `0700`として一件だけ追加し、11 action以外の既存意味を変えない。
-- [ ] AC-2: service startupはconfig load→runtime identity resolve→credential bundle load→trusted graph construction→socket Take→Serveの順序を一回だけ実行する。前段失敗では後段へ到達せず、socket取得後の所有権はServerへ一回だけ移る。
-- [ ] AC-3: trusted graphは承認済み既存constructorと固定上限だけでpolicy/empty Registry/transport/resolver/exchange/handler/session/binder/serverを構成し、同じidentity resultをsocketとpeer境界へ供給する。default client、fallback、retry、cache、追加network/identity lookupを作らない。
-- [ ] AC-4: `dev-agent-egress serve --config PATH`だけがoperational起動し、invalid args/config/identity/credentials/dependency/socket/Serve failureを固定exit/errorへ畳む。SIGINT/SIGTERM cancel、systemd config/socket wiring、no credential/env argumentを検証する。`--version`とno-args fail-closed契約を維持する。
-- [ ] AC-5: hermetic testsは構築順序/exact call、identity共有、empty Registry denial、listener取得前後のfailure/cancel/ownership、fixed diagnosticsを失敗検出する。focused tests、Linux cross-compile、configured harness `make check`/`make distcheck`、root `make lint-docs`、candidate root `make check`、`git diff --check`がPASSし、許可path内の追加＋削除は概ね1,000行（上限1,100行）とする。
+- [x] AC-1: config V1は必須egress allowlistsをstrictにparse/validate/copyし、exampleとcommand/provision fixtureを同期する。provisionは`config_dir/credentials`をbroker-owned `0700`として一件だけ追加し、11 action以外の既存意味を変えない。
+- [x] AC-2: service startupはconfig load→runtime identity resolve→credential bundle load→trusted graph construction→socket Take→Serveの順序を一回だけ実行する。前段失敗では後段へ到達せず、socket取得後の所有権はServerへ一回だけ移る。
+- [x] AC-3: trusted graphは承認済み既存constructorと固定上限だけでpolicy/empty Registry/transport/resolver/exchange/handler/session/binder/serverを構成し、同じidentity resultをsocketとpeer境界へ供給する。default client、fallback、retry、cache、追加network/identity lookupを作らない。
+- [x] AC-4: `dev-agent-egress serve --config PATH`だけがoperational起動し、invalid args/config/identity/credentials/dependency/socket/Serve failureを固定exit/errorへ畳む。SIGINT/SIGTERM cancel、systemd config/socket wiring、no credential/env argumentを検証する。`--version`とno-args fail-closed契約を維持する。
+- [x] AC-5: hermetic testsは構築順序/exact call、identity共有、empty Registry denial、listener取得前後のfailure/cancel/ownership、fixed diagnosticsを失敗検出する。focused tests、Linux cross-compile、configured harness `make check`/`make distcheck`、root `make lint-docs`、candidate root `make check`、`git diff --check`がPASSし、許可path内の追加＋削除は概ね1,000行（上限1,100行）とする。
 
 ### 安定した参照
 
@@ -110,9 +110,9 @@ created_at: "2026-08-02"
 
 ## 完成の定義
 
-- [ ] 受け入れ条件を満たしている。
-- [ ] 選択した`change_class`の完了経路と`make check`を満たしている。
-- [ ] 製品変更の場合: 実装、テスト、文書、同一案の独立REVIEW/QA、完了後の環境依存ケース確認が完了している。
+- [x] 受け入れ条件を満たしている。
+- [x] 選択した`change_class`の完了経路と`make check`を満たしている。
+- [x] 製品変更の場合: 実装、テスト、文書、同一案の独立REVIEW/QA、完了後の環境依存ケース確認が完了している。
 - [ ] 安全契約変更の場合: 独立計画レビュー、契約検査、許可された統制文書差分の確認が完了している。
 
 ## 関連コンテキスト
