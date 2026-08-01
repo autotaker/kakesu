@@ -131,6 +131,7 @@ function prepareThreeCommitFixture() {
   fs.writeFileSync(path.join(started.worktree, "Makefile"), "check:\n\t@true\n");
   fs.mkdirSync(path.join(started.worktree, "src"), { recursive: true });
   fs.writeFileSync(path.join(started.worktree, "src/product.txt"), "candidate\n");
+  fs.rmSync(path.join(started.worktree, "scripts/task/run-explorer-agent.mjs"));
   const candidate = candidateCommit({ root, taskId: "TASK-9010", candidateRoot: started.worktree });
   setFrontmatter(path.join(taskDir, "HANDOVER.md"), { candidate_commit: candidate.candidate_commit });
   setFrontmatter(path.join(taskDir, "REVIEW_RESULT.md"), { reviewer_agent: task.assignees.reviewer, decision: "pass", reviewed_at: "2026-08-01T00:00:00Z" });
@@ -170,12 +171,8 @@ function prepareLegacyQaCleanupFixture() {
   git(fixture.root, "commit", "-m", "fixture legacy qa state");
   git(fixture.root, "push", "origin", "main");
 
-  // Make the fixture's Wiki agent genuinely unavailable. syncMain must still
-  // complete the legacy cleanup because Wiki receipts are optional.
-  fs.rmSync(path.join(fixture.root, "scripts/task/run-wiki-agent.mjs"));
-  git(fixture.root, "add", "-A");
-  git(fixture.root, "commit", "-m", "fixture without Wiki agent");
-  git(fixture.root, "push", "origin", "main");
+  // The standard Wiki role has no launcher; syncMain still completes legacy
+  // cleanup because Wiki receipts are optional.
   return fixture;
 }
 

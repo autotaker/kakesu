@@ -8,11 +8,7 @@ import { createHash } from "node:crypto";
 import { checkTask } from "./check-task.mjs";
 import { acquireWorkRepoLock, dateInTimezone, git, replaceTemplate, resolveInside, workRepoLockDir } from "./lib.mjs";
 import {
-  deriveEditOnlyChanges,
   rollbackWorkRepository,
-  restoreEditOnlyState,
-  snapshotEditOnlyState,
-  summarizeChildFailure,
   validateDevSelection,
 } from "./agent-routing.mjs";
 import { runWorkConfigSync } from "./run-work-config-sync.mjs";
@@ -549,17 +545,14 @@ test("DEV profile evidence rejects unknown, missing, and risky Luna selections",
 
 test("launchers close child stdin and reserve commits for the lock-owning parent", () => {
   const workLauncher = fs.readFileSync(path.resolve(import.meta.dirname, "run-work-agent.mjs"), "utf8");
-  const wikiLauncher = fs.readFileSync(path.resolve(import.meta.dirname, "run-wiki-agent.mjs"), "utf8");
   const explorerLauncher = fs.readFileSync(path.resolve(import.meta.dirname, "run-explorer-agent.mjs"), "utf8");
   const configSyncLauncher = fs.readFileSync(path.resolve(import.meta.dirname, "run-work-config-sync.mjs"), "utf8");
   const hook = fs.readFileSync(path.resolve(import.meta.dirname, "work-pre-commit.mjs"), "utf8");
-  for (const launcher of [workLauncher, wikiLauncher]) {
-    assert.match(launcher, /stdio:\s*\["ignore",\s*"pipe",\s*"pipe"\]/);
-    assert.match(launcher, /WORK_PARENT_COMMIT:\s*"1"/);
-    assert.match(launcher, /WORK_CHILD_(?:COMMIT_FORBIDDEN|STAGE_FORBIDDEN)|validateChildOutcome/);
-    assert.match(launcher, /rollbackWorkRepository\(root, beforeHead\)/);
-    assert.match(launcher, /commit:\s*null/);
-  }
+  assert.match(workLauncher, /stdio:\s*\["ignore",\s*"pipe",\s*"pipe"\]/);
+  assert.match(workLauncher, /WORK_PARENT_COMMIT:\s*"1"/);
+  assert.match(workLauncher, /WORK_CHILD_(?:COMMIT_FORBIDDEN|STAGE_FORBIDDEN)|validateChildOutcome/);
+  assert.match(workLauncher, /rollbackWorkRepository\(root, beforeHead\)/);
+  assert.match(workLauncher, /commit:\s*null/);
   assert.match(explorerLauncher, /spawn\("codex", invocation\.command/);
   assert.match(explorerLauncher, /stdio:\s*\["ignore",\s*"pipe",\s*"pipe"\]/);
   assert.match(workLauncher, /run-explorer-agent\.mjs/);
@@ -572,6 +565,27 @@ test("launchers close child stdin and reserve commits for the lock-owning parent
   assert.doesNotMatch(configSyncLauncher, /--no-verify|spawnSync\("codex"/);
   assert.match(hook, /WORK_PARENT_COMMIT/);
   assert.match(hook, /lock-owning launcher parent/);
+});
+
+test("Wiki uses the standard edit-only role without a legacy launcher", () => {
+  const root = path.resolve(REPO_ROOT);
+  const makefile = fs.readFileSync(path.join(root, "Makefile"), "utf8");
+  const config = fs.readFileSync(path.join(root, ".codex/config.toml"), "utf8");
+  const role = fs.readFileSync(path.join(root, ".codex/agents/wiki.toml"), "utf8");
+  assert.equal(fs.existsSync(path.join(root, "scripts/task/run-wiki-agent.mjs")), false);
+  for (const removed of ["wiki-context", "wiki-ingest", "WIKI_CONTEXT_TARGET", "WIKI_PROFILE", "WIKI_MODEL", "WIKI_EFFORT", "legacy-wiki"]) {
+    assert.doesNotMatch(makefile, new RegExp(removed));
+  }
+  assert.match(config, /\[agents\.wiki\][\s\S]*config_file = "agents\/wiki\.toml"/);
+  assert.match(role, /^name = "wiki"$/m);
+  assert.match(role, /^model = "gpt-5\.6-terra"$/m);
+  assert.match(role, /^model_reasoning_effort = "medium"$/m);
+  assert.match(role, /^sandbox_mode = "workspace-write"$/m);
+  assert.match(role, /^max_threads = 1$/m);
+  assert.match(role, /^max_depth = 0$/m);
+  assert.match(role, /Do not spawn another Agent/);
+  assert.match(role, /stage, commit, merge/);
+  assert.match(role, /\.git/);
 });
 
 function createConfigSyncFixture({ hookExit = 0, committedDrift = false } = {}) {
@@ -791,196 +805,4 @@ test("failure rollback restores HEAD, index, worktree, untracked files, and lock
       fs.rmSync(root, { recursive: true, force: true });
     });
   }
-});
-
-function createWikiEditOnlyFixture() {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), "wiki-edit-only-"));
-  git(root, ["init", "-b", "main"]);
-  git(root, ["config", "user.name", "fixture"]);
-  git(root, ["config", "user.email", "fixture@example.invalid"]);
-  fs.mkdirSync(path.join(root, "wiki", "semantic"), { recursive: true });
-  fs.writeFileSync(path.join(root, "dirty.txt"), "baseline\n");
-  fs.writeFileSync(path.join(root, "deleted.txt"), "to delete\n");
-  fs.writeFileSync(path.join(root, "wiki", "semantic", "page.md"), "before\n");
-  git(root, ["add", "."]);
-  git(root, ["commit", "-m", "baseline"]);
-  // An index entry with both staged and unstaged content is part of the
-  // starting state and must survive a Wiki edit-only transaction.
-  fs.writeFileSync(path.join(root, "dirty.txt"), "staged\n");
-  git(root, ["add", "dirty.txt"]);
-  fs.writeFileSync(path.join(root, "dirty.txt"), "unstaged\n");
-  fs.rmSync(path.join(root, "deleted.txt"));
-  fs.writeFileSync(path.join(root, "existing.tmp"), "keep\n", { mode: 0o640 });
-  return root;
-}
-
-test("wiki edit-only dirty preservation uses temporary Git fixture", async (t) => {
-  await t.test("success isolates child Wiki path from staged/unstaged and deleted baseline", () => {
-    const root = createWikiEditOnlyFixture();
-    try {
-      const snapshot = snapshotEditOnlyState(root);
-      const beforeIndex = Buffer.from(snapshot.indexBytes);
-      fs.writeFileSync(path.join(root, "wiki", "semantic", "page.md"), "after\n");
-      const result = deriveEditOnlyChanges(root, snapshot);
-      assert.deepEqual(result.changed, ["wiki/semantic/page.md"]);
-      assert.deepEqual(result.collisions, []);
-      assert.equal(result.indexChanged, false);
-      assert.equal(fs.readFileSync(path.join(root, "dirty.txt"), "utf8"), "unstaged\n");
-      assert.equal(fs.existsSync(path.join(root, "deleted.txt")), false);
-      assert.equal(fs.readFileSync(snapshot.index).equals(beforeIndex), true);
-    } finally {
-      fs.rmSync(root, { recursive: true, force: true });
-    }
-  });
-
-  await t.test("rollback removes child untracked and restores bytes, modes, deletion, and index", () => {
-    const root = createWikiEditOnlyFixture();
-    try {
-      const snapshot = snapshotEditOnlyState(root);
-      fs.writeFileSync(path.join(root, "wiki", "semantic", "page.md"), "child\n");
-      fs.writeFileSync(path.join(root, "child.tmp"), "child\n");
-      fs.writeFileSync(path.join(root, "dirty.txt"), "child overwrite\n");
-      fs.writeFileSync(path.join(root, "deleted.txt"), "child resurrected\n");
-      restoreEditOnlyState(root, snapshot);
-      assert.equal(fs.readFileSync(path.join(root, "dirty.txt"), "utf8"), "unstaged\n");
-      assert.equal(fs.existsSync(path.join(root, "deleted.txt")), false);
-      assert.equal(fs.existsSync(path.join(root, "child.tmp")), false);
-      assert.equal(fs.statSync(path.join(root, "existing.tmp")).mode & 0o7777, 0o640);
-      assert.equal(fs.readFileSync(snapshot.index).equals(snapshot.indexBytes), true);
-      const status = spawnSync("git", ["status", "--porcelain=v1", "--untracked-files=all"], { cwd: root, encoding: "utf8" });
-      assert.equal(status.stdout, snapshot.status);
-    } finally {
-      fs.rmSync(root, { recursive: true, force: true });
-    }
-  });
-
-  await t.test("same-path collision, child stage, and stderr diagnostics fail closed", () => {
-    const root = createWikiEditOnlyFixture();
-    try {
-      const snapshot = snapshotEditOnlyState(root);
-      fs.writeFileSync(path.join(root, "dirty.txt"), "child collision\n");
-      assert.deepEqual(deriveEditOnlyChanges(root, snapshot).collisions, ["dirty.txt"]);
-      fs.writeFileSync(path.join(root, "wiki", "semantic", "page.md"), "staged child\n");
-      git(root, ["add", "wiki/semantic/page.md"]);
-      assert.equal(deriveEditOnlyChanges(root, snapshot).indexChanged, true);
-      restoreEditOnlyState(root, snapshot);
-      assert.equal(fs.readFileSync(path.join(root, "wiki", "semantic", "page.md"), "utf8"), "before\n");
-      assert.equal(fs.readFileSync(snapshot.index).equals(snapshot.indexBytes), true);
-      const failure = summarizeChildFailure({
-        exitCode: 17,
-        stderr: "Bearer abcdefghijklmnop sk-1234567890 token=abcdefghijklmnopqrstuvwxyz0123456789",
-      });
-      assert.match(failure, /^WIKI_CHILD_FAILED: exit_code=17; stderr=/);
-      assert.doesNotMatch(failure, /Bearer|sk-1234567890|abcdefghijklmnopqrstuvwxyz0123456789/);
-      assert.ok(failure.length <= 220);
-    } finally {
-      fs.rmSync(root, { recursive: true, force: true });
-    }
-  });
-
-  await t.test("child commit and scope/validation-like drift restore the same baseline", async () => {
-    await t.test("child commit", () => {
-      const root = createWikiEditOnlyFixture();
-      try {
-        const snapshot = snapshotEditOnlyState(root);
-        const beforeHead = git(root, ["rev-parse", "HEAD"]);
-        fs.writeFileSync(path.join(root, "wiki", "semantic", "page.md"), "committed child\n");
-        git(root, ["add", "wiki/semantic/page.md"]);
-        git(root, ["commit", "-m", "child commit"]);
-        restoreEditOnlyState(root, snapshot);
-        assert.equal(git(root, ["rev-parse", "HEAD"]), beforeHead);
-        assert.equal(fs.readFileSync(path.join(root, "wiki", "semantic", "page.md"), "utf8"), "before\n");
-        assert.equal(fs.readFileSync(path.join(root, "dirty.txt"), "utf8"), "unstaged\n");
-        assert.equal(fs.existsSync(path.join(root, "existing.tmp")), true);
-      } finally {
-        fs.rmSync(root, { recursive: true, force: true });
-      }
-    });
-
-    await t.test("scope and validation-like drift", () => {
-      const root = createWikiEditOnlyFixture();
-      try {
-        const snapshot = snapshotEditOnlyState(root);
-        fs.writeFileSync(path.join(root, "wiki", "semantic", "page.md"), "allowed child\n");
-        fs.writeFileSync(path.join(root, "forbidden.txt"), "scope drift\n");
-        const changed = deriveEditOnlyChanges(root, snapshot).changed;
-        assert.deepEqual(changed, ["forbidden.txt", "wiki/semantic/page.md"]);
-        restoreEditOnlyState(root, snapshot);
-        assert.equal(fs.existsSync(path.join(root, "forbidden.txt")), false);
-        assert.equal(fs.readFileSync(path.join(root, "wiki", "semantic", "page.md"), "utf8"), "before\n");
-      } finally {
-        fs.rmSync(root, { recursive: true, force: true });
-      }
-    });
-  });
-
-  await t.test("launcher child failure restores the dirty fixture and publishes only redacted evidence", () => {
-    const root = createWikiEditOnlyFixture();
-    const bin = fs.mkdtempSync(path.join(os.tmpdir(), "wiki-codex-bin-"));
-    try {
-      fs.mkdirSync(path.join(root, ".githooks"));
-      fs.mkdirSync(path.join(root, "tasks", "TASK-0001-fixture"), { recursive: true });
-      fs.writeFileSync(path.join(root, "tasks", "TASK-0001-fixture", "TASK.md"), "task baseline\n");
-      fs.writeFileSync(path.join(root, "backlog.yaml"), "version: 1\ntasks:\n  - id: TASK-0001\n    task_dir: tasks/TASK-0001-fixture\n");
-      git(root, ["add", "."]);
-      git(root, ["commit", "-m", "launcher fixture"]);
-      git(root, ["config", "core.hooksPath", ".githooks"]);
-      fs.writeFileSync(path.join(root, "tasks", "TASK-0001-fixture", "TASK.md"), "preexisting task dirty\n");
-      fs.writeFileSync(path.join(bin, "codex"), "#!/bin/sh\nprintf 'child overwrite\\n' > tasks/TASK-0001-fixture/TASK.md\nprintf 'child\\n' > child.tmp\nprintf 'Bearer abcdefghijklmnop sk-1234567890' >&2\nexit 7\n", { mode: 0o755 });
-      const result = spawnSync(process.execPath, [
-        path.join(REPO_ROOT, "scripts", "task", "run-wiki-agent.mjs"),
-        "--action", "context-task", "--task", "TASK-0001", "--work-root", root, "--commit", "false",
-      ], { cwd: REPO_ROOT, env: { ...process.env, PATH: `${bin}${path.delimiter}${process.env.PATH}` }, encoding: "utf8" });
-      assert.notEqual(result.status, 0);
-      const evidence = JSON.parse(result.stdout.trim().split("\n").at(-1));
-      assert.equal(evidence.child_result.exit_code, 7);
-      assert.equal("stderr_summary" in evidence.child_result, false);
-      assert.match(evidence.error, /^WIKI_CHILD_FAILED: exit_code=7; stderr=/);
-      assert.doesNotMatch(`${result.stdout}\n${result.stderr}`, /Bearer|sk-1234567890/);
-      assert.equal(fs.readFileSync(path.join(root, "tasks", "TASK-0001-fixture", "TASK.md"), "utf8"), "preexisting task dirty\n");
-      assert.equal(fs.existsSync(path.join(root, "child.tmp")), false);
-    } finally {
-      fs.rmSync(bin, { recursive: true, force: true });
-      fs.rmSync(root, { recursive: true, force: true });
-    }
-  });
-
-  await t.test("launcher validation failure restores baseline dirty state around an allowed child edit", () => {
-    const root = createWikiEditOnlyFixture();
-    const bin = fs.mkdtempSync(path.join(os.tmpdir(), "wiki-codex-validation-bin-"));
-    try {
-      fs.mkdirSync(path.join(root, ".githooks"));
-      fs.writeFileSync(path.join(root, ".githooks", "pre-commit"), "#!/bin/sh\nexit 0\n", { mode: 0o755 });
-      fs.mkdirSync(path.join(root, "tasks", "TASK-0001-fixture"), { recursive: true });
-      fs.writeFileSync(path.join(root, "tasks", "TASK-0001-fixture", "TASK.md"), "task baseline\n");
-      fs.writeFileSync(path.join(root, "backlog.yaml"), "version: 1\ntasks:\n  - id: TASK-0001\n    task_dir: tasks/TASK-0001-fixture\n");
-      // Commit only the launcher fixture paths; preserve the staged+unstaged,
-      // deletion, and untracked baseline from createWikiEditOnlyFixture.
-      git(root, ["add", ".githooks", "tasks", "backlog.yaml"]);
-      git(root, ["commit", "--only", "-m", "launcher validation fixture", ".githooks", "tasks", "backlog.yaml"]);
-      git(root, ["config", "core.hooksPath", ".githooks"]);
-      const snapshot = snapshotEditOnlyState(root);
-      const beforeHead = git(root, ["rev-parse", "HEAD"]);
-      fs.writeFileSync(path.join(bin, "codex"), "#!/bin/sh\nprintf 'allowed child edit\\n' > tasks/TASK-0001-fixture/TASK.md\nexit 0\n", { mode: 0o755 });
-      const result = spawnSync(process.execPath, [
-        path.join(REPO_ROOT, "scripts", "task", "run-wiki-agent.mjs"),
-        "--action", "context-task", "--task", "TASK-0001", "--work-root", root, "--commit", "false",
-      ], { cwd: REPO_ROOT, env: { ...process.env, PATH: `${bin}${path.delimiter}${process.env.PATH}` }, encoding: "utf8" });
-      assert.notEqual(result.status, 0);
-      const evidence = JSON.parse(result.stdout.trim().split("\n").at(-1));
-      assert.equal(evidence.child_result.exit_code, 0);
-      assert.equal(evidence.error, "WORK_VALIDATION_FAILED");
-      assert.equal(git(root, ["rev-parse", "HEAD"]), beforeHead);
-      assert.equal(fs.readFileSync(path.join(root, "tasks", "TASK-0001-fixture", "TASK.md"), "utf8"), "task baseline\n");
-      assert.equal(fs.readFileSync(path.join(root, "dirty.txt"), "utf8"), "unstaged\n");
-      assert.equal(fs.existsSync(path.join(root, "deleted.txt")), false);
-      assert.equal(fs.readFileSync(path.join(root, "existing.tmp"), "utf8"), "keep\n");
-      assert.equal(fs.readFileSync(snapshot.index).equals(snapshot.indexBytes), true);
-      const status = spawnSync("git", ["status", "--porcelain=v1", "--untracked-files=all"], { cwd: root, encoding: "utf8" });
-      assert.equal(status.stdout, snapshot.status);
-    } finally {
-      fs.rmSync(bin, { recursive: true, force: true });
-      fs.rmSync(root, { recursive: true, force: true });
-    }
-  });
 });

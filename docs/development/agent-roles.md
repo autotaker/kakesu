@@ -22,4 +22,6 @@ DEVと別Agentとして案 diffとDEV check証跡を独立監査し、REVIEW_RES
 
 ## Wiki Agent
 
-Wiki依頼が明示された場合だけ、許可されたWiki pathsを編集する。標準完了はWiki receiptを要求しない。
+Wiki依頼が明示された場合だけ、Mainが標準の`agents.spawn_agent(task_name=..., agent_type="wiki", fork_turns="none", ...)`でTerra/medium、workspace-writeのWiki担当を一つずつ直列に起動する。許可パスは起動前にMainが固定し、Wiki Agentはその範囲だけを編集する。Wiki Agentは別Agent起動、共通ロック、スコープ判定、検証、stage、コミット、merge、`.git`書込みを行わない。
+
+子の終了後、Mainが差分スコープを確認し、索引変更時だけ`make wiki-index`、続いて`make work-check`を実行する。公開は既存の共通ロック付きMain publish トランザクションとコミットだけで行う。標準完了はWiki receiptを要求せず、Wiki依頼のないTaskはAgentもreceiptもなしで完了できる。receiptを作る場合は既存Schemaと検証規則に従う任意成果物とする。

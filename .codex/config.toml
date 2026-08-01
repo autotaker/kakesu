@@ -29,3 +29,7 @@ config_file = "agents/dev-sol.toml"
 [agents.explorer]
 description = "Bounded read-only repository research using Luna/medium."
 config_file = "agents/explorer.toml"
+
+[agents.wiki]
+description = "Wiki editing only using Terra/medium."
+config_file = "agents/wiki.toml"
