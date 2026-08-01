@@ -627,9 +627,9 @@ tasks:
     type: feature
     change_class: product
     epic: EPIC-001
-    status: plan
+    status: dev
     priority: P1
-    estimate_points: 1
+    estimate_points: 2
     task_dir: tasks/TASK-0036-dev-agent-provision-manifest
     depends_on: []
     branch: task/TASK-0036-dev-agent-provision-manifest

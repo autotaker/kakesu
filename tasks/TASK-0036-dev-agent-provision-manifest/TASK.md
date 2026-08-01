@@ -1,7 +1,7 @@
 ---
 task_id: "TASK-0036"
 title: "Development Agent HarnessのUbuntu provision manifestを実装する"
-status: draft
+status: dev
 created_at: "2026-08-01"
 ---
 
