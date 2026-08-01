@@ -1,7 +1,7 @@
 ---
 task_id: "TASK-0035"
 status: completed
-reviewer_agent: "reviewer-terra-medium"
+reviewer_agent: "reviewer-agent-terra-medium"
 reviewed_commit: "6b5d3495a0f61bd0a1b134926ef932dd65a5000b"
 candidate_commit: "6b5d3495a0f61bd0a1b134926ef932dd65a5000b"
 candidate_tree: "84b53854c139b23d992026175b8f979ae71d4df2"
