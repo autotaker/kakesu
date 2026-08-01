@@ -47,6 +47,19 @@ OSへ適用する前のmanifestを読み取り専用で検証する。manifest�
 manifest本文、ユーザー名、OSエラー本文を診断へ含めない。設定、manifest、指定ルートその他ホスト状態は
 変更せず、OS適用処理、管理者権限、systemd、プロセス、ネットワーク、IPCはこの検証境界の対象外である。
 
+## プロバイダー 認証情報の解決
+
+`internal/providercredentials` は、検証済み ブローカー バンドル と注入された trusted
+`http.RoundTripper` の間だけで認証情報を解決する。OpenAI は バンドル 内の API キー を
+ネットワーク なしで返し、GitHub は要求された 正規 `owner/name` の リポジトリ 名一件だけを
+短命 installation トークン へ呼出しごとに単発交換する。リクエスト は固定 HTTPS endpoint、リポジトリ
+スコープ、タイムアウト、API バージョン に束縛され、レスポンス は上限付き JSON 境界で検証される。
+
+この パッケージ は default 転送方式、TLS/DNS/プロキシ、リダイレクト/再試行、cache、永続化、ログ、実 GitHub
+通信を実装しない。解決した成功値は trusted `egresstransaction` から Forwarder へ渡すためだけに
+使い、Agent や診断へ 認証情報・JWT・リクエスト/レスポンスの詳細を公開しない。実 転送方式 と
+GitHub installation の受理は後続の live E2E 境界で確認する。
+
 ## Build
 
 リリースtarballには生成済み`configure`を含める。

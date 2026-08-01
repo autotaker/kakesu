@@ -138,6 +138,16 @@
       ]
     },
     {
+      "path": "wiki/semantic/schemas/development-agent-harness-provider-credentials.md",
+      "kind": "schema",
+      "title": "Development Agent Harness プロバイダー認証情報の解決",
+      "links": [
+        "../../../tasks/TASK-0043-dev-agent-provider-resolver/HANDOVER.md",
+        "development-agent-harness-broker-credentials.md",
+        "development-agent-harness-egress-transaction.md"
+      ]
+    },
+    {
       "path": "wiki/semantic/schemas/development-agent-harness-provision-manifest.md",
       "kind": "schema",
       "title": "Development Agent Harness Provision Manifest",

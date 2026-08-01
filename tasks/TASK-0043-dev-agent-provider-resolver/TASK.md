@@ -1,7 +1,7 @@
 ---
 task_id: "TASK-0043"
 title: "GitHub installation token交換とprovider resolverを実装する"
-status: plan
+status: done
 created_at: "2026-08-01"
 ---
 
@@ -39,12 +39,12 @@ TASK-0041のtrusted `CredentialResolver`をTASK-0042のbroker credential bundle�
 
 ### 受け入れ条件
 
-- [ ] AC-1: validなbundle、non-nil `RoundTripper`、1ms〜30秒のtimeoutからresolverを構築できる。nil bundle/transport、範囲外timeoutは固定invalid-rules errorとなり、nil/zero resolver、未知provider、providerとrepository形の不一致は固定resolve errorとなる。resolverは`egresstransaction.CredentialResolver`を実装する。
-- [ ] AC-2: `Resolve("openai", "")`はbundleのOpenAI API keyをそのまま返し、transportとJWT生成へ到達しない。OpenAIでrepositoryがある場合、またはGitHub以外のproviderは値なしの固定resolve errorとなる。
-- [ ] AC-3: canonical `owner/name`のGitHub解決は、bundleのinstallation IDを10進pathへ、repositoryの`name`だけを1要素の`repositories` JSON配列へ束縛し、固定HTTPS host/path/method/headerを持つrequestをtimeout context付きで`RoundTrip`へ一回だけ渡す。JWTはBearerだけに使い、request本文へ入れない。redirect status、transport error、context timeoutをretryせず固定resolve errorにする。
-- [ ] AC-4: GitHub responseはnon-nil body、status `201`、media type `application/json`、128 KiB以下の重複fieldなし単一JSON objectで、1〜4,096 byte visible ASCIIの`token`と、現在より後かつ65分以内のRFC3339 `expires_at`を各一つ持つ場合だけtokenを返す。未知fieldと新token形式は許容し、missing/duplicate/wrong type、trailing JSON、過大body、期限外、non-visible tokenは固定resolve errorとなる。bodyは成功/失敗の全経路でcloseされる。
-- [ ] AC-5: resolverはinstallation tokenをcache/保持せず、各GitHub resolveで新しいJWTと一回の交換だけを行う。packageはdefault transport、redirect、retry、log、environment、file/process、永続書込みを使わず、公開error又はformat結果にOpenAI key、JWT、installation token、response/request本文、repository、URL、parser/transport detailを含めない。
-- [ ] AC-6: unit testsはOpenAI no-network、GitHub requestの完全な束縛、provider/repository拒否、timeout/call count、response/status/content-type/size/JSON/token/expiry境界、body close、固定error/non-leakを検出する。同じresolverをTASK-0041 transactionへ渡すintegration testで、無効capabilityではtransport未到達、valid GitHub/OpenAI requestだけがprovider credentialをtrusted Forwarderへ渡すことを確認する。`go test -race ./internal/providercredentials`、harness `make check`/`make distcheck`、root `make check`がPASSし、base...candidateの対象packageとREADMEの追加＋削除合計は1,200行以下である。
+- [x] AC-1: validなbundle、non-nil `RoundTripper`、1ms〜30秒のtimeoutからresolverを構築できる。nil bundle/transport、範囲外timeoutは固定invalid-rules errorとなり、nil/zero resolver、未知provider、providerとrepository形の不一致は固定resolve errorとなる。resolverは`egresstransaction.CredentialResolver`を実装する。
+- [x] AC-2: `Resolve("openai", "")`はbundleのOpenAI API keyをそのまま返し、transportとJWT生成へ到達しない。OpenAIでrepositoryがある場合、またはGitHub以外のproviderは値なしの固定resolve errorとなる。
+- [x] AC-3: canonical `owner/name`のGitHub解決は、bundleのinstallation IDを10進pathへ、repositoryの`name`だけを1要素の`repositories` JSON配列へ束縛し、固定HTTPS host/path/method/headerを持つrequestをtimeout context付きで`RoundTrip`へ一回だけ渡す。JWTはBearerだけに使い、request本文へ入れない。redirect status、transport error、context timeoutをretryせず固定resolve errorにする。
+- [x] AC-4: GitHub responseはnon-nil body、status `201`、media type `application/json`、128 KiB以下の重複fieldなし単一JSON objectで、1〜4,096 byte visible ASCIIの`token`と、現在より後かつ65分以内のRFC3339 `expires_at`を各一つ持つ場合だけtokenを返す。未知fieldと新token形式は許容し、missing/duplicate/wrong type、trailing JSON、過大body、期限外、non-visible tokenは固定resolve errorとなる。bodyは成功/失敗の全経路でcloseされる。
+- [x] AC-5: resolverはinstallation tokenをcache/保持せず、各GitHub resolveで新しいJWTと一回の交換だけを行う。packageはdefault transport、redirect、retry、log、environment、file/process、永続書込みを使わず、公開error又はformat結果にOpenAI key、JWT、installation token、response/request本文、repository、URL、parser/transport detailを含めない。
+- [x] AC-6: unit testsはOpenAI no-network、GitHub requestの完全な束縛、provider/repository拒否、timeout/call count、response/status/content-type/size/JSON/token/expiry境界、body close、固定error/non-leakを検出する。同じresolverをTASK-0041 transactionへ渡すintegration testで、無効capabilityではtransport未到達、valid GitHub/OpenAI requestだけがprovider credentialをtrusted Forwarderへ渡すことを確認する。`go test -race ./internal/providercredentials`、harness `make check`/`make distcheck`、root `make check`がPASSし、base...candidateの対象packageとREADMEの追加＋削除合計は1,200行以下である。
 
 ### 安定した参照
 
@@ -102,10 +102,10 @@ TASK-0042で長期secretとJWT生成はbroker memoryへ閉じたが、TASK-0041�
 
 ## 完成の定義
 
-- [ ] 受け入れ条件を満たしている。
-- [ ] planning/candidate/completionの3 commit経路と`make check`を満たしている。
-- [ ] 同一candidateの独立REVIEW/QAと必要なSemantic Wiki更新を完了している。post-merge `task-check`はcompletion後に実行する。
-- [ ] 実TLS/DNS/proxy transportと実GitHub/OpenAI受理をPASSと誤記せず、後続Task/live E2Eとして残している。
+- [x] 受け入れ条件を満たしている。
+- [x] planning/candidate/completionの3 commit経路と`make check`を満たしている。
+- [x] 同一candidateの独立REVIEW/QAと必要なSemantic Wiki更新を完了している。post-merge `task-check`はcompletion後に実行する。
+- [x] 実TLS/DNS/proxy transportと実GitHub/OpenAI受理をPASSと誤記せず、後続Task/live E2Eとして残している。
 
 ## 関連コンテキスト
 
