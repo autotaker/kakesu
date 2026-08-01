@@ -318,3 +318,204 @@ func TestBuildDoesNotTouchTargetRoot(t *testing.T) {
 		t.Fatalf("target root tree changed: entries=%v err=%v", entries, err)
 	}
 }
+
+func TestVerifyAcceptsOnlyCanonicalBytes(t *testing.T) {
+	dir := t.TempDir()
+	root := filepath.Join(dir, "target")
+	path := filepath.Join(dir, "manifest.jsonl")
+	want := mustBuild(t, testConfig(), root)
+	if err := os.WriteFile(path, want, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := Verify(testConfig(), path, root); err != nil {
+		t.Fatalf("canonical manifest rejected: %v", err)
+	}
+	otherConfig := testConfig()
+	otherConfig.Users.Agent = "other-agent"
+	if err := Verify(otherConfig, path, root); ClassOf(err) != ClassManifestMismatch {
+		t.Fatalf("different config class=%q err=%v", ClassOf(err), err)
+	}
+	if err := Verify(testConfig(), path, filepath.Join(dir, "other-target")); ClassOf(err) != ClassManifestMismatch {
+		t.Fatalf("different target root class=%q err=%v", ClassOf(err), err)
+	}
+	for _, tc := range []struct {
+		name string
+		data func([]byte) []byte
+	}{
+		{"append", func(data []byte) []byte { return append(append([]byte(nil), data...), ' ') }},
+		{"change", func(data []byte) []byte {
+			mutated := append([]byte(nil), data...)
+			mutated[len(mutated)-2] = 'x'
+			return mutated
+		}},
+		{"delete", func(data []byte) []byte { return append([]byte(nil), data[:len(data)-1]...) }},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if err := os.WriteFile(path, tc.data(want), 0600); err != nil {
+				t.Fatal(err)
+			}
+			if err := Verify(testConfig(), path, root); ClassOf(err) != ClassManifestMismatch {
+				t.Fatalf("class=%q err=%v, want %q", ClassOf(err), err, ClassManifestMismatch)
+			}
+		})
+	}
+}
+
+func TestVerifyManifestFilePolicy(t *testing.T) {
+	dir := t.TempDir()
+	root := filepath.Join(dir, "target")
+	path := filepath.Join(dir, "manifest.jsonl")
+	want := mustBuild(t, testConfig(), root)
+	if err := os.WriteFile(path, want, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(path, 0660); err != nil {
+		t.Fatal(err)
+	}
+	if err := Verify(testConfig(), path, root); ClassOf(err) != ClassManifestFilePolicy {
+		t.Fatalf("writable file class=%q err=%v", ClassOf(err), err)
+	}
+	if err := os.Chmod(path, 0600); err != nil {
+		t.Fatal(err)
+	}
+	link := filepath.Join(dir, "manifest-link")
+	if err := os.Symlink(path, link); err != nil {
+		t.Skipf("symlink unsupported: %v", err)
+	}
+	if err := Verify(testConfig(), link, root); ClassOf(err) != ClassManifestFilePolicy {
+		t.Fatalf("symlink class=%q err=%v", ClassOf(err), err)
+	}
+	if err := Verify(testConfig(), dir, root); ClassOf(err) != ClassManifestFilePolicy {
+		t.Fatalf("directory class=%q err=%v", ClassOf(err), err)
+	}
+	if err := os.WriteFile(path, make([]byte, MaxManifestSize+1), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := Verify(testConfig(), path, root); ClassOf(err) != ClassManifestFilePolicy {
+		t.Fatalf("oversize class=%q err=%v", ClassOf(err), err)
+	}
+	if err := os.WriteFile(path, make([]byte, MaxManifestSize), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := Verify(testConfig(), path, root); ClassOf(err) != ClassManifestMismatch {
+		t.Fatalf("boundary-size class=%q err=%v", ClassOf(err), err)
+	}
+}
+
+func TestVerifyRejectsReadTimeMetadataChange(t *testing.T) {
+	dir := t.TempDir()
+	root := filepath.Join(dir, "target")
+	path := filepath.Join(dir, "manifest.jsonl")
+	if err := os.WriteFile(path, mustBuild(t, testConfig(), root), 0600); err != nil {
+		t.Fatal(err)
+	}
+	manifestReadBeforeHook = func(f *os.File) { _ = f.Chmod(0640) }
+	defer func() { manifestReadBeforeHook = nil }()
+	if err := Verify(testConfig(), path, root); ClassOf(err) != ClassManifestFilePolicy {
+		t.Fatalf("metadata change class=%q err=%v", ClassOf(err), err)
+	}
+}
+
+func TestVerifyMapsClosedDescriptorReadToManifestRead(t *testing.T) {
+	dir := t.TempDir()
+	root := filepath.Join(dir, "target")
+	path := filepath.Join(dir, "manifest.jsonl")
+	if err := os.WriteFile(path, mustBuild(t, testConfig(), root), 0600); err != nil {
+		t.Fatal(err)
+	}
+	manifestReadBeforeHook = func(f *os.File) { _ = f.Close() }
+	defer func() { manifestReadBeforeHook = nil }()
+	if err := Verify(testConfig(), path, root); ClassOf(err) != ClassManifestRead {
+		t.Fatalf("closed descriptor class=%q err=%v, want %q", ClassOf(err), err, ClassManifestRead)
+	}
+}
+
+func TestVerifySuccessDoesNotMutateInputsOrTargetRoot(t *testing.T) {
+	dir := t.TempDir()
+	root := filepath.Join(dir, "target")
+	if err := os.Mkdir(root, 0700); err != nil {
+		t.Fatal(err)
+	}
+	sentinel := filepath.Join(root, "sentinel")
+	if err := os.WriteFile(sentinel, []byte("unchanged"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(dir, "manifest.jsonl")
+	want := mustBuild(t, testConfig(), root)
+	if err := os.WriteFile(path, want, 0600); err != nil {
+		t.Fatal(err)
+	}
+	manifestBefore, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifestInfo, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifestMode := manifestInfo.Mode()
+	sentinelBefore, err := os.ReadFile(sentinel)
+	if err != nil {
+		t.Fatal(err)
+	}
+	entriesBefore, err := os.ReadDir(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := Verify(testConfig(), path, root); err != nil {
+		t.Fatalf("canonical manifest rejected: %v", err)
+	}
+	manifestAfter, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	afterInfo, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sentinelAfter, err := os.ReadFile(sentinel)
+	if err != nil {
+		t.Fatal(err)
+	}
+	entriesAfter, err := os.ReadDir(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(manifestBefore, manifestAfter) || manifestMode != afterInfo.Mode() {
+		t.Fatalf("manifest changed: bytes=%t mode=%v/%v", !bytes.Equal(manifestBefore, manifestAfter), manifestMode, afterInfo.Mode())
+	}
+	if !bytes.Equal(sentinelBefore, sentinelAfter) {
+		t.Fatal("target root sentinel changed")
+	}
+	if len(entriesBefore) != len(entriesAfter) {
+		t.Fatalf("target root listing changed: before=%d after=%d", len(entriesBefore), len(entriesAfter))
+	}
+	for i := range entriesBefore {
+		if entriesBefore[i].Name() != entriesAfter[i].Name() {
+			t.Fatalf("target root listing changed: before=%q after=%q", entriesBefore[i].Name(), entriesAfter[i].Name())
+		}
+	}
+}
+
+func TestVerifyDoesNotReopenManifestPath(t *testing.T) {
+	dir := t.TempDir()
+	root := filepath.Join(dir, "target")
+	path := filepath.Join(dir, "manifest.jsonl")
+	want := mustBuild(t, testConfig(), root)
+	if err := os.WriteFile(path, want, 0600); err != nil {
+		t.Fatal(err)
+	}
+	manifestReadBeforeHook = func(_ *os.File) {
+		backup := path + ".old"
+		if err := os.Rename(path, backup); err != nil {
+			t.Fatalf("rename manifest: %v", err)
+		}
+		if err := os.WriteFile(path, []byte("replacement"), 0600); err != nil {
+			t.Fatalf("replace manifest: %v", err)
+		}
+	}
+	defer func() { manifestReadBeforeHook = nil }()
+	if err := Verify(testConfig(), path, root); err != nil {
+		t.Fatalf("descriptor contents were not used: %v", err)
+	}
+}
