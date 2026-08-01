@@ -14,8 +14,8 @@ safety_merge_tree: ""
 candidate_commit: "5e5d29e8250d8b2999d2cf6e51e748b7f866b016"
 candidate_tree: "cc3ea4ba4b6f99da68e73e370faddc3c1bad2aa1"
 managed_path_digest: "a62367397b23bb54347ff9f04951b7a11e2eb2a97e1385c51b9a2e2aef395c40"
-bootstrap_evidence_commit: ""
-bootstrap_evidence_digest: ""
+bootstrap_evidence_commit: "a063f6d461bbc6ce752d93306f83e4939e299d1e"
+bootstrap_evidence_digest: "279dc69dba63337208ac4d0dd065db8055e7bb0b00fb8df5e0f9024d9f283329"
 ---
 
 # TASK-0035 HANDOVER
@@ -30,7 +30,7 @@ bootstrap_evidence_digest: ""
 - `candidate_commit`: `5e5d29e8250d8b2999d2cf6e51e748b7f866b016`
 - `candidate_tree`: `cc3ea4ba4b6f99da68e73e370faddc3c1bad2aa1`
 - `managed_path_digest`: `a62367397b23bb54347ff9f04951b7a11e2eb2a97e1385c51b9a2e2aef395c40`
-- `bootstrap_evidence_commit` / `bootstrap_evidence_digest`: 該当なし。
+- `bootstrap_evidence_commit` / `bootstrap_evidence_digest`: `a063f6d461bbc6ce752d93306f83e4939e299d1e` / `279dc69dba63337208ac4d0dd065db8055e7bb0b00fb8df5e0f9024d9f283329`。現repositoryの不変bootstrap manifestを継承する。
 
 | ケース ID | コマンド/テスト | 環境/フィクスチャ | cache条件 | exit | 成果物 ダイジェスト | 未実施理由 |
 |---|---|---|---:|---:|---|---|
