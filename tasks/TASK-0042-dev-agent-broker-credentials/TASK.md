@@ -1,7 +1,7 @@
 ---
 task_id: "TASK-0042"
 title: "Broker CredentialsとGitHub App JWTを実装する"
-status: plan
+status: done
 created_at: "2026-08-01"
 ---
 
@@ -39,12 +39,12 @@ created_at: "2026-08-01"
 
 ### 受け入れ条件
 
-- [ ] AC-1: validな固定4-file directoryをnon-rootのowner UIDで`Load`するとbundleが得られる。空path、root UID、directory/fileのowner不一致、group/other権限、directoryのread/execute不足、fileのread不足/実行bit、symlink、directoryでないpath、missing path、regularでないnode、size超過、読込み中metadata変化は同じ固定load errorで拒否され、FIFOでblockしない。Ubuntuは一つのdirectory descriptorに固定basenameを束縛して読み、caller文字列をrelative filenameへ使わない。
-- [ ] AC-2: client ID、installation ID、OpenAI keyは末尾LFを0又は1個だけ除いた後に各境界を満たす場合だけ受理される。空、CR/LF混入、space/control/non-ASCII、過長、installation IDの符号/leading zero/overflow/zeroは固定load errorとなる。OpenAI keyのprefixやprovider固有長は仮定しない。
-- [ ] AC-3: private keyは余剰PEM/dataなしの単一unencrypted PKCS#1又はPKCS#8 RSA keyだけを受理し、non-RSA、encrypted、invalid、2048 bit未満、8192 bit超過を固定load errorで拒否する。bundleはraw PEM/private keyを返さず、入力byteを保持せず、秘密を含むformat/marshal APIを持たない。
-- [ ] AC-4: `GitHubAppJWT`は各呼出しで署名処理を行い3-part base64url JWTを返す。header/payloadは固定fieldだけ、基準時刻を`now.UTC().Unix()`の整数秒とし、JSON数値の`iat=now-60`、`exp=now+540`と文字列`iss=client ID`を持つ。RS256署名をbundleの公開鍵で検証でき、同じ基準秒なら同一JWTを許す。署名失敗は固定JWT errorとなり、JWT/private key/parser detailをerrorへ含めない。
-- [ ] AC-5: bundleのtrusted broker APIはclient ID、installation ID、OpenAI key、短命JWTに限定される。packageは環境変数、command line、network、process、DNS、socket、永続書込み、logを使わず、load/JWT errorはpath、file名、UID、mode、入力、key/token、parser/OS detailを含まない。
-- [ ] AC-6: unit testsはvalid load、各file policy、text境界、両RSA形式、拒否形式、JWT claim/signature/time、caller入力不変、固定error/non-leakを検出する。`go test -race ./internal/brokercredentials`、harness `make check`/`make distcheck`、root `make check`がPASSし、base...candidateの対象packageとREADMEの追加＋削除合計は1,200行以下である。
+- [x] AC-1: validな固定4-file directoryをnon-rootのowner UIDで`Load`するとbundleが得られる。空path、root UID、directory/fileのowner不一致、group/other権限、directoryのread/execute不足、fileのread不足/実行bit、symlink、directoryでないpath、missing path、regularでないnode、size超過、読込み中metadata変化は同じ固定load errorで拒否され、FIFOでblockしない。Ubuntuは一つのdirectory descriptorに固定basenameを束縛して読み、caller文字列をrelative filenameへ使わない。
+- [x] AC-2: client ID、installation ID、OpenAI keyは末尾LFを0又は1個だけ除いた後に各境界を満たす場合だけ受理される。空、CR/LF混入、space/control/non-ASCII、過長、installation IDの符号/leading zero/overflow/zeroは固定load errorとなる。OpenAI keyのprefixやprovider固有長は仮定しない。
+- [x] AC-3: private keyは余剰PEM/dataなしの単一unencrypted PKCS#1又はPKCS#8 RSA keyだけを受理し、non-RSA、encrypted、invalid、2048 bit未満、8192 bit超過を固定load errorで拒否する。bundleはraw PEM/private keyを返さず、入力byteを保持せず、秘密を含むformat/marshal APIを持たない。
+- [x] AC-4: `GitHubAppJWT`は各呼出しで署名処理を行い3-part base64url JWTを返す。header/payloadは固定fieldだけ、基準時刻を`now.UTC().Unix()`の整数秒とし、JSON数値の`iat=now-60`、`exp=now+540`と文字列`iss=client ID`を持つ。RS256署名をbundleの公開鍵で検証でき、同じ基準秒なら同一JWTを許す。署名失敗は固定JWT errorとなり、JWT/private key/parser detailをerrorへ含めない。
+- [x] AC-5: bundleのtrusted broker APIはclient ID、installation ID、OpenAI key、短命JWTに限定される。packageは環境変数、command line、network、process、DNS、socket、永続書込み、logを使わず、load/JWT errorはpath、file名、UID、mode、入力、key/token、parser/OS detailを含まない。
+- [x] AC-6: unit testsはvalid load、各file policy、text境界、両RSA形式、拒否形式、JWT claim/signature/time、caller入力不変、固定error/non-leakを検出する。`go test -race ./internal/brokercredentials`、harness `make check`/`make distcheck`、root `make check`がPASSし、base...candidateの対象packageとREADMEの追加＋削除合計は1,200行以下である。
 
 ### 安定した参照
 
@@ -100,10 +100,10 @@ TASK-0041により未認可requestがCredential解決へ到達しない順序は
 
 ## 完成の定義
 
-- [ ] 受け入れ条件を満たしている。
-- [ ] planning/candidate/completionの3 commit経路と`make check`を満たしている。
-- [ ] 同一candidateの独立REVIEW/QA、必要なSemantic Wiki更新、post-merge `task-check`を完了している。
-- [ ] 実Ubuntu UID/権限隔離と実GitHub token交換をPASSと誤記せず、後続live E2Eとして残している。
+- [x] 受け入れ条件を満たしている。
+- [x] planning/candidate/completionの3 commit経路と`make check`を満たしている。
+- [x] 同一candidateの独立REVIEW/QAと必要なSemantic Wiki更新を完了している。post-merge `task-check`はcompletion後に実行する。
+- [x] 実Ubuntu UID/権限隔離と実GitHub token交換をPASSと誤記せず、後続live E2Eとして残している。
 
 ## 関連コンテキスト
 

@@ -5,6 +5,21 @@ Kakesuを開発するための外部開発基盤である。Kakesu本体のラ�
 現在はbuild/install境界だけを固定したスキャフォールドである。各バイナリは`--version`だけ成功し、通常起動は
 未実装としてfail-closedする。
 
+## ブローカーの認証情報
+
+`internal/brokercredentials` は、trusted ブローカーだけが読む秘密情報の境界である。配置ディレクトリには
+`github-client-id`、`github-installation-id`、`github-private-key.pem`、`openai-api-key` の4 basename
+だけを使い、実効UID所有、グループ/other権限なし、ディレクトリのオーナー read/execute、ファイルのオーナー read
+（実行不可）を満たす必要がある。Linuxでは一度開いたディレクトリ descriptorから固定basenameを`openat`で
+読み、symlink、通常ファイルでないnode、上限超過、読込み前後のメタデータ変化を拒否する。非Linux readerは開発テスト用
+であり、本番サポートを意味しない。
+
+正常に読み込まれたバンドルは、検証済みのクライアント ID、installation ID、OpenAI API キーと、GitHub App用の
+短命RS256 JWT生成だけをtrusted ブローカーへ提供する。JWTは整数Unix秒の`iat=now-60`、`exp=now+540`、
+`iss=クライアント ID`を使う。秘密ファイルの作成・rotate・書込み、環境変数やコマンド lineからの読込み、HTTP/
+ネットワーク、Agentへの実認証情報公開、installation トークン交換はこの境界の対象外である。実配置のUID隔離と
+実GitHub受理は後続live E2Eで確認する。
+
 `dev-agent-harness-setup check-config --config PATH` は、サービス起動前に設定例をローカル検証する読み取り専用
 コマンドである。バージョン1のstrict JSON、絶対かつcleanな配置パス、相異なるLinux user名、
 `network.default=deny`、グループまたはその他ユーザーから書き込み可能ではないregular設定ファイル（64 KiB以下）だけを受理する。成功時は設定値を表示せず

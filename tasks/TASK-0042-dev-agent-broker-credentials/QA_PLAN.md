@@ -7,7 +7,7 @@ qa_role: "independent-qa"
 approved_by: "main-agent-sol-high"
 approved_at: "2026-08-01T06:43:37Z"
 revision: 1
-implementation_reviewed_at: ""
+implementation_reviewed_at: "2026-08-01T07:09:09Z"
 expectation_changed: false
 expectation_change_approved_by: ""
 ---
@@ -37,9 +37,9 @@ TASK.mdのplanning input packetを唯一の要件正本とする。同一candida
 
 ## 実装後の再確認
 
-- [ ] 実装差分とレビュー結果を確認した。
-- [ ] 操作手順と期待結果を現行実装に合わせた。
-- [ ] 期待結果または範囲を変更した場合、main Agentの承認を得た。
+- [x] 実装差分とReviewerの開始条件を確認した。
+- [x] 操作手順と期待結果が現行実装に適用可能であることを確認した。
+- [x] 期待結果と範囲は変更していない。
 
 ## 改訂履歴
 

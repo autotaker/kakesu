@@ -93,6 +93,15 @@
       ]
     },
     {
+      "path": "wiki/semantic/schemas/development-agent-harness-broker-credentials.md",
+      "kind": "schema",
+      "title": "Development Agent Harness ブローカー認証情報",
+      "links": [
+        "../../../tasks/TASK-0042-dev-agent-broker-credentials/HANDOVER.md",
+        "development-agent-harness-egress-transaction.md"
+      ]
+    },
+    {
       "path": "wiki/semantic/schemas/development-agent-harness-capability-registry.md",
       "kind": "schema",
       "title": "Development Agent Harness Capability Registry",
