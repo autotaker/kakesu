@@ -5,8 +5,8 @@ status: approved
 qa_agent: "qa-agent-terra-medium"
 approved_by: "main-agent-sol-high"
 approved_at: "2026-08-01T10:41:15+10:00"
-revision: 3
-implementation_reviewed_at: ""
+revision: 4
+implementation_reviewed_at: "2026-08-01T11:07:12+10:00"
 expectation_changed: false
 expectation_change_approved_by: ""
 ---
@@ -53,5 +53,6 @@ expectation_change_approved_by: ""
 
 | 改訂 | 日付 | 変更者 | 変更内容 | main承認 |
 |---:|---|---|---|---|
+| 4 | 2026-08-01 | qa-agent-terra-medium | candidate `8f07079e03e8b408e4450bb94b79915646f923a7` review: 期待不変、QAケース変更なし | pending |
 | 3 | 2026-08-01 | qa-agent-terra-medium | writer partial-write境界とbinary数をTASK境界へ訂正 | main-agent-sol-high / 2026-08-01T10:41:15+10:00 |
 | 2 | 2026-08-01 | qa/Terra/medium | TASK-firstの独立ケース計画 | pending |
