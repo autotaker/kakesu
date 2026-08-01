@@ -130,6 +130,18 @@ P-256 leaf鍵と短命のサーバー証明書を発行する。CA秘密鍵、�
 `net.Pipe`とメモリ内CA、fake依存でのテスト成功は、実接続受付、OS識別情報、実クライアントの証明書信頼、外部ネットワーク、
 GitHub/OpenAIのlive E2Eを保証しない。これらの配置・認証・環境依存の確認は後続のlive E2E境界で行う。
 
+## Agent接続の受理と主体コンテキスト
+
+`internal/brokerlistener` は、外側で用意された `net.Listener` を所有し、設定した上限のスロットを
+`Accept` より先に取得してから、注入された trusted `PeerBinder` と一接続 `Session` を同期的に合成する。
+Binder が返す `egresstransaction.Subject` は UID とケイパビリティ互換の識別子を検証・コピーした後、公開されていない
+コンテキストのキーへ束縛されるため、下流の `Resolver` はコンテキストからそのコピーだけを解決する。拒否、依存エラー、panic は
+接続単位で閉じ、予期しない `Accept` エラーまたは呼出元のキャンセルは待受けを閉じ、協調的な処理を drain して終了する。
+
+この境界は待受けの生成・待受け開始、Linux peer 認証情報（`SO_PEERCRED`）、実 UID/名前空間、systemd、TLS/HTTP、
+実クライアント、外部ネットワーク、live VPS を実装または検証しない。インメモリの待受け、`net.Pipe`、協調的な注入依存での
+hermetic テストは、実環境の到達制御や OS 識別情報を保証しない。
+
 ## Build
 
 リリースtarballには生成済み`configure`を含める。
