@@ -65,6 +65,7 @@ AC_CONFIG_FILES([
   deploy/systemd/dev-agent-approval.service
   deploy/systemd/dev-agent-broker.service
   deploy/systemd/dev-agent-egress.service
+  deploy/systemd/dev-agent-egress.socket
   deploy/sysusers/dev-agent-harness.conf
   deploy/tmpfiles/dev-agent-harness.conf
 ])

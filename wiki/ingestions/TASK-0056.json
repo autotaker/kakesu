@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "task_id": "TASK-0056",
+  "handover_sha256": "503b046b68a9b4e309b28e269419f92f5e2b92b9426394a5b9f6ac3ed9628d09",
+  "ingested_at": "2026-08-01T17:17:45Z",
+  "updated_pages": [
+    "wiki/semantic/schemas/development-agent-harness-egress-transaction.md"
+  ],
+  "created_decisions": [],
+  "deferred": [
+    "実systemd managerによるFD 3配送、実broker/agent別UID/GID、実socket permission/connect、停止時cleanup、VPS live E2Eおよび実配置のrestart/rollback/cleanupは現在のmacOS hostでは未確認である。hermetic test又はLinux compile-onlyで代替しない。"
+  ]
+}

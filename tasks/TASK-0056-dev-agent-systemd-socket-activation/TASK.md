@@ -39,11 +39,11 @@ TASK-0055のLinux PeerBinderへ渡す受理済みUnix listenerを、processに�
 
 <!-- AC-IDはTask内で一意かつ安定させ、観測可能な結果をここに一度だけ記載する。 -->
 
-- [ ] AC-1: `New`はabsolute/clean runtime directory、正数かつplatform範囲内のbroker UID/agent GID、固定basenameからimmutable Receiverを作り、root broker、不正ID、invalid path、nil/zero/corrupt Receiverを固定非漏洩errorで拒否する。Format/errorへpath、UID/GID、environment、FD、下位errorを含めない。
-- [ ] AC-2: `Take`は`LISTEN_PID`が現在PIDのcanonical decimal、`LISTEN_FDS=1`、`LISTEN_FDNAMES=egress`の完全一致時だけFD 3を一回取得する。認識済みactivation environmentを一回消去し、`net.FileListener`が複製した後はoriginal FDをcloseする。concrete UnixListener以外、追加/欠落/不正env、conversion/close failureを拒否し、fallback listener、retry、cache、別goroutineを作らない。
-- [ ] AC-3: Linux metadata検証はcurrent EUID=broker UIDかつ非root、runtime directory=`directory, broker:agent, 0710`、固定socket node=`Unix socket, broker:agent, 0660`、listener network/path完全一致の場合だけlistenerを返す。検証後失敗では取得listenerをcloseし、pathをunlinkしない。非LinuxはFD/envからlistenerを返さない。
-- [ ] AC-4: socket unitは固定path/User/Group/Mode/FDName/RemoveOnStopの一socketだけを宣言し、runtime desired stateはtmpfilesとprovisionの双方で`broker:agent 0710`となる。他3 directory action、user/service action、deny default、install時非enable/startを維持し、configure/dist/install/uninstallへunitを過不足なく含める。
-- [ ] AC-5: hermetic testsはconstructor、env exactness/one-shot clear、single FD conversion、original/listener ownership、Unix type/address、directory/socket metadata、failure cleanup、fixed diagnosticsを失敗検出する。Linux build-tag testはactual Unix listener metadata readerを検査し、Linux cross-compileする。focused tests、harness `make check`/`make distcheck`、root `make lint-docs`、candidate launcher root `make check`、`git diff --check`がPASSし、許可path内の追加＋削除1,000行以下とする。
+- [x] AC-1: `New`はabsolute/clean runtime directory、正数かつplatform範囲内のbroker UID/agent GID、固定basenameからimmutable Receiverを作り、root broker、不正ID、invalid path、nil/zero/corrupt Receiverを固定非漏洩errorで拒否する。Format/errorへpath、UID/GID、environment、FD、下位errorを含めない。
+- [x] AC-2: `Take`は`LISTEN_PID`が現在PIDのcanonical decimal、`LISTEN_FDS=1`、`LISTEN_FDNAMES=egress`の完全一致時だけFD 3を一回取得する。認識済みactivation environmentを一回消去し、`net.FileListener`が複製した後はoriginal FDをcloseする。concrete UnixListener以外、追加/欠落/不正env、conversion/close failureを拒否し、fallback listener、retry、cache、別goroutineを作らない。
+- [x] AC-3: Linux metadata検証はcurrent EUID=broker UIDかつ非root、runtime directory=`directory, broker:agent, 0710`、固定socket node=`Unix socket, broker:agent, 0660`、listener network/path完全一致の場合だけlistenerを返す。検証後失敗では取得listenerをcloseし、pathをunlinkしない。非LinuxはFD/envからlistenerを返さない。
+- [x] AC-4: socket unitは固定path/User/Group/Mode/FDName/RemoveOnStopの一socketだけを宣言し、runtime desired stateはtmpfilesとprovisionの双方で`broker:agent 0710`となる。他3 directory action、user/service action、deny default、install時非enable/startを維持し、configure/dist/install/uninstallへunitを過不足なく含める。
+- [x] AC-5: hermetic testsはconstructor、env exactness/one-shot clear、single FD conversion、original/listener ownership、Unix type/address、directory/socket metadata、failure cleanup、fixed diagnosticsを失敗検出する。Linux build-tag testはactual Unix listener metadata readerを検査し、Linux cross-compileする。focused tests、harness `make check`/`make distcheck`、root `make lint-docs`、candidate launcher root `make check`、`git diff --check`がPASSし、許可path内の追加＋削除1,000行以下とする。
 
 ### 安定した参照
 
@@ -108,9 +108,9 @@ PeerBinderまで完成したが、Agentが到達できるUnix listenerがなく�
 
 ## 完成の定義
 
-- [ ] 受け入れ条件を満たしている。
-- [ ] planning/candidate/completionの3 commitsとcandidate一回のroot `make check`を満たしている。
-- [ ] 同一candidateの独立REVIEW/QAを完了し、実systemd/別UID/socket permission/VPSのlive E2E未実施境界をPASSと誤記していない。
+- [x] 受け入れ条件を満たしている。
+- [x] planning/candidate/completionを基準とし、独立REVIEW/QAが検出した手戻り修正candidateを履歴化して、final candidateのroot `make check`を満たしている。
+- [x] 同一candidateの独立REVIEW/QAを完了し、実systemd/別UID/socket permission/VPSのlive E2E未実施境界をPASSと誤記していない。
 - [ ] 安全契約変更の場合: 独立計画レビュー、契約検査、許可された統制文書差分の確認が完了している。
 
 ## 関連コンテキスト

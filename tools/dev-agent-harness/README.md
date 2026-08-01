@@ -185,6 +185,18 @@ make install DESTDIR="$PWD/package-root"
 `make install`はファイルを配置するだけである。OSユーザー、秘密、実設定、tailnet、外部サービス、サービス状態は
 変更しない。実装後も配置計画とenable/startは明示的な管理操作として分離する。
 
+## systemdによる外向き通信用ソケット
+
+`dev-agent-egress.socket`が`/run/dev-agent-harness/egress.sock`を作成し、`dev-agent-broker:dev-agent`の
+`0660`ソケット、停止時の後始末、FD名`egress`を所有する。tmpfilesとprovisionの配置表は実行用ディレクトリだけを
+`dev-agent-broker:dev-agent 0710`へ整え、他の状態・設定・監査用ディレクトリの所有権とアクセス権を変更しない。インストールは
+unitの配置だけで、enable/start/restartは行わない。
+
+`internal/socketactivation`はLinuxブローカーの現在EUID、固定位置、Unix待受け、ディレクトリとソケットの所有者・所属グループ・
+アクセス権を検証し、systemdから渡されたFD 3を一回だけ受け取る。プロセス自身の待受け作成、chmod/chown、古いソケットの削除、
+代替待受けはない。非Linuxはfail-closedであり、隔離試験またはLinuxのコンパイル確認の成功は実systemd、別UID/GIDによる
+権限制御、実ソケット接続を意味しない。それらのlive E2Eは承認済みLinux環境で別途確認する。
+
 ## 外向き通信 ポリシー コア
 
 `internal/egresspolicy` は、TLS終端後の後続コンポーネントが利用する副作用のないGo製

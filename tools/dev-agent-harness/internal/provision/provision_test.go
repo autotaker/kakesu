@@ -89,7 +89,7 @@ func TestBuildCanonicalManifest(t *testing.T) {
 		`{"kind":"action","sequence":3,"action":"user","role":"broker","name":"dev-broker","home":"/nonexistent","shell":"/usr/sbin/nologin","locked":true,"create_home":false}`,
 		fmt.Sprintf(`{"kind":"action","sequence":4,"action":"directory","logical_path":"/etc/dev-agent-harness","target_path":%q,"mode":"0750","owner":"root","group":"dev-broker"}`, filepath.Join(root, "etc/dev-agent-harness")),
 		fmt.Sprintf(`{"kind":"action","sequence":5,"action":"directory","logical_path":"/var/lib/dev-agent-harness","target_path":%q,"mode":"0750","owner":"dev-broker","group":"dev-broker"}`, filepath.Join(root, "var/lib/dev-agent-harness")),
-		fmt.Sprintf(`{"kind":"action","sequence":6,"action":"directory","logical_path":"/run/dev-agent-harness","target_path":%q,"mode":"0750","owner":"dev-broker","group":"dev-broker"}`, filepath.Join(root, "run/dev-agent-harness")),
+		fmt.Sprintf(`{"kind":"action","sequence":6,"action":"directory","logical_path":"/run/dev-agent-harness","target_path":%q,"mode":"0710","owner":"dev-broker","group":"dev-agent"}`, filepath.Join(root, "run/dev-agent-harness")),
 		fmt.Sprintf(`{"kind":"action","sequence":7,"action":"directory","logical_path":"/var/lib/dev-agent-harness/audit","target_path":%q,"mode":"0750","owner":"dev-broker","group":"dev-broker"}`, filepath.Join(root, "var/lib/dev-agent-harness/audit")),
 		`{"kind":"action","sequence":8,"action":"service","name":"dev-agent-broker","user":"dev-broker","enabled":false,"started":false}`,
 		`{"kind":"action","sequence":9,"action":"service","name":"dev-agent-egress","user":"dev-broker","enabled":false,"started":false}`,
@@ -117,7 +117,7 @@ func TestBuildUsersDirectoriesAndServices(t *testing.T) {
 	}{
 		{"/etc/dev-agent-harness", "root", "dev-broker"},
 		{"/var/lib/dev-agent-harness", "dev-broker", "dev-broker"},
-		{"/run/dev-agent-harness", "dev-broker", "dev-broker"},
+		{"/run/dev-agent-harness", "dev-broker", "dev-agent"},
 		{"/var/lib/dev-agent-harness/audit", "dev-broker", "dev-broker"},
 	}
 	for i, want := range wantDirs {
@@ -126,7 +126,11 @@ func TestBuildUsersDirectoriesAndServices(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if action["logical_path"] != want.logical || action["target_path"] != mapped || action["mode"] != "0750" || action["owner"] != want.owner || action["group"] != want.group {
+		wantMode := "0750"
+		if i == 2 {
+			wantMode = "0710"
+		}
+		if action["logical_path"] != want.logical || action["target_path"] != mapped || action["mode"] != wantMode || action["owner"] != want.owner || action["group"] != want.group {
 			t.Errorf("directory %d=%v", i, action)
 		}
 	}

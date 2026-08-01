@@ -7,7 +7,7 @@ qa_role: "independent-qa"
 approved_by: "main-agent-sol-high"
 approved_at: "2026-08-01T16:31:48Z"
 revision: 2
-implementation_reviewed_at: ""
+implementation_reviewed_at: "2026-08-01T17:17:45Z"
 expectation_changed: false
 expectation_change_approved_by: ""
 ---
@@ -51,13 +51,13 @@ cd tools/dev-agent-harness && GOCACHE=$PWD/.build/go-cache go test -count=1 ./in
 
 ## 実装後の再確認
 
-- [ ] candidate commitを固定し、QA-001からQA-005のcandidate-bound evidenceとfocused rerunを独立に確認した。
-- [ ] QA-001からQA-005でtestが該当する誤実装を実際に失敗させられるnegative assertionを持つことを確認した。
-- [ ] QA-006は現hostで`blocked`のままとし、実施環境・安全なcleanup手順が承認されるまでPASSを記録しない。
-- [ ] root/harness checksはDEV証跡としてだけ監査し、QA自身の再実行結果又はlive-e2e PASSと誤記していない。
-- [ ] 実装差分とレビュー結果を確認した。
-- [ ] 操作手順と期待結果を現行実装に合わせた。
-- [ ] 期待結果または範囲を変更した場合、main Agentの承認を得た。
+- [x] candidate commitを固定し、QA-001からQA-005のcandidate-bound evidenceとfocused rerunを独立に確認した。
+- [x] QA-001からQA-005でtestが該当する誤実装を実際に失敗させられるnegative assertionを持つことを確認した。
+- [x] QA-006は現hostで`blocked`のままとし、実施環境・安全なcleanup手順が承認されるまでPASSを記録しない。
+- [x] root/harness checksはDEV証跡としてだけ監査し、QA自身の再実行結果又はlive-e2e PASSと誤記していない。
+- [x] 実装差分とレビュー結果を確認した。
+- [x] 操作手順と期待結果を現行実装に合わせた。
+- [x] 期待結果または範囲は変更していない（`expectation_changed=false`）。
 
 ## 改訂履歴
 

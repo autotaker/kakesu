@@ -22,6 +22,7 @@ const (
 	ActionCount = 10
 	platform    = "ubuntu"
 	defaultMode = "0750"
+	runtimeMode = "0710"
 )
 
 // ErrorClass is a stable, non-sensitive classification for planning errors.
@@ -199,11 +200,12 @@ func build(c *config.Config, targetRoot string) (manifest, error) {
 		path  string
 		owner string
 		group string
+		mode  string
 	}{
-		{c.Paths.ConfigDir, "root", c.Users.Broker},
-		{c.Paths.StateDir, c.Users.Broker, c.Users.Broker},
-		{c.Paths.RuntimeDir, c.Users.Broker, c.Users.Broker},
-		{filepath.Join(c.Paths.StateDir, "audit"), c.Users.Broker, c.Users.Broker},
+		{c.Paths.ConfigDir, "root", c.Users.Broker, defaultMode},
+		{c.Paths.StateDir, c.Users.Broker, c.Users.Broker, defaultMode},
+		{c.Paths.RuntimeDir, c.Users.Broker, c.Users.Agent, runtimeMode},
+		{filepath.Join(c.Paths.StateDir, "audit"), c.Users.Broker, c.Users.Broker, defaultMode},
 	}
 	directories := make([]DirectoryAction, 0, len(logical))
 	for i, item := range logical {
@@ -213,7 +215,7 @@ func build(c *config.Config, targetRoot string) (manifest, error) {
 		}
 		directories = append(directories, DirectoryAction{
 			Kind: "action", Sequence: i + 4, Action: "directory", LogicalPath: item.path,
-			TargetPath: target, Mode: defaultMode, Owner: item.owner, Group: item.group,
+			TargetPath: target, Mode: item.mode, Owner: item.owner, Group: item.group,
 		})
 	}
 	services := []ServiceAction{
@@ -285,7 +287,11 @@ func validateManifest(m manifest) error {
 	}
 	broker := m.users[2].Name
 	for i, action := range m.directories {
-		if action.Kind != "action" || action.Action != "directory" || action.Sequence != i+4 || !validAbsoluteClean(action.LogicalPath) || action.TargetPath == "" || action.Mode != defaultMode || action.Owner == "" || action.Group == "" {
+		wantMode := defaultMode
+		if i == 2 {
+			wantMode = runtimeMode
+		}
+		if action.Kind != "action" || action.Action != "directory" || action.Sequence != i+4 || !validAbsoluteClean(action.LogicalPath) || action.TargetPath == "" || action.Mode != wantMode || action.Owner == "" || action.Group == "" {
 			return fail(ClassInvalidRecord)
 		}
 		target, err := MapTarget(m.header.TargetRoot, action.LogicalPath)
@@ -296,7 +302,10 @@ func validateManifest(m manifest) error {
 			if action.Owner != "root" || action.Group != broker {
 				return fail(ClassInvalidRecord)
 			}
-		} else if action.Owner != broker || action.Group != broker {
+		} else if action.Owner != broker || (i != 2 && action.Group != broker) {
+			return fail(ClassInvalidRecord)
+		}
+		if i == 2 && action.Group != m.users[0].Name {
 			return fail(ClassInvalidRecord)
 		}
 	}

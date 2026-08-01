@@ -2171,7 +2171,7 @@ exec_prefix=$saved_exec_prefix
 
 
 
-ac_config_files="$ac_config_files Makefile config/harness.json.example deploy/systemd/dev-agent-approval.service deploy/systemd/dev-agent-broker.service deploy/systemd/dev-agent-egress.service deploy/sysusers/dev-agent-harness.conf deploy/tmpfiles/dev-agent-harness.conf"
+ac_config_files="$ac_config_files Makefile config/harness.json.example deploy/systemd/dev-agent-approval.service deploy/systemd/dev-agent-broker.service deploy/systemd/dev-agent-egress.service deploy/systemd/dev-agent-egress.socket deploy/sysusers/dev-agent-harness.conf deploy/tmpfiles/dev-agent-harness.conf"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -2881,6 +2881,7 @@ do
     "deploy/systemd/dev-agent-approval.service") CONFIG_FILES="$CONFIG_FILES deploy/systemd/dev-agent-approval.service" ;;
     "deploy/systemd/dev-agent-broker.service") CONFIG_FILES="$CONFIG_FILES deploy/systemd/dev-agent-broker.service" ;;
     "deploy/systemd/dev-agent-egress.service") CONFIG_FILES="$CONFIG_FILES deploy/systemd/dev-agent-egress.service" ;;
+    "deploy/systemd/dev-agent-egress.socket") CONFIG_FILES="$CONFIG_FILES deploy/systemd/dev-agent-egress.socket" ;;
     "deploy/sysusers/dev-agent-harness.conf") CONFIG_FILES="$CONFIG_FILES deploy/sysusers/dev-agent-harness.conf" ;;
     "deploy/tmpfiles/dev-agent-harness.conf") CONFIG_FILES="$CONFIG_FILES deploy/tmpfiles/dev-agent-harness.conf" ;;
 
