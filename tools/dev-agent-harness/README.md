@@ -5,6 +5,14 @@ Kakesuを開発するための外部開発基盤である。Kakesu本体のラ�
 現在はbuild/install境界だけを固定したスキャフォールドである。各バイナリは`--version`だけ成功し、通常起動は
 未実装としてfail-closedする。
 
+## プロバイダー上流HTTPS 転送方式
+
+`internal/upstreamtransport` は、ブローカーから `api.github.com` と `api.openai.com` へ出るための注入可能な
+`http.RoundTripper` 境界である。各リクエストでDNSを一度だけ解決し、全answerを検査してから安全なIP literalの
+`*:443`へ直接接続する。TLSは元のhostnameで証明書とSNIを検証し、TLS 1.2以上・HTTP/1.1だけを使用する。
+プロキシ、リダイレクト、keep-alive、自動compression、接続後の再試行はこの境界にない。実プロバイダー、実Internet DNS、
+システム trust ストア、プロキシ/ファイアウォールの受理はlive E2Eの対象であり、hermetic パッケージ テストでは保証しない。
+
 ## ブローカーの認証情報
 
 `internal/brokercredentials` は、trusted ブローカーだけが読む秘密情報の境界である。配置ディレクトリには
