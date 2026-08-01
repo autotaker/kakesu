@@ -717,3 +717,23 @@ tasks:
       dev: dev-agent-luna-xhigh
       reviewer: reviewer-agent-terra-medium
       qa: qa-agent-terra-medium
+  - id: TASK-0041
+    title: Capability連携済みegress transactionを実装する
+    type: feature
+    change_class: product
+    epic: EPIC-001
+    status: dev
+    priority: P1
+    estimate_points: 3
+    task_dir: tasks/TASK-0041-dev-agent-egress-transaction
+    depends_on:
+      - TASK-0039
+      - TASK-0040
+    branch: task/TASK-0041-dev-agent-egress-transaction
+    worktree: worktrees/TASK-0041-dev-agent-egress-transaction
+    assignees:
+      main: main-agent-sol-high
+      planner: planner-agent-terra-medium
+      dev: dev-agent-luna-xhigh
+      reviewer: reviewer-agent-terra-medium
+      qa: qa-agent-terra-medium
