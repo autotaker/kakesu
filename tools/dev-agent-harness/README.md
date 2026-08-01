@@ -11,6 +11,18 @@ Kakesuを開発するための外部開発基盤である。Kakesu本体のラ�
 固定要約を出力し、失敗時も入力値やパスを診断へ含めない。設定検証はユーザー作成、秘密の読込、ネットワーク、
 IPC、サービス起動を行わない。
 
+`dev-agent-harness-setup plan-provision --config PATH --target-root PATH` は、対象OSへ渡す
+配置計画の望ましい状態を確認するための読み取り専用dry-runである。成功時はヘッダー1行と、固定順序
+（ユーザー3件、ディレクトリ4件、サービス3件）の計10 actionを正規JSONLとしてstdoutへ出力する。
+ユーザーは`/nonexistent`・`/usr/sbin/nologin`・locked・ホーム非作成、ディレクトリは`0750`と所有者/グループ、
+サービスはブローカーuserかつ`enabled=false`・`started=false`として表現される。論理パスはcleanな
+`target-root`配下の表示用対象パスへ写像される。
+
+このコマンドはtarget-rootをstatせず、user/グループ/ディレクトリを作成・変更せず、systemd、プロセス、ネットワーク、
+IPCも起動しない。executor、sysusers、tmpfiles、unitの実行は後続の別境界であり、このmanifest出力からは
+暗黙に許可されない。全記録をメモリ上で検証・serializeしてからstdoutへ一度だけ書き込むため、
+writerがpartialバイトを返してエラーになった場合の巻戻しはできず、再試行や再出力は行わない。
+
 ## Build
 
 リリースtarballには生成済み`configure`を含める。
@@ -45,4 +57,4 @@ make install DESTDIR="$PWD/package-root"
 ```
 
 `make install`はファイルを配置するだけである。OSユーザー、秘密、実設定、tailnet、外部サービス、サービス状態は
-変更しない。実装後もprovisionとenable/startは明示的な管理操作として分離する。
+変更しない。実装後も配置計画とenable/startは明示的な管理操作として分離する。
