@@ -4,98 +4,78 @@ change_class: "product"
 status: approved
 planner_agent: "planner-agent-terra-medium"
 approved_dev_profile: "luna-xhigh"
-approved_dev_profile_reason: "既存のTask lifecycle/checker/templates/docsを削減・局所変更し、外部通信、Credential、OS権限、製品runtimeを変更せず、隔離Git fixtureで検証できるため"
+approved_dev_profile_reason: "現mainから不要なWiki自動ingest、未使用の見積算術、数値見積templateを削除する5ファイルの局所差分で、runtime・Credential・network・OS境界を変更しないため"
 approved_dev_profile_risk_signals: []
 approved_by: "main-agent-sol-high"
-approved_at: "2026-08-01T02:08:37Z"
+approved_at: "2026-08-01T04:23:26Z"
 planning_reviewed_by: "reviewer-agent-terra-medium"
 planning_review_decision: "pass"
-planning_reviewed_at: "2026-08-01T02:08:37Z"
+planning_reviewed_at: "2026-08-01T04:23:26Z"
 classification_approved_by: ""
 classification_approved_at: ""
 classification_approval_reason: ""
-planned_implementation_files: 7
-planned_implementation_lines: 430
-estimate_points: 3
 ---
 
 # TASK-0037 PLAN
 
+## 方針
+
+この redo は現 main HEAD を baseline とし、既存の TASK-0037 実装を再実装しない。差分は、optional Wiki に反する legacy cleanup の自動 ingest、不要な見積算術 helper/test、PLAN template の見積書式だけに限定する。
+
+標準経路は planning、単一 product candidate、candidate を第2親に持つ completion no-ff merge の三 commits とする。独立 REVIEW/QA、role・権限・秘密境界、原子的な planning/completion、candidate-bound root check の一回実行、focused test、必要時 live E2E、未検証差し替え拒否は現 HEAD の契約として維持する。`agent-routing` の canonical route 上書き拒否と、起動後 observed model/effort mismatch を warning として記録する現行 AGENTS/docs 契約は別の責務であり、変更しない。
+
 ## AC対応
 
-TASKの条件本文を再掲せず、`planning input packet`のAC-IDに設計を対応させる。
-
-| AC-ID | 設計判断 | 変更パス | 実施順序 | 失敗時の扱い |
-|---|---|---|---|---|
-| AC-1 | planningは許可された変更済みpathの非空subsetを一度に公開し、4ファイルの最終状態だけを検証する。初回だけtaskStart生成の未追跡・空REVIEW/QA/HANDOVER scaffoldを同commitに含めてよいが、既存追跡済み証跡のforced dirtyは要求しない。 | lifecycle、checker、process test、Task/Plan templates、開発文書 | 1 | 空集合、許可外path、最終状態不整合、または既存追跡済みfileのforced dirtyはcommitしない。個別actionは復旧互換として残す。 |
-| AC-2 | completionはmain側の未commit品質証跡HANDOVERからcandidateを読み、`git merge --no-ff --no-commit <candidate>`後の最終状態を検証して唯一のmerge commitを作る。candidateはplanning commitをfast-forwardしたbranch上のproduct-only単一commitとする。 | lifecycle、checker、process test、completion evidence templates、Git文書 | 2 | PASS、branch、merge-base..candidate count=1、product-only、第2親、scope、最終検証のいずれかが不正ならmerge abortし、main品質証跡のbytes/stageを復元してpartial staging/merge commitを残さない。複数candidate commitはMainがsquashして一度だけ固定する。 |
-| AC-3 | 両gateはlock、scope、validation、commitを各一回に固定する。親がvalidation前に内容digestを固定し、hookは完全staging/no unstagedの同一digest時だけ再validationを省略する。 | lifecycle、lib、pre-commit、lifecycle test | 1–2 | digest不一致、欠落、通常commitはhook自身がvalidationする。 |
-| AC-4 | completion前のmain側dirty HANDOVERの`candidate_commit`だけを候補の記録点とし、candidate branch/candidate commit自身にはHANDOVERを書かない。tree、製品diff、managed digest、merge commitはGitから導出する。 | lifecycle、checker、HANDOVER/REVIEW/QA templates、test | 2 | HANDOVER欠落、candidate branch不一致、導出値とmerge第2親の不一致、candidate側HANDOVER、自己参照/別evidence commitはcompletionを拒否する。 |
-| AC-5 | reviewerは独立identity、PASS、candidate差分とDEV check証跡を監査した事実を記録する。QA focused rerunは独立して維持する。 | checker、REVIEW/QA templates、process test、AGENTS/development docs | 3 | reviewer identity/PASS/監査記録、またはcandidate整合が欠ければ拒否する。同一check再実行や単一値fieldは要求しない。 |
-| AC-6 | estimateの算術完全一致をDone経路から外し、参考計測としてのみ残す。 | checker、process test、task-management docs | 3 | 見積不一致だけでDEVを停止しない。 |
-| AC-7 | Wiki receiptを全Task必須から外し、再利用可能な知識がある場合だけcompletion transactionに含める。 | lifecycle、checker、test、Wiki/task-management docs | 3 | 知識なしはWikiなしで完了する。Wikiを含める場合のみallowlistで検証する。 |
-| AC-8 | CF-1〜CF-7を除去し、candidate変更時は影響focused test、限定不能時だけfull rerunとする。 | QA templates、checker、QA docs/test | 4 | checklistによる旧QA結果の転用はしない。影響範囲に応じて再実行する。 |
-| AC-9 | QA標準証跡をcase ID、HANDOVER candidate、command、結果へ縮小する。条件付き詳細は該当時だけ残す。 | QA/HANDOVER templates、checker、QA docs/test | 4 | 基本4項目が欠ける場合だけ拒否し、該当しない詳細を要求しない。 |
-| AC-10 | model/effort mismatchは実測値を記録した警告に変え、identity・role・sandbox/権限境界の欠落だけを停止条件に残す文書契約へ更新する。 | `AGENTS.md`、`docs/development/agent-roles.md`、`scripts/task/development-process.test.mjs` | 4 | boundary不明または役割分離違反はfail-closed、単独のmodel/effort差は警告で継続する。新しいruntime checker/fieldは追加しない。 |
-| AC-11 | task startはscaffold/branch/worktreeだけを原子的に準備し、最初のmain commitをplanning-gateにする。planning後にTask branch/worktreeをplanning commitへfast-forwardし、MainがDEV製品差分を一度だけcandidate commitにする。completionはその単一candidateを検査する。MakeはALLOW_MERGEを明示伝播し、標準3 commitを文書化する。 | lifecycle/test、Makefile、Git/process docs | 5 | taskStart失敗は作成物を復旧する。candidateが複数commitならMainがsquashして一度だけ固定する。allowなしはdirect product pathを拒否する。追加transactionは手戻り、復旧、live E2Eのみ。 |
-| AC-12 | 規定検査を実施し、行数・見積・形式fieldを品質gateにしない。 | process tests、checker、全許可path | 5 | 実際の検査FAILのみを修正・再実行する。 |
-| AC-13 | 文書を最小既定へ改め、rule/gateは反復failureまたは重大安全failureを直接防ぐ時だけ追加し、10 Taskごとの既存retrospectiveで低価値ruleを削除/警告化する。 | AGENTS、development docs | 5 | 単発軽微ミスへの恒久rule、専用Task/checklist/version/棚卸しcommitは作らない。 |
-
-## 設計
-
-標準経路は次の3 commitsとする。
-
-```text
-taskStart（scaffold / branch / worktree、main commitなし）
-  → planning-gate main commit
-  → branch/worktreeをplanning commitへfast-forward
-  → Mainがproduct-only candidate commitを一度だけ作成
-  → main側dirty HANDOVERでcandidate_commitを固定し、REVIEW/QAもmain側dirtyで作成
-  → completion-gate no-ff merge commit
-```
-
-planning-gateは許可集合内の実変更だけをcommitし、PLAN、QA_PLAN、TASK、backlogの最終状態を読む。初回はtaskStart生成の未追跡・空REVIEW/QA/HANDOVER scaffoldを同commitに含められるが、既存追跡済み証跡をforced dirtyにしない。planning commit後はTask branch/worktreeをそのcommitへfast-forwardし、MainがDEV製品差分をproduct-onlyの単一candidate commitへsquashして固定する。HANDOVERはcandidate branch外のmain側dirty品質証跡としてcandidate commitを一度だけ記録し、REVIEW/QAもmain側dirtyで作る。completion-gateは`merge-base..candidate`が単一commitであることとproduct-onlyを検査してからcandidateを`--no-commit`でmergeし、候補第2親、REVIEW/QA PASS、post-implementation QA_PLANと最終状態を検証して一度だけcommitする。失敗時はmergeをabortし、開始前のmain品質証跡bytesとstage状態へ戻す。
-
-candidateはcandidate branch外のmain側dirty HANDOVERの`candidate_commit`のみで束縛する。tree、managed digest、merge commit、tested ancestryは必要時にGit履歴から算出し、証跡ファイル間の転記、candidate側HANDOVER、自己参照の`merged_commit`/`tested_commit`、別evidence commitは削除する。
-
-既存差分から削除する対象は、artifact/reviewのversion・mode・digest grammar、candidate tree/digestの重複frontmatter、estimate算術gate、全Task Wiki receipt、CF-1〜CF-7、全QAケースの詳細必須、model/effort mismatch停止、completion後の自己参照値である。追加scopeはplanning subset検証、atomic completion merge、optional Wiki、影響ベースのQA rerun、model/effort警告に限定する。
-
-## 代替案と不採用理由
-
-- 未変更の計画証跡を強制dirtyにする案は、検出力を増やさずcommitを増やすため不採用。
-- evidence commitとcandidate mergeを分ける案は、completionの原子性と3 commit標準を失うため不採用。
-- reviewerまたはQAを省略する案は、独立評価を失うため不採用。
-- 単発の軽微な失敗ごとにfield、enum、checklistを追加する案は、検出価値より維持費を増やすため不採用。
+| AC-ID | 現 HEAD との差分または維持判断 | 直接の failure と確認 |
+|---|---|---|
+| AC-1 | 現 HEAD の planning-gate transaction と変更済み subset の検証を維持する。 | planning scope/state の既存 focused tests を監査する。 |
+| AC-2 | 現 HEAD の main-side HANDOVER、単一 product candidate、atomic no-ff completion を維持する。 | candidate/merge/rollback の既存 fixture を監査する。 |
+| AC-3 | 現 HEAD の lock、scope、validation、commit の単回実行と staged-content digest fail-closed を維持する。 | parent/hook の同一内容・不一致の既存 focused tests を監査する。 |
+| AC-4 | 現 HEAD の HANDOVER 一箇所による candidate 固定と Git 導出を維持する。 | candidate-side evidence と不一致を拒否する既存 fixture を監査する。 |
+| AC-5 | 独立 Reviewer/QA、candidate-bound DEV check 監査、focused rerun を維持する。 | identity/PASS/candidate 証跡の既存 checker tests を監査する。 |
+| AC-6 | 差分 B: `estimatePoints` とその算術・上限 tests を削除し、見積を実装 gate から完全に外す。backlog の `estimate_points` は viewer と参考情報として維持する。 | 予定行数/ファイル数から points を計算又は上限で停止する未使用 helper/test が残らないことを focused source/test audit で確認する。 |
+| AC-7 | 差分 A: legacy qa→done cleanup で Wiki agent/receipt を自動生成・要求しない。再利用可能な知識がある場合だけ明示的な Wiki 更新を completion に含める現 HEAD の契約を維持する。 | receipt がなく、Wiki agent が利用不能でも legacy qa task が cleanup を経て done になれることを syncMain fixture で確認する。 |
+| AC-8 | 現 HEAD の CF 廃止と candidate 変更時の影響ベース rerun を維持する。 | 旧 QA の無根拠転用を拒否する既存 process test を監査する。 |
+| AC-9 | 現 HEAD の最小 QA 証跡と、形式だけの artifact digest 要求をしない契約を維持する。 | 最小証跡の受理と candidate 不整合の拒否を既存 checker test で監査する。 |
+| AC-10 | 現 HEAD の observed model/effort warning と、role/authority/sandbox 境界不明の停止を維持する。canonical route override 拒否は caller 入力の安全境界なので維持する。 | routing と role-boundary の既存 process tests を監査する。 |
+| AC-11 | 現 HEAD の task-start、planning fast-forward、単一 candidate、allow-merge 伝播、三 commits 経路を維持する。 | lifecycle/scope の既存 focused tests を監査する。 |
+| AC-12 | 差分 A/B/C の focused tests と Task/root checks を実行する。数値見積や形式の追加 check は導入しない。 | 変更箇所の test failure と `make task-check TASK=TASK-0037`、candidate-bound DEV `make check` の結果で確認する。 |
+| AC-13 | 現 HEAD の既存 retrospective による低価値 rule の削除/警告化を維持する。差分 A/B/C は不要 rule を削るもので、新しい rule、checklist、version、Task、commit を作らない。 | 変更差分と開発文書の既存契約を監査し、追加 gate がないことを確認する。 |
 
 ## 変更予定
 
-見積は計画上の参考であり、算術完全一致を機械gateにしない。
+| パス | 変更内容 |
+|---|---|
+| `scripts/task/unified-lifecycle.mjs` | `syncMain` の legacy qa→done recovery から receipt 探索と Wiki agent ingest を除く。dirty worktree の安全確認、done 状態への遷移、通常 cleanup は維持する。 |
+| `scripts/task/unified-lifecycle.test.mjs` | receipt 不在かつ Wiki agent が使えない fixture で、legacy qa task の sync cleanup が receipt を要求も生成もせず done まで進むことを確認する。 |
+| `scripts/task/lib.mjs` | 未使用の `estimatePoints` helper を削除する。 |
+| `scripts/task/development-process.test.mjs` | `estimatePoints` の算術と上限を検査する import と tests を削除する。backlog `estimate_points` を利用する fixture/viewer 用データは変更しない。 |
+| `templates/task/PLAN.md` | 概算行数列、見積 section、見積規則 checklist を除き、変更予定表を path と変更内容だけにする。 |
 
-| ファイル群 | 種別 | 概算変更行数 | 変更内容 |
-|---|---|---:|---|
-| `scripts/task/unified-lifecycle.mjs`, `lib.mjs`, `work-pre-commit.mjs` | implementation | 220 | planning subset、taskStart no-commit、completion no-ff transaction、digest handoff/復旧。 |
-| `scripts/task/check-task.mjs` | implementation | 90 | Git導出、最小review/QA、不要Done gate削除。 |
-| `Makefile` | implementation | 4 | ALLOW_MERGE伝播。 |
-| `scripts/task/*process*.test.mjs` | test | 310 | atomicity、3 commits、候補/merge、削除契約の正負回帰。 |
-| `templates/task/{HANDOVER,REVIEW_RESULT,QA_PLAN,QA_RESULT,PLAN}.md` | implementation | 90 | 最小candidate/review/QA証跡と不要field削除。 |
-| `AGENTS.md`, `docs/development/*.md` | documentation | 160 | 3 commit、最小rule、optional Wiki、QA/model運用、10 Taskごとの既存retrospectiveへ更新。 |
+上記以外のファイルは変更しない。
 
 ## 実装手順
 
-1. taskStartを非公開初期化に縮小し、planning-gateを最初のmain transactionへ変更する。
-2. planning-gateのnon-empty subsetと最終状態検証を実装し、個別actionを復旧互換へ整理する。
-3. planning後のbranch/worktree fast-forwardとMainのsingle product-only candidate squashを実装し、completionが`merge-base..candidate`のcount=1を検査する。
-4. completion-gateのno-ff/no-commit、main側dirty品質証跡、最終検証、単一merge commit、abort/証跡bytes/stage復元を実装する。
-5. HANDOVER唯一candidateとGit導出へ移し、candidate側HANDOVER、重複binding・形式/算術/Wiki/CF/自己参照gateをtemplates、checker、docs、testsから削除する。
-6. QA/reviewer/model運用と最小rule/retrospective方針を文書化し、Make scope許可を修正する。棚卸しは10 Taskごとの既存retrospectiveで行い、専用Task/checklist/commitを作らない。
-7. process、task、root checksを実行し、実際のFAILに限定して修正する。
+1. `syncMain` の legacy recovery から自動 Wiki ingest と receipt 条件を除く。qa→done 後の worktree cleanup 前提は変えない。
+2. 同じ sync fixture に、receipt 未作成・Wiki agent 非依存で done へ遷移し、receipt が生成されないことを確認する focused case を追加する。
+3. 未使用の見積算術 helper と、その算術/上限 test だけを削除する。backlog の `estimate_points` データや viewer 契約には触れない。
+4. PLAN template を変更 path と内容だけの表へ縮小し、数値見積の本文・review checklist を削除する。
+5. candidate では差分に対応する focused tests と root `make check` を実行し、candidate-bound root check の一回実行証跡を確認する。Main は completion transaction/merge 後に `make task-check TASK=TASK-0037` を実行する。環境依存の受け入れ条件は追加しないため live E2E は不要とする。
 
 ## 検証計画
 
-- lifecycle process tests: planningのnon-empty subset、最終状態、初回未追跡空REVIEW/QA/HANDOVER scaffoldの同commit許容、既存追跡済み証跡のforced dirty禁止、taskStart no-commit、planning後branch/worktree fast-forward、single product-only candidate、複数commit candidate拒否とMain squash責任、main側dirty HANDOVER/REVIEW/QA、candidate側HANDOVER拒否、completion no-ff第2親、optional Wiki、未検証差し替え拒否、abort後の品質証跡bytes/ステージ復元、lock/validation/commit各一回、hook digest一致/不一致/通常commitを確認する。
-- checker/process tests: Git導出、reviewer独立監査、最小QA証跡、focused/full rerun選択、estimate/Wiki/CF/形式値/model mismatchが不要な停止にならないこと、identity/boundary違反が停止することを確認する。
-- scope test: `ALLOW_MERGE=1`のexact no-ff candidate merge受理と未指定direct product path拒否を確認する。
-- 最終ゲートは`make test-process`、`make task-check TASK=TASK-0037`、`make check`、`git diff --check`。本計画作成時は維持チェック以外を実行しない。
+- `syncMain` focused fixture: legacy `qa` task に receipt がない状態を作り、Wiki agent 実行を許さない環境でも sync が status を `done` にし、receipt を作らず cleanup を続行することを確認する。
+- development-process focused tests: `estimatePoints` の import/test がなく、backlog `estimate_points` を使う既存 fixture が残ることを確認する。
+- template audit: PLAN template に概算行数列、見積 section、見積規則 checklist がなく、変更 path/内容表だけが残ることを確認する。
+- existing-contract audit: lifecycle/checker/routing の既存 tests が、candidate 固定、独立 REVIEW/QA、role/authority boundary、canonical route override 拒否、observed mismatch warning を引き続き扱うことを確認する。
+- candidate 上で変更した focused tests と root `make check` を実行する。Main は completion transaction/merge 後に `make task-check TASK=TASK-0037` を実行する。QA は DEV の同一 root command を重複実行せず、candidate-bound 証跡を独立監査する。
+
+## 代替案と不採用理由
+
+- legacy cleanup のために receipt を空ファイルで生成する案は、optional Wiki を実質必須化するため不採用。
+- `estimate_points` を backlog から削除する案は、viewer と参考情報の用途を壊すため不採用。
+- agent-routing の route override 拒否や observed mismatch warning を削る案は、本 Task の残存不適合ではなく安全境界を弱めるため不採用。
+- 現 HEAD の lifecycle/checker/docs を再変更する案は、既に満たす AC へ不要な回帰リスクを持ち込むため不採用。
 
 ## 未解決事項
 
@@ -103,9 +83,8 @@ candidateはcandidate branch外のmain側dirty HANDOVERの`candidate_commit`の�
 
 ## main Agentレビュー
 
-- [x] TASKの全AC-IDへ設計判断、パス、順序、失敗時の扱いを対応させ、条件本文を複製していない。
-- [x] 最小既定と削除優先の方針を確認した。
-- [x] QA_PLANがTASK-firstで独立作成されている。
-- [x] `dependency-ready reconciliation`と完了経路preflightが完了している。
-- [x] 見積が参考値であり、完了gateではないことを確認した。
-- [x] DEV開始を承認した。
+- [x] 現 HEAD baseline と差分 A/B/C の境界を確認した。
+- [x] 五つの変更対象以外を計画に含めていない。
+- [x] 各差分に直接の failure と focused test/監査を対応させた。
+- [x] QA_PLAN が TASK-first で独立作成されている。
+- [x] DEV 開始を承認した。

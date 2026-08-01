@@ -1,7 +1,7 @@
 ---
 task_id: "TASK-0037"
 title: "Taskゲートの重複transactionと検査を削減する"
-status: done
+status: plan
 created_at: "2026-08-01"
 ---
 
