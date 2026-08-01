@@ -12,7 +12,14 @@ import {
   taskById,
   workRoot,
 } from "./lib.mjs";
-import { buildLaunchEvidence, rollbackWorkRepository } from "./agent-routing.mjs";
+import {
+  buildLaunchEvidence,
+  deriveEditOnlyChanges,
+  rollbackWorkRepository,
+  restoreEditOnlyState,
+  snapshotEditOnlyState,
+  summarizeChildFailure,
+} from "./agent-routing.mjs";
 
 const args = parseArgs(process.argv.slice(2));
 const action = args.action;
@@ -62,16 +69,35 @@ if (args.dry_run === "true") {
   const release = acquireWorkRepoLock(root, { requireClean: !editOnly });
   let childResult = null;
   let beforeHead = null;
+  let editSnapshot = null;
   try {
     if (git(root, ["config", "--get", "core.hooksPath"]) !== ".githooks") throw new Error("WORK_HOOKS_PATH_INVALID");
-    beforeHead = git(root, ["rev-parse", "HEAD"]);
+    if (editOnly) {
+      editSnapshot = snapshotEditOnlyState(root);
+      beforeHead = editSnapshot.head;
+    } else {
+      beforeHead = git(root, ["rev-parse", "HEAD"]);
+    }
     const result = spawnSync("codex", command, { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], env: { ...process.env, WORK_REPO_LOCK_HELD: "1" } });
-    if (result.error) throw result.error;
-    childResult = { exit_code: result.status ?? 1 };
-    if (result.status !== 0) throw new Error("WIKI_CHILD_FAILED");
+    const exitCode = Number.isInteger(result.status) ? result.status : 1;
+    childResult = { exit_code: exitCode };
+    if (result.error) {
+      throw new Error(summarizeChildFailure({ exitCode, stderr: result.error.message }));
+    }
+    if (result.status !== 0) {
+      throw new Error(summarizeChildFailure({ exitCode, stderr: result.stderr }));
+    }
     if (git(root, ["rev-parse", "HEAD"]) !== beforeHead) throw new Error("WORK_CHILD_COMMIT_FORBIDDEN");
-    if (git(root, ["diff", "--cached", "--name-only"])) throw new Error("WORK_CHILD_STAGE_FORBIDDEN");
-    const changed = changedFiles();
+    let changed;
+    if (editOnly) {
+      const editChanges = deriveEditOnlyChanges(root, editSnapshot);
+      if (editChanges.indexChanged) throw new Error("WORK_CHILD_STAGE_FORBIDDEN");
+      if (editChanges.collisions.length) throw new Error(`WORK_EDIT_ONLY_DIRTY_PATH_CONFLICT:${editChanges.collisions.join(",")}`);
+      changed = editChanges.changed;
+    } else {
+      if (git(root, ["diff", "--cached", "--name-only"])) throw new Error("WORK_CHILD_STAGE_FORBIDDEN");
+      changed = changedFiles();
+    }
     if (!changed.length && action !== "ingest") {
       emit({ childResult, commit: null });
     } else {
@@ -97,7 +123,8 @@ if (args.dry_run === "true") {
     let failure = error;
     if (beforeHead) {
       try {
-        rollbackWorkRepository(root, beforeHead);
+        if (editOnly && editSnapshot) restoreEditOnlyState(root, editSnapshot);
+        else rollbackWorkRepository(root, beforeHead);
       } catch (rollbackError) {
         failure = new Error(`${error.message};WORK_ROLLBACK_FAILED:${rollbackError.message}`);
       }

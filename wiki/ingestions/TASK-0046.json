@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "task_id": "TASK-0046",
+  "handover_sha256": "069a6f47eedbc240f00fdbac84db8a2720643f6fbb032fed4860f9afa118c8fd",
+  "ingested_at": "2026-08-01T10:01:58Z",
+  "updated_pages": [],
+  "created_decisions": [],
+  "deferred": [
+    "The HANDOVER documents one Task's implementation and fixture validation of dirty-worktree preservation; it provides no cross-Task evidence for a reusable Semantic Wiki rule or a new Decision."
+  ]
+}

@@ -6,7 +6,7 @@ qa_agent: "qa-agent-terra-medium"
 approved_by: "main-agent-sol-high"
 approved_at: "2026-08-01T09:35:30Z"
 revision: 1
-implementation_reviewed_at: ""
+implementation_reviewed_at: "2026-08-01T09:59:45Z"
 expectation_changed: false
 expectation_change_approved_by: ""
 ---
@@ -35,10 +35,10 @@ TASK.mdのplanning input packetだけを要件正本として、同一candidate�
 
 ## 実装後の再確認
 
-- [ ] 実装差分とレビュー結果を確認した。
-- [ ] HANDOVERのcandidate_commitに固定し、QA-001を一回だけ実行した。
-- [ ] QA-002〜003のcandidate-bound source/evidenceを独立監査した。
-- [ ] 期待結果または範囲を変更した場合、main Agentの承認を得た。
+- [x] 実装差分を確認し、承認済み期待結果の変更がないことをMainが確認した。
+- [x] HANDOVERのcandidate_commitに固定し、QA-001を一回だけ実行した。
+- [x] QA-002〜003のcandidate-bound source/evidenceを独立監査した。
+- [x] 期待結果または範囲は変更していない。
 
 ## 改訂履歴
 

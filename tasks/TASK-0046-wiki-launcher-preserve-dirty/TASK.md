@@ -1,7 +1,7 @@
 ---
 task_id: "TASK-0046"
 title: "Wiki launcherの既存dirty差分を保全する"
-status: plan
+status: done
 created_at: "2026-08-01"
 ---
 
@@ -36,10 +36,10 @@ TASK-0045のWiki ingestで実際に発生した、`--commit false`実行失敗�
 
 <!-- AC-IDはTask内で一意かつ安定させ、観測可能な結果をここに一度だけ記載する。 -->
 
-- [ ] AC-1: `run-wiki-agent.mjs --commit false`は開始前から存在するtrackedのstaged/unstaged変更、削除、untracked fileを子変更として扱わず、Wiki Agent成功時にそれらのbytes・mode・index状態を保持したまま、子が変更した許可Wiki pathだけを残す。
-- [ ] AC-2: edit-only実行で子非zero、HEAD変更、stage、許可外path変更、又はvalidation失敗が起きた場合、子が作った変更だけを破棄し、開始前のHEAD・tracked bytes/削除・mode・index・untracked fileを同一状態へ復元する。rollback失敗は元の失敗と区別してfail-closedに報告する。
-- [ ] AC-3: 子非zeroの公開診断は固定prefixとbounded・redactedなstderr要約だけを含み、Bearer、`sk-`形式、長いtoken候補を含めない。raw stderrをthrow又はJSONへ流さず、exit codeは保持する。
-- [ ] AC-4: commit-mode Wiki launcherとclean開始の既存rollback契約は変えない。temporary Git fixtureによるfocused testが、同一pathへの子上書き、staged+unstaged同居、tracked削除、untracked保持、子untracked除去、scope違反、子stage/commit、stderr redactionを外部network/Codexなしで検出し、`make check`がPASSする。
+- [x] AC-1: `run-wiki-agent.mjs --commit false`は開始前から存在するtrackedのstaged/unstaged変更、削除、untracked fileを子変更として扱わず、Wiki Agent成功時にそれらのbytes・mode・index状態を保持したまま、子が変更した許可Wiki pathだけを残す。
+- [x] AC-2: edit-only実行で子非zero、HEAD変更、stage、許可外path変更、又はvalidation失敗が起きた場合、子が作った変更だけを破棄し、開始前のHEAD・tracked bytes/削除・mode・index・untracked fileを同一状態へ復元する。rollback失敗は元の失敗と区別してfail-closedに報告する。
+- [x] AC-3: 子非zeroの公開診断は固定prefixとbounded・redactedなstderr要約だけを含み、Bearer、`sk-`形式、長いtoken候補を含めない。raw stderrをthrow又はJSONへ流さず、exit codeは保持する。
+- [x] AC-4: commit-mode Wiki launcherとclean開始の既存rollback契約は変えない。temporary Git fixtureによるfocused testが、同一pathへの子上書き、staged+unstaged同居、tracked削除、untracked保持、子untracked除去、scope違反、子stage/commit、stderr redactionを外部network/Codexなしで検出し、`make check`がPASSする。
 
 ### 安定した参照
 
@@ -96,10 +96,10 @@ TASK-0045のWiki ingestで実際に発生した、`--commit false`実行失敗�
 
 ## 完成の定義
 
-- [ ] 受け入れ条件を満たしている。
-- [ ] planning/candidate/completionの3 commit経路とcandidate一回の`make check`を満たしている。
-- [ ] 製品変更の場合: 実装、テスト、文書、同一案の独立REVIEW/QA、完了後の環境依存ケース確認が完了している。
-- [ ] 安全契約変更の場合: 独立計画レビュー、契約検査、許可された統制文書差分の確認が完了している。
+- [x] 受け入れ条件を満たしている。
+- [x] planning/candidate/completionの3 commit経路とcandidate一回の`make check`を満たしている。
+- [x] 製品変更の場合: 実装、テスト、文書、同一案の独立REVIEW/QA、完了後の環境依存ケース確認が完了している。
+- [x] 安全契約変更の場合: N/A（product change）。
 
 ## 関連コンテキスト
 
