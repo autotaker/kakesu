@@ -214,18 +214,6 @@ export function taskById(backlog, taskId) {
   return task;
 }
 
-export function estimatePoints(fileCount, lineCount) {
-  if (!Number.isInteger(fileCount) || fileCount < 0 || !Number.isInteger(lineCount) || lineCount < 0) {
-    throw new Error("Implementation file and line estimates must be non-negative integers");
-  }
-  const raw = Math.max(1, Math.ceil(fileCount / 3), Math.ceil(lineCount / 200));
-  const point = POINT_SCALE.find((candidate) => candidate >= raw);
-  if (!point) {
-    throw new Error(`Task exceeds the 13 point scale (raw score: ${raw}); split the task or record a main Agent exception`);
-  }
-  return point;
-}
-
 export function replaceTemplate(content, values) {
   return content.replace(/\{\{([A-Z_]+)\}\}/g, (_, key) => {
     if (!(key in values)) {

@@ -46,15 +46,9 @@ TASKの条件本文を再掲せず、`planning input packet`のAC-IDに設計を
 
 ## 変更予定
 
-見積もり対象は実装コード、Schema、設定ファイルだけとする。
-
-| ファイル | 種別 | 概算変更行数 | 変更内容 |
-|---|---|---:|---|
-| TODO | implementation | 0 | TODO |
-
-## 見積もり（参考）
-
-バックログの`estimate_points`は計画の規模感を示す参考値であり、実装ゲートの算術条件ではない。
+| パス | 変更内容 |
+|---|---|
+| TODO | TODO |
 
 ## 実装手順
 
@@ -74,7 +68,6 @@ TASKの条件本文を再掲せず、`planning input packet`のAC-IDに設計を
 - [ ] 設計観点と代替案を検討している。
 - [ ] QA_PLANがTASK-firstで独立作成されている。
 - [ ] `dependency-ready reconciliation`と完了経路preflightが完了している。
-- [ ] 見積もりが規則どおりである。
 - [ ] DEV開始を承認した。
 
 安全契約変更でv2契約を選ぶ場合は、コメントを外して`safety_contract_version: 2`と予定パス・生成パスの配列を記録し、DEV前に`make task-preflight TASK={{TASK_ID}}`を実行する。変更しない種別は空配列とし、通常の予定パスと生成パスを重複させない。独立計画レビューのPASSとMainの分類承認をフロントマターへ記録する。分類変更時はTask、PLAN、QA_PLANを再承認し、承認者と時刻を更新する。
