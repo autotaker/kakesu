@@ -11,9 +11,9 @@ safety_checked_at: ""
 safety_check_digest: ""
 safety_candidate_tree: ""
 safety_merge_tree: ""
-candidate_commit: "5e5d29e8250d8b2999d2cf6e51e748b7f866b016"
-candidate_tree: "cc3ea4ba4b6f99da68e73e370faddc3c1bad2aa1"
-managed_path_digest: "a62367397b23bb54347ff9f04951b7a11e2eb2a97e1385c51b9a2e2aef395c40"
+candidate_commit: "6b5d3495a0f61bd0a1b134926ef932dd65a5000b"
+candidate_tree: "84b53854c139b23d992026175b8f979ae71d4df2"
+managed_path_digest: "66f2d043bf7acc1a7801233e553f9bcf6a45fea4e164450866e180fba8ad93d9"
 bootstrap_evidence_commit: "a063f6d461bbc6ce752d93306f83e4939e299d1e"
 bootstrap_evidence_digest: "279dc69dba63337208ac4d0dd065db8055e7bb0b00fb8df5e0f9024d9f283329"
 ---
@@ -27,9 +27,9 @@ bootstrap_evidence_digest: "279dc69dba63337208ac4d0dd065db8055e7bb0b00fb8df5e0f9
 
 ## candidate-bound DEV証跡
 
-- `candidate_commit`: `5e5d29e8250d8b2999d2cf6e51e748b7f866b016`
-- `candidate_tree`: `cc3ea4ba4b6f99da68e73e370faddc3c1bad2aa1`
-- `managed_path_digest`: `a62367397b23bb54347ff9f04951b7a11e2eb2a97e1385c51b9a2e2aef395c40`
+- `candidate_commit`: `6b5d3495a0f61bd0a1b134926ef932dd65a5000b`
+- `candidate_tree`: `84b53854c139b23d992026175b8f979ae71d4df2`
+- `managed_path_digest`: `66f2d043bf7acc1a7801233e553f9bcf6a45fea4e164450866e180fba8ad93d9`
 - `bootstrap_evidence_commit` / `bootstrap_evidence_digest`: `a063f6d461bbc6ce752d93306f83e4939e299d1e` / `279dc69dba63337208ac4d0dd065db8055e7bb0b00fb8df5e0f9024d9f283329`。現repositoryの不変bootstrap manifestを継承する。
 
 | ケース ID | コマンド/テスト | 環境/フィクスチャ | cache条件 | exit | 成果物 ダイジェスト | 未実施理由 |
@@ -41,7 +41,7 @@ bootstrap_evidence_digest: "279dc69dba63337208ac4d0dd065db8055e7bb0b00fb8df5e0f9
 | QA-035-05 | 同上およびcandidate diff監査 | positive/negative tableとcandidate diff | 同上 | 0 | candidate diff SHA-256 `8bc852a6894cbe2077e083f2541726308d5d65b0d5fd527555e03685d0c4f9ed` | 独立mutationはQAが実施する |
 | QA-035-06 | `make check` | 全6 binary build、help/version/fail-closed unit/loop | warm absolute build cache | 0 | output SHA-256 `c09c98dc056d1788fb622f303557cfe2642ac0d8d1762a7a44667a7503234ef5` | なし |
 | QA-035-07 | explicit `./configure`、`make check`、`make distcheck`、temporary `DESTDIR` install後example検証 | macOS host、Go 1.24、明示absolute directory args | warm absolute build cache | 0 | distcheck output SHA-256 `319226754bcd31e72083ca53681b351d6820f0b4df78d13b8f1e88136b46967a` | なし |
-| QA-035-08 | candidate scope/line/dependency監査 | base `5d8ecf1`、candidate commit/tree | N/A | 0 | managed digest `a62367397b23bb54347ff9f04951b7a11e2eb2a97e1385c51b9a2e2aef395c40` | なし |
+| QA-035-08 | candidate scope/line/dependency監査 | 初回base `5d8ecf1`・実装candidate `5e5d29e`、docs修正candidate `6b5d349` | N/A | 0 | 初回managed digest `a62367397b23bb54347ff9f04951b7a11e2eb2a97e1385c51b9a2e2aef395c40`、最終docs-only digest `66f2d043bf7acc1a7801233e553f9bcf6a45fea4e164450866e180fba8ad93d9` | なし |
 
 - QAへ渡すネガティブ検出証拠、テスト弱体化の有無を判定できる差分ダイジェスト: `8bc852a6894cbe2077e083f2541726308d5d65b0d5fd527555e03685d0c4f9ed`。既存test削除はなく、unknown/duplicate/version/trailing/path/user/network/allowlist/mode/size/symlink/directory/FIFOの拒否testを追加した。
 
@@ -62,7 +62,8 @@ bootstrap_evidence_digest: "279dc69dba63337208ac4d0dd065db8055e7bb0b00fb8df5e0f9
 
 ## 判断
 
-- candidate `5e5d29e`を独立REVIEW/QAへ渡す。修正が必要な場合、設定/parser/file policy/fail-closedに関わるためcarry-forwardせず、影響ケースを再実行する。
+- 初回candidate `5e5d29e`は独立REVIEW/QA PASS後にmain merge `e24da2a`へ統合した。root `make check`がREADMEの用語lintだけを検出したため、実行されない文書表記4行だけを修正したcandidate `6b5d349`へ更新した。
+- 旧新差分は`tools/dev-agent-harness/README.md`の用語置換だけで、SHA-256は`562579d4c621dd4f28c499fcd6a3cd3bc6c6c3e041f8853a04c44c10676c0f47`。AC、コマンド、設定、parser、file policy、test、build、依存、生成物を変更しない。影響QAケース集合は空で、Reviewerの新candidate `make check` PASSを条件にQA carry-forwardを適用する。
 - 選択: `not-applicable | qa_carry_forward | focused-rerun | full-rerun`
 - Main判断の旧新コミット/tree、全差分とダイジェスト、影響ケース集合、レビュアー/`make check`証拠、理由: TODO
 - carry-forward時の`QA_RESULT.md` `CF-1`から`CF-7`: `not-applicable | complete | incomplete`
