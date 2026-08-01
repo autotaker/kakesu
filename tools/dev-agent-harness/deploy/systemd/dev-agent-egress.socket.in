@@ -1,0 +1,13 @@
+[Unit]
+Description=Development Agent Harness egress socket
+
+[Socket]
+ListenStream=@runstatedir@/dev-agent-harness/egress.sock
+SocketUser=@broker_user@
+SocketGroup=@agent_user@
+SocketMode=0660
+FileDescriptorName=egress
+RemoveOnStop=yes
+
+[Install]
+WantedBy=sockets.target

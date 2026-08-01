@@ -36,7 +36,7 @@ BIN_PROGRAMS = git-credential-dev-agent
 SBIN_PROGRAMS = dev-agent-harness-setup
 PROGRAMS = $(LIBEXEC_PROGRAMS) $(BIN_PROGRAMS) $(SBIN_PROGRAMS)
 PROGRAM_TARGETS = $(PROGRAMS:%=$(BUILD_DIR)/%)
-SYSTEMD_UNITS = dev-agent-approval.service dev-agent-broker.service dev-agent-egress.service
+SYSTEMD_UNITS = dev-agent-approval.service dev-agent-broker.service dev-agent-egress.service dev-agent-egress.socket
 GO_SOURCES = $(shell find cmd internal -type f -name '*.go' | sort) go.mod
 DIST_FILES = .gitignore README.md Makefile.in configure configure.ac go.mod build-aux/install-sh m4/.gitkeep \
 	$(shell find cmd internal -type f | sort) \

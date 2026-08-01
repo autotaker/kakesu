@@ -1,3 +1,3 @@
-d @runstatedir@/dev-agent-harness 0750 @broker_user@ @broker_user@ -
+d @runstatedir@/dev-agent-harness 0710 @broker_user@ @agent_user@ -
 d @localstatedir@/lib/dev-agent-harness 0750 @broker_user@ @broker_user@ -
 d @localstatedir@/lib/dev-agent-harness/audit 0750 @broker_user@ @broker_user@ -
