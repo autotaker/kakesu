@@ -795,3 +795,22 @@ tasks:
       dev: dev-agent-luna-xhigh
       reviewer: reviewer-agent-terra-medium
       qa: qa-agent-terra-medium
+  - id: TASK-0045
+    title: provider上流HTTPS transportを実装する
+    type: feature
+    change_class: product
+    epic: EPIC-001
+    status: dev
+    priority: P1
+    estimate_points: 1
+    task_dir: tasks/TASK-0045-dev-agent-upstream-transport
+    depends_on:
+      - TASK-0043
+    branch: task/TASK-0045-dev-agent-upstream-transport
+    worktree: worktrees/TASK-0045-dev-agent-upstream-transport
+    assignees:
+      main: main-agent-sol-high
+      planner: planner-agent-terra-medium
+      dev: dev-agent-luna-xhigh
+      reviewer: reviewer-agent-terra-medium
+      qa: qa-agent-terra-medium
