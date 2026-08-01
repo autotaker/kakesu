@@ -36,12 +36,12 @@ TLS interception listenerへ渡す前段として、broker memory内だけで既
 
 ### 受け入れ条件
 
-- [ ] AC-1: `New`は単一CA certificate PEM、対応する単一ECDSA P-256 private key PEM、非nil Clockだけを受理する。CAは自己署名、現在有効、BasicConstraintsValid/IsCA、KeyUsageCertSign、leaf lifetime以上の残存期間を満たし、public/private keyが一致する。不正入力、typed nil、nil/zero Authorityはfixed errorになり、入力PEM又はparser detailを公開しない。
-- [ ] AC-2: Authorityはparse済みCA certificate/signer、copyした公開certificate PEM、Clockだけを保持し、callerのPEM byte sliceを保持又は変更しない。`PublicCertificatePEM`はcertificate blockだけの新しいcopyを毎回返し、CA/leaf private key、入力private PEM、追加blockを返さない。error/Formatは固定で秘密、subject/serial/host/parser detailを含まない。
-- [ ] AC-3: `Issue`はexact `api.github.com`と`api.openai.com`だけを受理し、空、port付き、case差、末尾dot、wildcard、IP、未知host、control/non-ASCIIを署名前に固定errorで拒否する。拒否はserial/key/certificateを返さず、retry/cache/別host補正を行わない。
-- [ ] AC-4: 許可hostごとに新しいECDSA P-256 keyとnonzero 128-bit random serialを生成し、単一exact DNS SAN、空CN、ServerAuthだけ、DigitalSignature、IsCA false、BasicConstraintsValidを持つleafを発行する。NotBeforeは現在から5分以内のbackdate、NotAfterは15分以内かつCA期限以前で、IP/email/URI SAN、ClientAuth、CertSignを持たない。
-- [ ] AC-5: 返す`tls.Certificate`はleaf→CAのchain、parse済みLeaf、対応leaf private keyを持ち、call間でcertificate/private key/serial/bufferを共有しない。公開CAで両hostのTLS 1.2/HTTP1.1相当handshakeとhostname verifyが成功し、wrong host/expired CA/未許可hostはfail closedになる。並行Issueでrace、duplicate serial/key、cross-host SAN混線がない。
-- [ ] AC-6: in-memory fixtureによるhermetic race testがPEM/block/key/CA validity拒否、input/public output copy、fixed non-leak、host exact拒否、leaf extension/validity/chain、TLS handshake/hostname verify、concurrent uniquenessを検出する。`go test -count=1 -race ./internal/proxyca`、harness `make check`/`make distcheck`、README変更時のTask worktree `make lint-docs`、candidate launcherのroot `make check`がPASSし、base...candidate差分は追加＋削除1,000行以下である。
+- [x] AC-1: `New`は単一CA certificate PEM、対応する単一ECDSA P-256 private key PEM、非nil Clockだけを受理する。CAは自己署名、現在有効、BasicConstraintsValid/IsCA、KeyUsageCertSign、leaf lifetime以上の残存期間を満たし、public/private keyが一致する。不正入力、typed nil、nil/zero Authorityはfixed errorになり、入力PEM又はparser detailを公開しない。
+- [x] AC-2: Authorityはparse済みCA certificate/signer、copyした公開certificate PEM、Clockだけを保持し、callerのPEM byte sliceを保持又は変更しない。`PublicCertificatePEM`はcertificate blockだけの新しいcopyを毎回返し、CA/leaf private key、入力private PEM、追加blockを返さない。error/Formatは固定で秘密、subject/serial/host/parser detailを含まない。
+- [x] AC-3: `Issue`はexact `api.github.com`と`api.openai.com`だけを受理し、空、port付き、case差、末尾dot、wildcard、IP、未知host、control/non-ASCIIを署名前に固定errorで拒否する。拒否はserial/key/certificateを返さず、retry/cache/別host補正を行わない。
+- [x] AC-4: 許可hostごとに新しいECDSA P-256 keyとnonzero 128-bit random serialを生成し、単一exact DNS SAN、空CN、ServerAuthだけ、DigitalSignature、IsCA false、BasicConstraintsValidを持つleafを発行する。NotBeforeは現在から5分以内のbackdate、NotAfterは15分以内かつCA期限以前で、IP/email/URI SAN、ClientAuth、CertSignを持たない。
+- [x] AC-5: 返す`tls.Certificate`はleaf→CAのchain、parse済みLeaf、対応leaf private keyを持ち、call間でcertificate/private key/serial/bufferを共有しない。公開CAで両hostのTLS 1.2/HTTP1.1相当handshakeとhostname verifyが成功し、wrong host/expired CA/未許可hostはfail closedになる。並行Issueでrace、duplicate serial/key、cross-host SAN混線がない。
+- [x] AC-6: in-memory fixtureによるhermetic race testがPEM/block/key/CA validity拒否、input/public output copy、fixed non-leak、host exact拒否、leaf extension/validity/chain、TLS handshake/hostname verify、concurrent uniquenessを検出する。`go test -count=1 -race ./internal/proxyca`、harness `make check`/`make distcheck`、README変更時のTask worktree `make lint-docs`、candidate launcherのroot `make check`がPASSし、base...candidate差分は追加＋削除1,000行以下である。
 
 ### 安定した参照
 
@@ -96,10 +96,10 @@ HTTP Handlerまでのbroker経路は完成したが、explicit proxyがTLSを終
 
 ## 完成の定義
 
-- [ ] 受け入れ条件を満たしている。
-- [ ] planning/candidate/completionの3 commit経路とcandidate一回のroot `make check`を満たしている。
-- [ ] 同一candidateの独立REVIEW/QAを完了し、実CA file/trust/client/listenerのlive E2E未実施境界をPASSと誤記していない。
-- [ ] 再利用可能な知識が生じた場合だけ意味Wikiを既存ページへ同化し、post-merge `task-check`をPASSしている。
+- [x] 受け入れ条件を満たしている。
+- [x] planning/candidate/completionの3 commit経路とcandidate一回のroot `make check`を満たしている。
+- [x] 同一candidateの独立REVIEW/QAを完了し、実CA file/trust/client/listenerのlive E2E未実施境界をPASSと誤記していない。
+- [x] 再利用可能な知識が生じた場合だけ意味Wikiを既存ページへ同化し、post-merge `task-check`をPASSしている。
 
 ## 関連コンテキスト
 

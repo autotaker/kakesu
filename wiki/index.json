@@ -138,7 +138,8 @@
         "../../../tasks/TASK-0048-dev-agent-broker-exchange/HANDOVER.md",
         "../../../tasks/TASK-0049-dev-agent-broker-http-handler/HANDOVER.md",
         "development-agent-harness-egress-policy.md",
-        "development-agent-harness-capability-registry.md"
+        "development-agent-harness-capability-registry.md",
+        "development-agent-harness-proxy-ca.md"
       ]
     },
     {
@@ -158,6 +159,16 @@
       "links": [
         "../../../tasks/TASK-0036-dev-agent-provision-manifest/HANDOVER.md",
         "../../../tasks/TASK-0038-dev-agent-provision-verify/HANDOVER.md"
+      ]
+    },
+    {
+      "path": "wiki/semantic/schemas/development-agent-harness-proxy-ca.md",
+      "kind": "schema",
+      "title": "Development Agent Harness Proxy CA",
+      "links": [
+        "../../../tasks/TASK-0050-dev-agent-proxy-ca/HANDOVER.md",
+        "development-agent-harness-egress-transaction.md",
+        "development-agent-harness-egress-policy.md"
       ]
     },
     {

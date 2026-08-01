@@ -63,7 +63,7 @@ Exchangeへ到達する前に、origin-form、構造的に妥当なmethodとauth
 
 ## 適用限界
 
-このトランザクションはin-memoryの認可接続コアであり、実認証情報の読取・生成、GitHub App token交換、OpenAI key管理、HTTP listener、CONNECT/TLS終端、CA、DNS、上流通信、監査、永続化を実装しない。前記transportのhermetic testも、実GitHub/OpenAI、実Internet DNS、実system trust store、実proxy/firewallでの成功や認証情報非露出を証明しない。
+このトランザクションはin-memoryの認可接続コアであり、実認証情報の読取・生成、GitHub App token交換、OpenAI key管理、HTTP listener、CONNECT/TLS終端、DNS、上流通信、監査、永続化を実装しない。Agent向けTLS interceptionのCA検証とhost限定leaf発行はProxy CAの別境界であり、listener/CONNECT/SNI、OS trust、実clientと実配置はなおlive E2Eで確認する。前記transport又はCAのhermetic testも、実GitHub/OpenAI、実Internet DNS、実system trust store、実proxy/firewallでの成功や認証情報非露出を証明しない。
 
 ## 関連
 
@@ -74,3 +74,4 @@ Exchangeへ到達する前に、origin-form、構造的に妥当なmethodとauth
 - [TASK-0049 HANDOVER](../../../tasks/TASK-0049-dev-agent-broker-http-handler/HANDOVER.md)
 - [Development Agent Harness Egress Policy](development-agent-harness-egress-policy.md)
 - [Development Agent Harness Capability Registry](development-agent-harness-capability-registry.md)
+- [Development Agent Harness Proxy CA](development-agent-harness-proxy-ca.md)
