@@ -697,3 +697,23 @@ tasks:
       dev: dev-agent-luna-xhigh
       reviewer: reviewer-agent-terra-medium
       qa: qa-agent-terra-medium
+  - id: TASK-0040
+    title: Opaque capability registryを実装する
+    type: feature
+    change_class: product
+    epic: EPIC-001
+    status: dev
+    priority: P1
+    estimate_points: 3
+    task_dir: tasks/TASK-0040-dev-agent-capability-registry
+    depends_on:
+      - TASK-0035
+      - TASK-0039
+    branch: task/TASK-0040-dev-agent-capability-registry
+    worktree: worktrees/TASK-0040-dev-agent-capability-registry
+    assignees:
+      main: main-agent-sol-high
+      planner: planner-agent-terra-medium
+      dev: dev-agent-luna-xhigh
+      reviewer: reviewer-agent-terra-medium
+      qa: qa-agent-terra-medium
