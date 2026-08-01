@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
+import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { git, parseFrontmatter, writeFileAtomic } from "./lib.mjs";
 
@@ -311,6 +312,187 @@ export function rollbackWorkRepository(root, beforeHead) {
   if (status) throw new Error(`WORK_ROLLBACK_DIRTY:${status.replaceAll("\n", ",")}`);
 }
 
+const EDIT_ONLY_MAX_DIAGNOSTIC = 180;
+
+function gitBytes(root, args) {
+  const result = spawnSync("git", args, { cwd: root, encoding: "buffer" });
+  if (result.error) throw result.error;
+  if (result.status !== 0) {
+    const detail = Buffer.from(result.stderr || result.stdout || "git command failed").toString("utf8").trim();
+    throw new Error(detail || `git ${args.join(" ")} failed`);
+  }
+  return Buffer.from(result.stdout || "");
+}
+
+function nulPaths(bytes) {
+  return bytes.toString("utf8").split("\0").filter(Boolean);
+}
+
+function listEditOnlyUntrackedPaths(root) {
+  return nulPaths(gitBytes(root, ["ls-files", "--others", "--exclude-standard", "-z"]));
+}
+
+function pathState(root, file) {
+  const absolute = path.resolve(root, file);
+  if (absolute !== path.resolve(root) && !absolute.startsWith(`${path.resolve(root)}${path.sep}`)) {
+    throw new Error(`EDIT_ONLY_PATH_INVALID:${file}`);
+  }
+  let stat;
+  try {
+    stat = fs.lstatSync(absolute);
+  } catch (error) {
+    if (error.code === "ENOENT") return { exists: false };
+    throw error;
+  }
+  // Symlinks, directories, devices, and FIFOs are deliberately fail-closed.
+  if (!stat.isFile()) throw new Error(`EDIT_ONLY_UNSUPPORTED_FILE:${file}`);
+  return { exists: true, mode: stat.mode & 0o7777, bytes: fs.readFileSync(absolute) };
+}
+
+function samePathState(left, right) {
+  if (left.exists !== right.exists) return false;
+  if (!left.exists) return true;
+  return left.mode === right.mode && left.bytes.equals(right.bytes);
+}
+
+function workingTreeStatus(root) {
+  return gitBytes(root, ["status", "--porcelain=v1", "--untracked-files=all"]).toString("utf8");
+}
+
+function dirtyPaths(root) {
+  return new Set([
+    ...nulPaths(gitBytes(root, ["diff", "--name-only", "-z"])),
+    ...nulPaths(gitBytes(root, ["diff", "--cached", "--name-only", "-z"])),
+    ...listEditOnlyUntrackedPaths(root),
+  ]);
+}
+
+function indexPath(root) {
+  const value = git(root, ["rev-parse", "--git-path", "index"]);
+  return path.resolve(root, value);
+}
+
+/**
+ * Capture the edit-only starting state without changing Git state. The index
+ * is retained byte-for-byte so staged/unstaged coexistence can be restored.
+ */
+export function snapshotEditOnlyState(root) {
+  const head = git(root, ["rev-parse", "HEAD"]);
+  const index = indexPath(root);
+  const paths = [...dirtyPaths(root)].sort();
+  const states = new Map(paths.map((file) => [file, pathState(root, file)]));
+  const untrackedPaths = new Set(listEditOnlyUntrackedPaths(root));
+  const baselineDirtyPaths = new Set(paths);
+  const status = workingTreeStatus(root);
+  const indexDiff = gitBytes(root, ["diff", "--cached", "--binary", "--no-ext-diff"]);
+  return {
+    head,
+    index,
+    // Git status/diff may refresh index stat-cache fields, so capture the
+    // exact bytes only after all read-only observations are complete.
+    indexBytes: fs.readFileSync(index),
+    indexDiff,
+    paths: states,
+    untrackedPaths,
+    dirtyPaths: baselineDirtyPaths,
+    status,
+  };
+}
+
+/**
+ * Compare the post-child state against an edit-only snapshot. A baseline
+ * dirty path that changed again is reported as a collision rather than being
+ * merged heuristically with the child's edit.
+ */
+export function deriveEditOnlyChanges(root, snapshot) {
+  if (!snapshot?.paths || !snapshot.indexBytes || !snapshot.indexDiff || !snapshot.head) throw new Error("EDIT_ONLY_SNAPSHOT_INVALID");
+  const currentPaths = [...dirtyPaths(root)];
+  const allPaths = new Set([...snapshot.paths.keys(), ...currentPaths]);
+  const changed = [];
+  const collisions = [];
+  for (const file of [...allPaths].sort()) {
+    const before = snapshot.paths.get(file) ?? { exists: false };
+    const after = pathState(root, file);
+    if (!samePathState(before, after)) {
+      changed.push(file);
+      if (snapshot.dirtyPaths.has(file)) collisions.push(file);
+    }
+  }
+  const currentIndexDiff = gitBytes(root, ["diff", "--cached", "--binary", "--no-ext-diff"]);
+  return {
+    changed,
+    collisions,
+    indexChanged: !currentIndexDiff.equals(snapshot.indexDiff),
+  };
+}
+
+function removePath(root, file) {
+  const absolute = path.resolve(root, file);
+  const resolvedRoot = path.resolve(root);
+  if (absolute !== resolvedRoot && !absolute.startsWith(`${resolvedRoot}${path.sep}`)) {
+    throw new Error(`EDIT_ONLY_PATH_INVALID:${file}`);
+  }
+  fs.rmSync(absolute, { force: true, recursive: true });
+}
+
+function restorePath(root, file, state) {
+  const absolute = path.resolve(root, file);
+  if (!state.exists) {
+    removePath(root, file);
+    return;
+  }
+  removePath(root, file);
+  fs.mkdirSync(path.dirname(absolute), { recursive: true });
+  fs.writeFileSync(absolute, state.bytes);
+  fs.chmodSync(absolute, state.mode);
+}
+
+/** Restore only the edit-only transaction, preserving all pre-existing dirt. */
+export function restoreEditOnlyState(root, snapshot) {
+  if (!snapshot?.paths || !snapshot.indexBytes || !snapshot.indexDiff || !snapshot.head) throw new Error("EDIT_ONLY_SNAPSHOT_INVALID");
+  // Remove newly-created untracked files before reset, otherwise reset can be
+  // blocked by a child file that now occupies a tracked path.
+  const headChanged = git(root, ["rev-parse", "HEAD"]) !== snapshot.head;
+  for (const file of listEditOnlyUntrackedPaths(root)) {
+    // A child commit can newly track a path that was an untracked baseline;
+    // remove it before reset, then restore the baseline bytes below.
+    if (headChanged || !snapshot.untrackedPaths?.has(file)) removePath(root, file);
+  }
+  git(root, ["reset", "--hard", snapshot.head]);
+  for (const [file, state] of snapshot.paths) restorePath(root, file, state);
+  fs.writeFileSync(snapshot.index, snapshot.indexBytes);
+  if (git(root, ["rev-parse", "HEAD"]) !== snapshot.head) throw new Error("EDIT_ONLY_RESTORE_HEAD_MISMATCH");
+  if (!fs.readFileSync(snapshot.index).equals(snapshot.indexBytes)) throw new Error("EDIT_ONLY_RESTORE_INDEX_MISMATCH");
+  if (!gitBytes(root, ["diff", "--cached", "--binary", "--no-ext-diff"]).equals(snapshot.indexDiff)) {
+    throw new Error("EDIT_ONLY_RESTORE_INDEX_STATE_MISMATCH");
+  }
+  for (const [file, state] of snapshot.paths) {
+    if (!samePathState(state, pathState(root, file))) throw new Error(`EDIT_ONLY_RESTORE_PATH_MISMATCH:${file}`);
+  }
+  if (workingTreeStatus(root) !== snapshot.status) throw new Error("EDIT_ONLY_RESTORE_STATUS_MISMATCH");
+  // `git status` may refresh stat-cache fields in the index; put back the
+  // exact starting index after that observation.
+  fs.writeFileSync(snapshot.index, snapshot.indexBytes);
+}
+
+function redactDiagnostic(value, limit = EDIT_ONLY_MAX_DIAGNOSTIC) {
+  if (typeof value !== "string") return "(no diagnostic)";
+  let result = value
+    .replace(/Bearer\s+[A-Za-z0-9._~+/=-]+/gi, "[REDACTED]")
+    .replace(/sk-[A-Za-z0-9_-]+/gi, "[REDACTED]")
+    .replace(/(?:token|secret|api[_-]?key)\s*[=:]\s*[^\s,;]+/gi, "[REDACTED]")
+    .replace(/\b[A-Za-z0-9_-]{32,}\b/g, "[REDACTED]")
+    .replace(/[\r\n\t ]+/g, " ")
+    .trim();
+  if (!result) return "(no diagnostic)";
+  return result.slice(0, limit);
+}
+
+export function summarizeChildFailure({ exitCode, stderr }) {
+  const code = Number.isInteger(exitCode) ? exitCode : 1;
+  return `WIKI_CHILD_FAILED: exit_code=${code}; stderr=${redactDiagnostic(stderr)}`;
+}
+
 export function buildLaunchEvidence({ route, cwd, allowedPaths, childResult = null, commit = null, error = null, legacy = false }) {
   return {
     event: "agent_launch",
@@ -326,7 +508,7 @@ export function buildLaunchEvidence({ route, cwd, allowedPaths, childResult = nu
     stdin: "closed",
     child_result: childResult,
     commit,
-    error: error ? String(error).slice(0, 240).replace(/(?:sk-|Bearer\s+)[A-Za-z0-9._-]+/gi, "[REDACTED]") : null,
+    error: error ? redactDiagnostic(String(error), 240) : null,
   };
 }
 
