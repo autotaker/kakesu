@@ -67,3 +67,23 @@ make install DESTDIR="$PWD/package-root"
 
 `make install`はファイルを配置するだけである。OSユーザー、秘密、実設定、tailnet、外部サービス、サービス状態は
 変更しない。実装後も配置計画とenable/startは明示的な管理操作として分離する。
+
+## 外向き通信 ポリシー コア
+
+`internal/egresspolicy` は、TLS終端後の後続コンポーネントが利用する副作用のないGo製
+allowlist判断コアである。`New(Rules)` が許可するGitHubリポジトリとOpenAIモデル、
+JSON本文上限、出力トークン上限を検証・コピーし、`Policy.Authorize(Request)` は入力値だけを
+調べて固定された判断を返す。許可面は次の二つだけで、未知の操作面は拒否となる。
+
+- `GET`/`HEAD https://api.github.com[:443]/repos/{owner}/{repo}` とその正規な子パス
+- `POST https://api.openai.com[:443]/v1/responses` の追加パラメーターを含まない`application/json`、
+  `store=false`・`stream=false`の上限付きテキスト専用本文
+
+URLのパーセント符号化、ユーザー情報、クエリ、フラグメント、曖昧なパス要素、非正規なホスト/
+ポートは許可根拠にならない。OpenAI本文も厳密なJSONオブジェクトとして検査され、重複/未知フィールド、
+ストリーミング・ツール・ファイル/画像等の操作面は拒否される。`Authorize`の許可は実際の通信を
+行わず、許可判断はネットワーク接続を意味しない。
+
+このパッケージはHTTP サーバー/プロキシ、リダイレクト、TLS、DNS、認証情報取得・置換、Authorization
+ヘッダー、ログ記録/監査、利用量/費用計測を実装しない。接続、認証情報境界、監査、失敗時の
+クリーンアップは後続プロキシ/ブローカーの責務であり、利用側で別途明示的に適用する。
