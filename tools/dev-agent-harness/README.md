@@ -87,3 +87,24 @@ URLのパーセント符号化、ユーザー情報、クエリ、フラグメ�
 このパッケージはHTTP サーバー/プロキシ、リダイレクト、TLS、DNS、認証情報取得・置換、Authorization
 ヘッダー、ログ記録/監査、利用量/費用計測を実装しない。接続、認証情報境界、監査、失敗時の
 クリーンアップは後続プロキシ/ブローカーの責務であり、利用側で別途明示的に適用する。
+
+## Opaque ケイパビリティ レジストリ
+
+`internal/capability` は、Agentへ渡す `cap_...` を実認証情報ではなく、in-memory レジストリへの
+短命な参照として発行する。`New(Rules)` でポリシーバージョン、TTL、使用回数、失効世代の
+上限を固定し、`Issue(IssueSpec)` は次の二つのプロバイダー スコープだけを生成する。
+
+- GitHub: リポジトリ必須、`github-rest-read`、`api.github.com`
+- OpenAI: リポジトリなし、`openai-responses-text`、`api.openai.com`
+
+handleは32バイトのcrypto/rand値をpaddingなしbase64urlで符号化したものだが、レジストリが保持する
+map キーはSHA-256 ダイジェストだけである。`Consume(Request)` はAgent インスタンス、non-root UID、workspace、
+プロバイダー、リポジトリ、操作、宛先 ホストを完全一致させ、期限、失効世代、残使用回数の判定と
+一回の消費をmutex下で原子的に行う。スコープ不一致は使用回数を消費せず、最後の使用、期限切れ、
+`Revoke`、失効世代の更新後は再利用できない。
+
+productionではmonotonic elapsedを内部TTLに使い、呼出元へ返すIssued/Expires時刻だけUTCへ変換する。
+
+このレジストリは永続化せず、プロセス再起動時に全entryが失われるfail-safe設計である。実認証情報の
+取得・保存・置換、プロキシ、HTTP/TLS/DNS、監査、呼出頻度/費用の制限、config/CLI、複数プロセス共有は
+対象外で、成功結果は実通信や認証情報を意味しない。

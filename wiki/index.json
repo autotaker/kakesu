@@ -93,6 +93,15 @@
       ]
     },
     {
+      "path": "wiki/semantic/schemas/development-agent-harness-capability-registry.md",
+      "kind": "schema",
+      "title": "Development Agent Harness Capability Registry",
+      "links": [
+        "../../../tasks/TASK-0040-dev-agent-capability-registry/HANDOVER.md",
+        "development-agent-harness-egress-policy.md"
+      ]
+    },
+    {
       "path": "wiki/semantic/schemas/development-agent-harness-config.md",
       "kind": "schema",
       "title": "Development Agent Harness Config Policy",

@@ -5,7 +5,7 @@ status: approved
 qa_agent: "qa-agent-terra-medium"
 approved_by: "main-agent-sol-high"
 approved_at: "2026-08-01T05:24:39Z"
-implementation_reviewed_at: ""
+implementation_reviewed_at: "2026-08-01T05:53:35Z"
 expectation_changed: false
 expectation_change_approved_by: ""
 ---
@@ -43,6 +43,6 @@ expectation_change_approved_by: ""
 
 ## 実装後の再確認
 
-- [ ] fixed candidate の実装差分と REVIEW と独立の QA 結果を確認した。
-- [ ] QA-001〜QA-004 の focused race test を candidate で一度だけ実行し、source/test audit と合わせて確認した。
-- [ ] QA-005 の candidate-bound DEV 証跡と scope を監査し、期待結果または範囲を変更した場合は Main の承認を得た。
+- [x] fixed candidate の実装差分と REVIEW と独立の QA 結果を確認した。
+- [x] QA-001〜QA-004 の focused race test を candidate で一度だけ実行し、source/test audit と合わせて確認した。
+- [x] QA-005 の candidate-bound DEV 証跡と scope を監査し、期待結果または範囲を変更した場合は Main の承認を得た。

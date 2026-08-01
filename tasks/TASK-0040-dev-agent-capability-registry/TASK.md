@@ -1,7 +1,7 @@
 ---
 task_id: "TASK-0040"
 title: "Opaque capability registryを実装する"
-status: plan
+status: done
 created_at: "2026-08-01"
 ---
 
@@ -37,12 +37,12 @@ Development Agentへ渡す`cap_...` handleを、実Credentialを含まない短�
 
 ### 受け入れ条件
 
-- [ ] AC-1: valid RulesからRegistryを生成できる。policy versionは1〜64 byteのsafe ASCII identifier、最大TTLは正かつ24時間以下、最大使用回数は正かつ10,000以下であり、zero/不正/上限超過は固定Rules errorを返す。production Registryはcrypto entropyとUTC clockを使い、nil/zero Registryは発行も利用も許可しない。
-- [ ] AC-2: valid IssueSpecは1〜128 byteのcanonical agent instance/workspace ID、non-root UID、provider固有scope、正かつRules内のTTL/使用回数を持つ。Issueは`cap_` + paddingなしbase64urlの32 random bytesを返し、entryにはhandleのSHA-256 digest、固定scope、issued/expires、remaining uses、policy version、revocation epochだけを保持する。不正spec、entropy failure、4回以内で解消しない衝突は入力を含まない固定errorを返し、partial entryを残さない。
-- [ ] AC-3: GitHub Requestは同じsubject/workspace、`github` provider、完全一致repository、`github-rest-read` operation、`api.github.com` host、OpenAI Requestは同じsubject/workspace、`openai` provider、repositoryなし、`openai-responses-text` operation、`api.openai.com` hostの全条件一致時だけGrantを返す。unknown/malformed handle、大小文字やprefix/suffixだけの一致、scope/policy不一致は同じ固定denyを返し、scope mismatchでは残使用回数を消費しない。
-- [ ] AC-4: `Consume`は期限境界を`now >= expires`で拒否し、成功ごとに使用回数を一回だけ減らし、最後の成功後にentryを削除する。`Revoke`後と`AdvanceRevocationEpoch`後は再利用できず、epochは単調増加だけを受理する。同じ1-use handleへの並行Consumeではexactly oneだけが成功し、race detectorでdata raceがない。
-- [ ] AC-5: errorはhandle、agent/workspace/repository、provider input、entropy/clock由来detailを含まない固定値である。Registryはraw handle、実Credential、Request sliceを保持せず、file/environment/process/network/DNS/TLSを使わない。restart時にin-memory entryが失われる性質をfail-safeとしてREADMEへ明記し、永続性や実通信のPASSを主張しない。
-- [ ] AC-6: table-driven unit testsがAC-1〜5の代表的なissue/consume/deny/revoke/epoch/expiry/collision/entropy failure/non-leak/不変性/並行性を検出する。`go test -race ./internal/capability`、harness `make check`/`make distcheck`、root `make check`がPASSし、製品差分は`internal/capability/`とharness READMEだけに限定し、合計1,200行を超えない。
+- [x] AC-1: valid RulesからRegistryを生成できる。policy versionは1〜64 byteのsafe ASCII identifier、最大TTLは正かつ24時間以下、最大使用回数は正かつ10,000以下であり、zero/不正/上限超過は固定Rules errorを返す。production Registryはcrypto entropyとUTC clockを使い、nil/zero Registryは発行も利用も許可しない。
+- [x] AC-2: valid IssueSpecは1〜128 byteのcanonical agent instance/workspace ID、non-root UID、provider固有scope、正かつRules内のTTL/使用回数を持つ。Issueは`cap_` + paddingなしbase64urlの32 random bytesを返し、entryにはhandleのSHA-256 digest、固定scope、issued/expires、remaining uses、policy version、revocation epochだけを保持する。不正spec、entropy failure、4回以内で解消しない衝突は入力を含まない固定errorを返し、partial entryを残さない。
+- [x] AC-3: GitHub Requestは同じsubject/workspace、`github` provider、完全一致repository、`github-rest-read` operation、`api.github.com` host、OpenAI Requestは同じsubject/workspace、`openai` provider、repositoryなし、`openai-responses-text` operation、`api.openai.com` hostの全条件一致時だけGrantを返す。unknown/malformed handle、大小文字やprefix/suffixだけの一致、scope/policy不一致は同じ固定denyを返し、scope mismatchでは残使用回数を消費しない。
+- [x] AC-4: `Consume`は期限境界を`now >= expires`で拒否し、成功ごとに使用回数を一回だけ減らし、最後の成功後にentryを削除する。`Revoke`後と`AdvanceRevocationEpoch`後は再利用できず、epochは単調増加だけを受理する。同じ1-use handleへの並行Consumeではexactly oneだけが成功し、race detectorでdata raceがない。
+- [x] AC-5: errorはhandle、agent/workspace/repository、provider input、entropy/clock由来detailを含まない固定値である。Registryはraw handle、実Credential、Request sliceを保持せず、file/environment/process/network/DNS/TLSを使わない。restart時にin-memory entryが失われる性質をfail-safeとしてREADMEへ明記し、永続性や実通信のPASSを主張しない。
+- [x] AC-6: table-driven unit testsがAC-1〜5の代表的なissue/consume/deny/revoke/epoch/expiry/collision/entropy failure/non-leak/不変性/並行性を検出する。`go test -race ./internal/capability`、harness `make check`/`make distcheck`、root `make check`がPASSし、製品差分は`internal/capability/`とharness READMEだけに限定し、合計1,200行を超えない。
 
 ### 安定した参照
 
@@ -99,10 +99,10 @@ TASK-0039でHTTP requestのallowlist判断は固定したが、Agentへ実Creden
 
 ## 完成の定義
 
-- [ ] 受け入れ条件を満たしている。
-- [ ] 製品変更のplanning/candidate/completionの3 commit経路を満たしている。
-- [ ] 同一candidateの独立REVIEW/QA、candidateで一回のroot `make check`、post-merge `task-check`を満たしている。
-- [ ] 再利用可能なscope/消費/revocation契約をSemantic Wikiへ記録している。
+- [x] 受け入れ条件を満たしている。
+- [x] 製品変更のplanning/candidate/completionの3 commit経路を満たしている。
+- [x] 同一candidateの独立REVIEW/QA、candidateで一回のroot `make check`、post-merge `task-check`を満たしている。
+- [x] 再利用可能なscope/消費/revocation契約をSemantic Wikiへ記録している。
 
 ## 関連コンテキスト
 
