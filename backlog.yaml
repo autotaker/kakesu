@@ -1070,7 +1070,7 @@ tasks:
   - id: TASK-0059
     title: Wiki Agentを標準spawn経路へ統合する
     type: chore
-    change_class: safety_contract
+    change_class: product
     epic: EPIC-001
     status: plan
     priority: P1

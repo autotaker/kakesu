@@ -31,7 +31,7 @@ Wiki Agentだけが独立`codex exec` launcherを使う例外を廃止し、他�
 - `agents.spawn_agent`ランタイム自体の実装、製品runtime、Memory PlaneのWiki Agent設計変更。
 - Planner/DEV/Reviewer/QA/Explorerの起動経路やモデル契約の変更。
 - completion gateへのWiki receipt必須化、暗黙のWiki起動、専用の外部送信承認フロー。
-- 製品コード、製品test、runtime/build設定、Schema、製品依存、生成製品入力/成果物、外部観測可能な製品挙動を変更しない。
+- Kakesuの製品コード/test/runtime/build設定、Schema、製品依存、生成製品入力/成果物、および`tools/dev-agent-harness` runtimeは変更しない。開発workflow toolingのMake入口、実行script、process test、`.codex` role registryは変更対象とする。
 
 ### 受け入れ条件
 
@@ -42,7 +42,7 @@ Wiki Agentだけが独立`codex exec` launcherを使う例外を廃止し、他�
 - [ ] AC-3: Mainは同時writerを作らず、起動前に対象と許可pathを固定し、子の終了後に差分scope、`make wiki-index`（索引変更時）、`make work-check`を確認して、既存の共通lock付きMain transactionだけでcommitする。Wiki Agentはlock、validation、stage、commitを所有しない。
 - [ ] AC-4: Wiki依頼がないTaskはWiki Agentもreceiptもなしで完了できる現行契約を維持する。receipt Schemaと既存receipt検証は残すが、launcher削除に伴ってreceipt作成を完了条件や暗黙処理へ戻さない。
 - [ ] AC-5: launcher固有fixtureを削除し、standard wiki role、launcher/Make入口不在、親所有境界、receipt任意性をfocused process testsが検出する。影響するNode tests、docs lint、work-check、root make check、git diff checkがPASSする。
-- [ ] AC-6: 変更は宣言した開発統制pathだけに限定し、製品成果物と外部観測可能な製品挙動を変更しない。既存TASK-0058 Wiki差分は検証済み完了物として保持し、遡及変更しない。
+- [ ] AC-6: 変更は宣言した開発workflow tooling pathだけに限定し、Kakesu product runtimeとtools/dev-agent-harness runtimeを変更しない。`wiki/AGENTS.md`はMain管理差分としてcompletion transactionで統合し、candidateへ含めない。既存TASK-0058 Wiki差分は検証済み完了物として保持し、遡及変更しない。
 
 ### 安定した参照
 
@@ -65,7 +65,6 @@ Wiki Agentだけが独立`codex exec` launcherを使う例外を廃止し、他�
 - `scripts/task/agent-routing.mjs`
 - `scripts/task/development-process.test.mjs`
 - `scripts/task/unified-lifecycle.test.mjs`
-- `scripts/task/check-task.mjs`
 - `.codex/config.toml`
 - `.codex/agents/wiki.toml`（新規）
 - `AGENTS.md`
@@ -76,7 +75,7 @@ Wiki Agentだけが独立`codex exec` launcherを使う例外を廃止し、他�
 
 | 確認対象 | 結果 | コマンドまたは根拠 |
 |---|---|---|
-| 完了checker | `ready` | `check-task.mjs`の安全契約許可pathをこのTaskの統制pathだけexactに拡張し、planning review、契約検査、no-ff tree同一性を使用する |
+| 完了checker | `ready` | `wiki/AGENTS.md`をcandidate外のMain管理差分として、同一candidateの独立REVIEW/QA後にcompletion transactionで統合する。planning review、製品変更のゲート、no-ff tree同一性を使用する |
 | 権限 | `ready` | Wiki子Agentは編集のみ、MainだけがGit/lock/scope/validationを所有する |
 | 依存状態と参照 | `ready` | TASK-0037でreceipt任意化済み、TASK-0058はmain反映済み |
 | 生成物の有無と更新方法 | `ready` | generated Wiki/glossaryなし。`.codex/agents/wiki.toml`だけ新規正規設定 |
@@ -107,9 +106,8 @@ TASK-0058完了時、Wikiだけが独立`codex exec`を起動したため、専�
 ## 完成の定義
 
 - [ ] 受け入れ条件を満たしている。
-- [ ] 選択した`change_class`の完了経路と`make check`を満たしている。
-- [ ] 製品変更の場合: 実装、テスト、文書、同一案の独立REVIEW/QA、完了後の環境依存ケース確認が完了している。
-- [ ] 安全契約変更の場合: 独立計画レビュー、契約検査、許可された統制文書差分の確認が完了している。
+- [ ] product変更経路と`make check`を満たしている。
+- [ ] 実装、テスト、文書、同一candidateの独立REVIEW/QA、completion後に必要な環境依存ケース確認が完了している。
 
 ## 関連コンテキスト
 
