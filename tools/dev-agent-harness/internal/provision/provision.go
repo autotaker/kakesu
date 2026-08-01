@@ -230,7 +230,7 @@ func build(c *config.Config, targetRoot string) (manifest, error) {
 }
 
 func validConfig(c *config.Config) bool {
-	if c.Version != Version || c.Network.Default != "deny" {
+	if c.Version != Version || c.Network.Default != "deny" || !validWorkspaceID(c.Identity.WorkspaceID) {
 		return false
 	}
 	paths := []string{c.Paths.ConfigDir, c.Paths.StateDir, c.Paths.RuntimeDir}
@@ -249,6 +249,25 @@ func validConfig(c *config.Config) bool {
 		}
 	}
 	return users[0] != users[1] && users[0] != users[2] && users[1] != users[2]
+}
+
+func validWorkspaceID(value string) bool {
+	if len(value) < 1 || len(value) > 128 {
+		return false
+	}
+	for i := 0; i < len(value); i++ {
+		c := value[i]
+		if i == 0 {
+			if !((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9')) {
+				return false
+			}
+			continue
+		}
+		if !((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '.' || c == '_' || c == '-') {
+			return false
+		}
+	}
+	return true
 }
 
 func validLinuxUser(value string) bool {

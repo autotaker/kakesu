@@ -7,7 +7,7 @@ qa_role: "independent-qa"
 approved_by: "main-agent-sol-high"
 approved_at: "2026-08-01T17:28:43Z"
 revision: 2
-implementation_reviewed_at: ""
+implementation_reviewed_at: "2026-08-01T17:53:59Z"
 expectation_changed: false
 expectation_change_approved_by: ""
 ---
@@ -56,11 +56,11 @@ candidate commitはHANDOVERだけを正本とする。QA_RESULTにはfocused-rer
 
 ## 実装後の再確認
 
-- [ ] 同一candidateに対しQA-001〜005を独立に評価し、指定のfocused-rerunを一回だけ実行した。
-- [ ] lookup/entropyのexact call count、numeric/EUID/user/group拒否、fresh instance、accessor copy、fixed non-leak diagnosticsのfailure detectionを確認した。
-- [ ] config strictness とexample同期、許可path、追加＋削除1,000行以下、dependency/config version/service compositionなしを確認した。
-- [ ] root/harness checksはDEV candidate evidenceとしてのみ監査し、QAによる重複実行又はlive-e2e PASSと記録していない。
-- [ ] 実Linux NSS/別UID/GID/sysusers/VPSをblockedのままとし、期待値又はscopeを変更していない。
+- [x] 同一candidateに対しQA-001〜005を独立に評価し、指定のfocused-rerunを一回だけ実行した。
+- [x] lookup/entropyのexact call count、numeric/EUID/user/group拒否、fresh instance、accessor copy、fixed non-leak diagnosticsのfailure detectionを確認した。
+- [x] config strictness とexample同期、許可path、追加＋削除1,000行以下、dependency/config version/service compositionなしを確認した。
+- [x] root/harness checksはDEV candidate evidenceとしてのみ監査し、QAによる重複実行又はlive-e2e PASSと記録していない。
+- [x] 実Linux NSS/別UID/GID/sysusers/VPSをblockedのままとし、期待値又はscopeを変更していない。
 
 ## 改訂履歴
 

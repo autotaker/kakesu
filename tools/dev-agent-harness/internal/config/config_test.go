@@ -10,7 +10,7 @@ import (
 )
 
 func validJSON() string {
-	return `{"version":1,"paths":{"config_dir":"/etc/dev-agent","state_dir":"/var/lib/dev-agent","runtime_dir":"/run/dev-agent"},"users":{"agent":"dev-agent","runtime":"dev-runtime","broker":"dev-broker"},"network":{"default":"deny"}}`
+	return `{"version":1,"paths":{"config_dir":"/etc/dev-agent","state_dir":"/var/lib/dev-agent","runtime_dir":"/run/dev-agent"},"users":{"agent":"dev-agent","runtime":"dev-runtime","broker":"dev-broker"},"identity":{"workspace_id":"workspace-1"},"network":{"default":"deny"}}`
 }
 
 func TestParseValid(t *testing.T) {
@@ -18,7 +18,7 @@ func TestParseValid(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Parse(valid): %v", err)
 	}
-	if c.Version != 1 || c.Network.Default != "deny" || c.Paths.ConfigDir != "/etc/dev-agent" {
+	if c.Version != 1 || c.Network.Default != "deny" || c.Paths.ConfigDir != "/etc/dev-agent" || c.Identity.WorkspaceID != "workspace-1" {
 		t.Fatalf("unexpected config: %#v", c)
 	}
 }
@@ -33,6 +33,12 @@ func TestParseRejectsStrictAndSemanticCases(t *testing.T) {
 		{"unknown", func(s string) string {
 			return strings.Replace(s, `"network":{"default":"deny"}`, `"network":{"default":"deny","sentinel":"do-not-echo"}`, 1)
 		}, ClassUnknown},
+		{"identity-unknown", func(s string) string {
+			return strings.Replace(s, `"identity":{"workspace_id":"workspace-1"}`, `"identity":{"workspace_id":"workspace-1","sentinel":"do-not-echo"}`, 1)
+		}, ClassUnknown},
+		{"identity-duplicate", func(s string) string {
+			return strings.Replace(s, `"identity":{"workspace_id":"workspace-1"}`, `"identity":{"workspace_id":"workspace-1","workspace_id":"other"}`, 1)
+		}, ClassDuplicate},
 		{"version", func(s string) string { return strings.Replace(s, `"version":1`, `"version":2`, 1) }, ClassVersion},
 		{"trailing", func(s string) string { return s + " {\"sentinel\":\"do-not-echo\"}" }, ClassTrailing},
 		{"relative-path", func(s string) string { return strings.Replace(s, `"/etc/dev-agent"`, `"etc/dev-agent"`, 1) }, ClassSemantic},
@@ -55,10 +61,44 @@ func TestParseRejectsStrictAndSemanticCases(t *testing.T) {
 }
 
 func TestParseRejectsMissingFields(t *testing.T) {
-	for _, fragment := range []string{`{"version":1}`, `{"version":1,"paths":{},"users":{},"network":{}}`} {
+	for _, fragment := range []string{`{"version":1}`, `{"version":1,"paths":{},"users":{},"identity":{},"network":{}}`, `{"version":1,"paths":{},"users":{},"network":{}}`} {
 		if _, err := Parse([]byte(fragment)); err == nil {
 			t.Fatalf("accepted incomplete document %q", fragment)
 		}
+	}
+}
+
+func TestWorkspaceIdentifierBoundaries(t *testing.T) {
+	cases := []struct {
+		name  string
+		value string
+		valid bool
+	}{
+		{"one-byte", "a", true},
+		{"max-byte", strings.Repeat("a", 128), true},
+		{"too-long", strings.Repeat("a", 129), false},
+		{"empty", "", false},
+		{"leading-digit", "1workspace", true},
+		{"leading-dot", ".workspace", false},
+		{"trailing-symbols", "workspace._-1", true},
+		{"space", "workspace id", false},
+		{"unicode", "workspace-é", false},
+		{"slash", "workspace/id", false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			input := strings.Replace(validJSON(), "workspace-1", tc.value, 1)
+			c, err := Parse([]byte(input))
+			if tc.valid {
+				if err != nil || c.Identity.WorkspaceID != tc.value {
+					t.Fatalf("workspace=%q rejected: c=%#v err=%v", tc.value, c, err)
+				}
+				return
+			}
+			if c != nil || ClassOf(err) != ClassSemantic {
+				t.Fatalf("workspace=%q accepted: c=%#v err=%v", tc.value, c, err)
+			}
+		})
 	}
 }
 

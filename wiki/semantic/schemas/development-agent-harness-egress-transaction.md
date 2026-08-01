@@ -87,6 +87,14 @@ Receiverはcanonicalな`LISTEN_PID`、`LISTEN_FDS=1`、`LISTEN_FDNAMES=egress`�
 
 Linuxでは、current non-root EUID、`broker:agent 0710`のruntime directory、そのdirectory FDから`openat(O_PATH|O_NOFOLLOW)`したsocket node、固定listener pathを照合する。nodeは`broker:agent 0660`のUnix socketでなければならない。上限付き`/proc/self/environ` snapshotでraw `LISTEN_*`出現数も数え、canonical値に見えても同名keyの重複を拒否する。non-Linuxでは代替経路なしにfail closedとする。
 
+## service起動単位のruntime identity
+
+root-owned config V1は`identity.workspace_id`を必須とし、1〜128 byteのASCII識別子へ固定する。`runtimeidentity.Resolver`は設定済みworkspaceとagent/broker usernameをimmutableに保持し、service起動単位の解決でLinuxのagent user、broker user、agent同名groupを各一回だけ参照する。
+
+解決結果は、current non-root EUIDと一致するbroker UID、brokerと異なる正数agent UID、同名groupと一致するagent primary GID、16 byteの暗号乱数から生成したfreshな`agent-` + 32 lowercase hex instance ID、同じ値から作ったSubjectを一つのsnapshotとして返す。numeric textはcanonicalかつuint32/Go intへlosslessな値だけを受理し、lookup、EUID/GID、entropy又はreceiver corruptionの失敗ではpartial resultを返さない。診断は固定error/type名だけで、username、workspace、UID/GID又は下位errorを含めない。non-Linuxはfail closedとする。
+
+後続service compositionはこの一つのsnapshotからsocket activationへbroker UID/agent GIDを、PeerBinderへagent UID/Subjectを渡す。複数箇所でusername lookupやinstance ID生成をやり直さない。実Linux NSS、別broker/agent UID/GID、sysusers、service restart、VPSはなおlive E2E境界であり、fake seam又はLinux cross-compileで代替しない。
+
 ## 適用限界
 
 このトランザクションはin-memoryの認可接続コアであり、実認証情報の読取・生成、GitHub App token交換、OpenAI key管理、実UID分離、DNS、上流通信、監査、永続化を実装しない。CONNECT/TLS/HTTPの一接続処理、Agent向けTLS interceptionのCA検証とhost限定leaf発行、受理済みUnix connectionのLinux peer UID照合、systemd継承FDの受領は別境界である。実systemd managerによるFD 3配送、実broker/agent別UID/GID、socket permission/connect、停止時cleanup、network namespace、実client/VPS、実GitHub/OpenAI、実Internet DNS/system trust、CA file lifecycle/rotate/trust install、実配置のrestart/rollback/cleanupはなおlive E2Eで確認する。前記transport、CA、Session、listener、peer binder又はsocket activationのhermetic testとcross-compileは、これらのlive E2E又は認証情報非露出の証明にならない。
@@ -102,6 +110,7 @@ Linuxでは、current non-root EUID、`broker:agent 0710`のruntime directory、
 - [TASK-0052 HANDOVER](../../../tasks/TASK-0052-dev-agent-listener/HANDOVER.md)
 - [TASK-0055 HANDOVER](../../../tasks/TASK-0055-dev-agent-linux-peer-binder/HANDOVER.md)
 - [TASK-0056 HANDOVER](../../../tasks/TASK-0056-dev-agent-systemd-socket-activation/HANDOVER.md)
+- [TASK-0057 HANDOVER](../../../tasks/TASK-0057-dev-agent-runtime-identity/HANDOVER.md)
 - [Development Agent Harness Egress Policy](development-agent-harness-egress-policy.md)
 - [Development Agent Harness Capability Registry](development-agent-harness-capability-registry.md)
 - [Development Agent Harness Proxy CA](development-agent-harness-proxy-ca.md)

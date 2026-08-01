@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "task_id": "TASK-0057",
+  "handover_sha256": "d0827746d354b67a66326ea714a9238be158406bcc5ba9c790a7ba0017aa77a5",
+  "ingested_at": "2026-08-01T17:56:04Z",
+  "updated_pages": [
+    "wiki/semantic/schemas/development-agent-harness-egress-transaction.md"
+  ],
+  "created_decisions": [],
+  "deferred": [
+    "実Linux NSS、別broker/agent UID/GID、sysusers、service restart、VPS live E2Eは未確認である。fake seam又はLinux cross-compileで代替しない。"
+  ]
+}

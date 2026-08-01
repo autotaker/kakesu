@@ -10,6 +10,9 @@
     "runtime": "@runtime_user@",
     "broker": "@broker_user@"
   },
+  "identity": {
+    "workspace_id": "workspace-1"
+  },
   "network": {
     "default": "deny"
   }

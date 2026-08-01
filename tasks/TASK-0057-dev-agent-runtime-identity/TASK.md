@@ -39,11 +39,11 @@ created_at: "2026-08-02"
 
 <!-- AC-IDはTask内で一意かつ安定させ、観測可能な結果をここに一度だけ記載する。 -->
 
-- [ ] AC-1: config V1は必須`identity.workspace_id`をstrictにparse/validate/copyし、exampleと既存config command/provision testsを同期する。未知・重複・欠落・不正workspace IDを既存fixed classで拒否し、他fieldの意味とversionを変えない。
-- [ ] AC-2: Resolver constructorはagent/broker usernameとworkspace IDをcopyして検証し、nil/zero/corrupt receiverを固定errorで拒否する。Linux `Resolve`はagent user、broker user、agent groupを各一回だけlookupし、canonical/lossless positive IDs、current non-root broker EUID、distinct agent UID、agent primary GID=同名group GIDだけを受理する。
-- [ ] AC-3: `Resolve`は16 byteのcrypto entropyを一回だけ使う新しい`agent-`+32 lowercase hex IDと、相互整合するbroker UID、agent UID/GID、fresh Subject copyを返す。lookup/entropy/identity mismatchではpartial resultなし、retry/cache/goroutine/logなし、非Linuxはfail closedである。
-- [ ] AC-4: hermetic testsはconstructor/copy/corruption、lookup exact call count/order非依存、numeric境界、EUID/root/distinct user/primary group mismatch、entropy exact length/call/failure、fresh ID/Subject copy、fixed diagnosticsを失敗検出する。Linux adapter sourceをcross-compileし、実NSS/別UIDを実行したとは扱わない。
-- [ ] AC-5: focused tests、harness `make check`/`make distcheck`、root `make lint-docs`、candidate root `make check`、`git diff --check`がPASSする。許可path内の追加＋削除1,000行以下、外部dependency/config version/service compositionなしとする。
+- [x] AC-1: config V1は必須`identity.workspace_id`をstrictにparse/validate/copyし、exampleと既存config command/provision testsを同期する。未知・重複・欠落・不正workspace IDを既存fixed classで拒否し、他fieldの意味とversionを変えない。
+- [x] AC-2: Resolver constructorはagent/broker usernameとworkspace IDをcopyして検証し、nil/zero/corrupt receiverを固定errorで拒否する。Linux `Resolve`はagent user、broker user、agent groupを各一回だけlookupし、canonical/lossless positive IDs、current non-root broker EUID、distinct agent UID、agent primary GID=同名group GIDだけを受理する。
+- [x] AC-3: `Resolve`は16 byteのcrypto entropyを一回だけ使う新しい`agent-`+32 lowercase hex IDと、相互整合するbroker UID、agent UID/GID、fresh Subject copyを返す。lookup/entropy/identity mismatchではpartial resultなし、retry/cache/goroutine/logなし、非Linuxはfail closedである。
+- [x] AC-4: hermetic testsはconstructor/copy/corruption、lookup exact call count/order非依存、numeric境界、EUID/root/distinct user/primary group mismatch、entropy exact length/call/failure、fresh ID/Subject copy、fixed diagnosticsを失敗検出する。Linux adapter sourceをcross-compileし、実NSS/別UIDを実行したとは扱わない。
+- [x] AC-5: focused tests、harness `make check`/`make distcheck`、root `make lint-docs`、candidate root `make check`、`git diff --check`がPASSする。許可path内の追加＋削除1,000行以下、外部dependency/config version/service compositionなしとする。
 
 ### 安定した参照
 
@@ -106,9 +106,9 @@ listener入口まで完成したが、configはusernameだけを持ち、OS nume
 
 ## 完成の定義
 
-- [ ] 受け入れ条件を満たしている。
-- [ ] planning/candidate/completionの通常3 commitsとfinal candidateのroot `make check`を満たしている。
-- [ ] 同一candidateの独立REVIEW/QAを完了し、実Linux NSS/別UID/GID/VPS未実施境界をPASSと誤記していない。
+- [x] 受け入れ条件を満たしている。
+- [x] planning/candidate/completionの通常3 commitsとfinal candidateのroot `make check`を満たしている。
+- [x] 同一candidateの独立REVIEW/QAを完了し、実Linux NSS/別UID/GID/VPS未実施境界をPASSと誤記していない。
 - [ ] 安全契約変更の場合: 独立計画レビュー、契約検査、許可された統制文書差分の確認が完了している。
 
 ## 関連コンテキスト
