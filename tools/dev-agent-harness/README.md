@@ -144,6 +144,11 @@ Binder が返す `egresstransaction.Subject` は UID とケイパビリティ互
 実クライアント、外部ネットワーク、live VPS を実装または検証しない。インメモリの待受け、`net.Pipe`、協調的な注入依存での
 hermetic テストは、実環境の到達制御や OS 識別情報を保証しない。
 
+`internal/peerbinder` は、待受けごとに静的に固定した一つの Subject と、Linuxカーネル認証の接続元UIDを照合する。
+接続内容、アドレス、PID/GID、自己申告値から Subject を生成・補完せず、非Linuxではフェイルクローズとする。
+この境界のテストは実 UID 分離、ソケットの所有者/モード、名前空間、待受けの生成・合成、
+systemd、または VPS の live 配置を検証しない。
+
 ## Build
 
 リリースtarballには生成済み`configure`を含める。
