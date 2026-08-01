@@ -814,3 +814,21 @@ tasks:
       dev: dev-agent-luna-xhigh
       reviewer: reviewer-agent-terra-medium
       qa: qa-agent-terra-medium
+  - id: TASK-0046
+    title: Wiki launcherの既存dirty差分を保全する
+    type: chore
+    change_class: product
+    epic: EPIC-001
+    status: dev
+    priority: P1
+    estimate_points: 1
+    task_dir: tasks/TASK-0046-wiki-launcher-preserve-dirty
+    depends_on: []
+    branch: task/TASK-0046-wiki-launcher-preserve-dirty
+    worktree: worktrees/TASK-0046-wiki-launcher-preserve-dirty
+    assignees:
+      main: main-agent-sol-high
+      planner: planner-agent-terra-medium
+      dev: dev-agent-luna-xhigh
+      reviewer: reviewer-agent-terra-medium
+      qa: qa-agent-terra-medium
