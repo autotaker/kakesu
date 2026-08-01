@@ -26,6 +26,16 @@ const (
 // Decision is the result of a policy check.
 type Decision string
 
+// Scope is the canonical provider scope produced by the same evaluation as
+// an allow decision.  A zero Scope is returned whenever the request is denied.
+// Callers must not derive these fields from the URL themselves.
+type Scope struct {
+	Provider        string
+	Repository      string
+	Operation       string
+	DestinationHost string
+}
+
 // Error is a fixed, comparable policy error.  Constants prevent callers from
 // replacing the package's sentinel values after they have been published.
 type Error string
@@ -110,62 +120,69 @@ func New(r Rules) (*Policy, error) {
 // Authorize returns one of the fixed provider allow decisions or the fixed
 // deny decision and error.  A nil or zero Policy always denies.
 func (p *Policy) Authorize(req Request) (Decision, error) {
-	if p == nil || len(p.githubRepositories) == 0 || len(p.openAIModels) == 0 ||
-		p.maxBodyBytes <= 0 || p.maxOutputTokens <= 0 {
-		return DecisionDeny, ErrDenied
-	}
-
-	if decision, ok := p.authorizeGitHub(req.Method, req.URL); ok {
-		return decision, nil
-	}
-	if decision, ok := p.authorizeOpenAI(req.Method, req.URL, req.ContentType, req.Body); ok {
-		return decision, nil
-	}
-	return DecisionDeny, ErrDenied
+	_, decision, err := p.Evaluate(req)
+	return decision, err
 }
 
-func (p *Policy) authorizeGitHub(method, rawURL string) (Decision, bool) {
+// Evaluate evaluates req once and returns both the existing decision and
+// its canonical scope.  It preserves Authorize's fixed deny behavior.
+func (p *Policy) Evaluate(req Request) (Scope, Decision, error) {
+	if p == nil || len(p.githubRepositories) == 0 || len(p.openAIModels) == 0 ||
+		p.maxBodyBytes <= 0 || p.maxOutputTokens <= 0 {
+		return Scope{}, DecisionDeny, ErrDenied
+	}
+
+	if scope, decision, ok := p.authorizeGitHub(req.Method, req.URL); ok {
+		return scope, decision, nil
+	}
+	if scope, decision, ok := p.authorizeOpenAI(req.Method, req.URL, req.ContentType, req.Body); ok {
+		return scope, decision, nil
+	}
+	return Scope{}, DecisionDeny, ErrDenied
+}
+
+func (p *Policy) authorizeGitHub(method, rawURL string) (Scope, Decision, bool) {
 	if method != "GET" && method != "HEAD" {
-		return DecisionDeny, false
+		return Scope{}, DecisionDeny, false
 	}
 	u, ok := parseCanonicalURL(rawURL, "api.github.com", "/")
 	if !ok {
-		return DecisionDeny, false
+		return Scope{}, DecisionDeny, false
 	}
 	segments, ok := canonicalPathSegments(u.Path)
 	if !ok || len(segments) < 3 || segments[0] != "repos" {
-		return DecisionDeny, false
+		return Scope{}, DecisionDeny, false
 	}
 	// owner and repository are validated as canonical identifiers in New;
 	// requiring the path values to use the same restricted alphabet prevents
 	// parser or Unicode normalization from becoming an allowlist match.
 	if !validRepoSegment(segments[1]) || !validRepoSegment(segments[2]) {
-		return DecisionDeny, false
+		return Scope{}, DecisionDeny, false
 	}
 	for _, child := range segments[3:] {
 		if !validChildSegment(child) {
-			return DecisionDeny, false
+			return Scope{}, DecisionDeny, false
 		}
 	}
 	repository := segments[1] + "/" + segments[2]
 	if _, allowed := p.githubRepositories[repository]; !allowed {
-		return DecisionDeny, false
+		return Scope{}, DecisionDeny, false
 	}
-	return DecisionGitHubRESTRead, true
+	return Scope{Provider: "github", Repository: repository, Operation: "github-rest-read", DestinationHost: "api.github.com"}, DecisionGitHubRESTRead, true
 }
 
-func (p *Policy) authorizeOpenAI(method, rawURL, contentType string, body []byte) (Decision, bool) {
+func (p *Policy) authorizeOpenAI(method, rawURL, contentType string, body []byte) (Scope, Decision, bool) {
 	if method != "POST" || contentType != "application/json" || len(body) == 0 || len(body) > p.maxBodyBytes {
-		return DecisionDeny, false
+		return Scope{}, DecisionDeny, false
 	}
 	u, ok := parseCanonicalURL(rawURL, "api.openai.com", "/v1/responses")
 	if !ok || u.Path != "/v1/responses" || !utf8.Valid(body) {
-		return DecisionDeny, false
+		return Scope{}, DecisionDeny, false
 	}
 	if !strictOpenAIRequest(body, p.openAIModels, p.maxOutputTokens) {
-		return DecisionDeny, false
+		return Scope{}, DecisionDeny, false
 	}
-	return DecisionOpenAIResponsesText, true
+	return Scope{Provider: "openai", Operation: "openai-responses-text", DestinationHost: "api.openai.com"}, DecisionOpenAIResponsesText, true
 }
 
 // parseCanonicalURL performs structural checks without using parser

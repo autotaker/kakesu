@@ -108,3 +108,19 @@ productionではmonotonic elapsedを内部TTLに使い、呼出元へ返すIssue
 このレジストリは永続化せず、プロセス再起動時に全entryが失われるfail-safe設計である。実認証情報の
 取得・保存・置換、プロキシ、HTTP/TLS/DNS、監査、呼出頻度/費用の制限、config/CLI、複数プロセス共有は
 対象外で、成功結果は実通信や認証情報を意味しない。
+
+## 外向き通信 トランザクション
+
+`internal/egresstransaction` は、上記二つの境界を接続する in-memory
+トランザクション である。`Policy.Evaluate` は allowlist の同じ評価から
+正規 プロバイダー スコープ を返し、`Transaction.Execute` はその スコープ に
+厳密な `Authorization` ケイパビリティ 値を束縛して `Registry.Consume` を一度
+だけ実行する。消費成功後だけ注入済み resolver を呼び、visible ASCII の
+認証情報 を上流用 `Bearer` 値へ変換して trusted な Forwarder へ同期的に
+一度だけ渡す。
+
+トランザクション は prepared リクエスト や 認証情報 を返さず、ケイパビリティ handle
+や caller 所有の リクエスト slice も保持しない。resolver/Forwarder の失敗は
+固定で情報を漏らさない 拒否 とし、ロールバック/再試行 は行わない。認証情報
+ストア、ファイル、environment、プロセス、HTTP 転送方式、ネットワーク、DNS、TLS は
+この パッケージ の対象外である。
