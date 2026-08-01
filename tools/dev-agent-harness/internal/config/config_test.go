@@ -10,7 +10,7 @@ import (
 )
 
 func validJSON() string {
-	return `{"version":1,"paths":{"config_dir":"/etc/dev-agent","state_dir":"/var/lib/dev-agent","runtime_dir":"/run/dev-agent"},"users":{"agent":"dev-agent","runtime":"dev-runtime","broker":"dev-broker"},"identity":{"workspace_id":"workspace-1"},"network":{"default":"deny"}}`
+	return `{"version":1,"paths":{"config_dir":"/etc/dev-agent","state_dir":"/var/lib/dev-agent","runtime_dir":"/run/dev-agent"},"users":{"agent":"dev-agent","runtime":"dev-runtime","broker":"dev-broker"},"identity":{"workspace_id":"workspace-1"},"network":{"default":"deny"},"egress":{"github_repositories":["octo/repo"],"openai_models":["gpt-4o-mini"]}}`
 }
 
 func TestParseValid(t *testing.T) {
@@ -18,7 +18,7 @@ func TestParseValid(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Parse(valid): %v", err)
 	}
-	if c.Version != 1 || c.Network.Default != "deny" || c.Paths.ConfigDir != "/etc/dev-agent" || c.Identity.WorkspaceID != "workspace-1" {
+	if c.Version != 1 || c.Network.Default != "deny" || c.Paths.ConfigDir != "/etc/dev-agent" || c.Identity.WorkspaceID != "workspace-1" || len(c.Egress.GitHubRepositories) != 1 || len(c.Egress.OpenAIModels) != 1 {
 		t.Fatalf("unexpected config: %#v", c)
 	}
 }
@@ -46,6 +46,14 @@ func TestParseRejectsStrictAndSemanticCases(t *testing.T) {
 		{"duplicate-user", func(s string) string { return strings.Replace(s, `"dev-runtime"`, `"dev-agent"`, 1) }, ClassSemantic},
 		{"invalid-user", func(s string) string { return strings.Replace(s, `"dev-runtime"`, `"9runtime"`, 1) }, ClassSemantic},
 		{"network", func(s string) string { return strings.Replace(s, `"default":"deny"`, `"default":"allow"`, 1) }, ClassSemantic},
+		{"egress-missing-repository", func(s string) string {
+			return strings.Replace(s, `"github_repositories":["octo/repo"]`, `"github_repositories":[]`, 1)
+		}, ClassSemantic},
+		{"egress-duplicate", func(s string) string {
+			return strings.Replace(s, `"github_repositories":["octo/repo"]`, `"github_repositories":["octo/repo","octo/repo"]`, 1)
+		}, ClassSemantic},
+		{"egress-invalid-repository", func(s string) string { return strings.Replace(s, `"octo/repo"`, `"Octo/repo"`, 1) }, ClassSemantic},
+		{"egress-invalid-model", func(s string) string { return strings.Replace(s, `"gpt-4o-mini"`, `"gpt 4o"`, 1) }, ClassSemantic},
 		{"allowlist", func(s string) string {
 			return strings.Replace(s, `"default":"deny"`, `"default":"deny","allowlist":[]`, 1)
 		}, ClassUnknown},
@@ -152,5 +160,60 @@ func TestClassOfNeverLeaksInput(t *testing.T) {
 	}
 	if errors.Is(err, nil) {
 		t.Fatal("unexpected nil error")
+	}
+}
+
+func TestEgressAllowlistBoundariesAndCopies(t *testing.T) {
+	base := validJSON()
+	tooManyRepositories := make([]string, 33)
+	for i := range tooManyRepositories {
+		tooManyRepositories[i] = `"octo/repo` + string(rune('a'+i%26)) + `"`
+	}
+	tooMany := `[` + strings.Join(tooManyRepositories, ",") + `]`
+	cases := []struct {
+		name   string
+		mutate func(string) string
+	}{
+		{"missing-egress", func(s string) string {
+			return strings.Replace(s, `,"egress":{"github_repositories":["octo/repo"],"openai_models":["gpt-4o-mini"]}`, "", 1)
+		}},
+		{"empty-repositories", func(s string) string {
+			return strings.Replace(s, `"github_repositories":["octo/repo"]`, `"github_repositories":[]`, 1)
+		}},
+		{"empty-models", func(s string) string {
+			return strings.Replace(s, `"openai_models":["gpt-4o-mini"]`, `"openai_models":[]`, 1)
+		}},
+		{"too-many-repositories", func(s string) string { return strings.Replace(s, `["octo/repo"]`, tooMany, 1) }},
+		{"too-many-models", func(s string) string {
+			return strings.Replace(s, `"openai_models":["gpt-4o-mini"]`, `"openai_models":["gpt-4o-mini","m1","m2","m3","m4","m5","m6","m7","m8","m9","m10","m11","m12","m13","m14","m15","m16","m17","m18","m19","m20","m21","m22","m23","m24","m25","m26","m27","m28","m29","m30","m31","m32"]`, 1)
+		}},
+		{"duplicate-repository", func(s string) string {
+			return strings.Replace(s, `"github_repositories":["octo/repo"]`, `"github_repositories":["octo/repo","octo/repo"]`, 1)
+		}},
+		{"duplicate-model", func(s string) string {
+			return strings.Replace(s, `"openai_models":["gpt-4o-mini"]`, `"openai_models":["gpt-4o-mini","gpt-4o-mini"]`, 1)
+		}},
+		{"invalid-repository", func(s string) string { return strings.Replace(s, `"octo/repo"`, `"Octo/repo"`, 1) }},
+		{"invalid-model", func(s string) string { return strings.Replace(s, `"gpt-4o-mini"`, `"gpt 4o"`, 1) }},
+		{"unknown-egress-field", func(s string) string {
+			return strings.Replace(s, `"openai_models":["gpt-4o-mini"]`, `"openai_models":["gpt-4o-mini"],"sentinel":"hidden"`, 1)
+		}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if c, err := Parse([]byte(tc.mutate(base))); c != nil || err == nil {
+				t.Fatalf("accepted invalid egress c=%#v err=%v", c, err)
+			}
+		})
+	}
+	repositories := []string{"octo/repo"}
+	models := []string{"gpt-4o-mini"}
+	c := &Config{Version: 1, Paths: Paths{ConfigDir: "/etc/a", StateDir: "/var/lib/a", RuntimeDir: "/run/a"}, Users: Users{Agent: "agent", Runtime: "runtime", Broker: "broker"}, Identity: Identity{WorkspaceID: "w"}, Network: Network{Default: "deny"}, Egress: Egress{GitHubRepositories: repositories, OpenAIModels: models}}
+	if err := validate(c); err != nil {
+		t.Fatalf("validate: %v", err)
+	}
+	repositories[0], models[0] = "changed/repo", "changed-model"
+	if c.Egress.GitHubRepositories[0] != "octo/repo" || c.Egress.OpenAIModels[0] != "gpt-4o-mini" {
+		t.Fatalf("allowlist aliases caller data: %#v", c.Egress)
 	}
 }

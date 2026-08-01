@@ -13,6 +13,8 @@ import (
 	"path/filepath"
 	"regexp"
 	"syscall"
+
+	"github.com/autotaker/kakesu/tools/dev-agent-harness/internal/egresspolicy"
 )
 
 const MaxFileSize = 64 * 1024
@@ -46,6 +48,7 @@ type Config struct {
 	Users    Users    `json:"users"`
 	Identity Identity `json:"identity"`
 	Network  Network  `json:"network"`
+	Egress   Egress   `json:"egress"`
 }
 
 type Paths struct {
@@ -66,6 +69,14 @@ type Identity struct {
 
 type Network struct {
 	Default string `json:"default"`
+}
+
+// Egress contains the two strict provider allowlists used by the egress
+// service.  Values are copied at the configuration boundary and are never
+// interpreted as paths or URLs by this package.
+type Egress struct {
+	GitHubRepositories []string `json:"github_repositories"`
+	OpenAIModels       []string `json:"openai_models"`
 }
 
 var linuxUser = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_-]{0,31}$`)
@@ -242,6 +253,20 @@ func validate(c *Config) error {
 	if c.Network.Default != "deny" {
 		return fail(ClassSemantic)
 	}
+	if len(c.Egress.GitHubRepositories) < 1 || len(c.Egress.GitHubRepositories) > 32 || len(c.Egress.OpenAIModels) < 1 || len(c.Egress.OpenAIModels) > 32 {
+		return fail(ClassSemantic)
+	}
+	if _, err := egresspolicy.New(egresspolicy.Rules{
+		GitHubRepositories: c.Egress.GitHubRepositories,
+		OpenAIModels:       c.Egress.OpenAIModels,
+		MaxBodyBytes:       64 * 1024,
+		MaxOutputTokens:    4096,
+	}); err != nil {
+		return fail(ClassSemantic)
+	}
+	// Keep caller-owned slices from becoming aliases of the loaded config.
+	c.Egress.GitHubRepositories = append([]string(nil), c.Egress.GitHubRepositories...)
+	c.Egress.OpenAIModels = append([]string(nil), c.Egress.OpenAIModels...)
 	return nil
 }
 

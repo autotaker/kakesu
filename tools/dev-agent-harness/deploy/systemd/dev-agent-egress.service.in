@@ -1,13 +1,14 @@
 [Unit]
 Description=Development Agent Harness egress proxy
-After=network.target dev-agent-broker.service
-Requires=dev-agent-broker.service
+After=network.target dev-agent-egress.socket
+Requires=dev-agent-egress.socket
 
 [Service]
 Type=simple
+Sockets=dev-agent-egress.socket
 User=@broker_user@
 Group=@broker_user@
-ExecStart=@harness_libexecdir@/dev-agent-harness/dev-agent-egress
+ExecStart=@harness_libexecdir@/dev-agent-harness/dev-agent-egress serve --config @sysconfdir@/dev-agent-harness/harness.json
 NoNewPrivileges=yes
 PrivateTmp=yes
 ProtectHome=yes

@@ -2,8 +2,11 @@
 
 Kakesuを開発するための外部開発基盤である。Kakesu本体のランタイム、Goモジュール、配布物には含めない。
 
-現在はbuild/install境界だけを固定したスキャフォールドである。各バイナリは`--version`だけ成功し、通常起動は
-未実装としてfail-closedする。
+`dev-agent-egress serve --config PATH` が唯一の外向き通信サービス起動面である。起動は設定、実行時識別情報、固定
+`config_dir/credentials` 認証情報束、既存constructorの依存構成、ソケット受領、Serveの順に一回ずつ進み、どの失敗も固定診断へ
+畳む。SIGINT/SIGTERMは協調的なキャンセル処理へ変換される。
+
+その他の補助バイナリは従来どおり`--version`と検査系の明示面だけを提供し、未実装の通常起動はfail-closedで拒否する。
 
 ## プロバイダー上流HTTPS 転送方式
 
@@ -47,7 +50,8 @@ V1設定の`identity.workspace_id`は、1〜128バイトで先頭がASCII英数�
 
 `dev-agent-harness-setup plan-provision --config PATH --target-root PATH` は、対象OSへ渡す
 配置計画の望ましい状態を確認するための読み取り専用dry-runである。成功時はヘッダー1行と、固定順序
-（ユーザー3件、ディレクトリ4件、サービス3件）の計10 actionを正規JSONLとしてstdoutへ出力する。
+（ユーザー3件、ディレクトリ5件、サービス3件）の計11 actionを正規JSONLとしてstdoutへ出力する。設定ディレクトリの
+固定`credentials`子ディレクトリはブローカー所有`0700`としてサービス記録の直前に置かれる。
 ユーザーは`/nonexistent`・`/usr/sbin/nologin`・locked・ホーム非作成、ディレクトリは`0750`と所有者/グループ、
 サービスはブローカーuserかつ`enabled=false`・`started=false`として表現される。論理パスはcleanな
 `target-root`配下の表示用対象パスへ写像される。
@@ -62,7 +66,7 @@ OSへ適用する前のmanifestを読み取り専用で検証する。manifest�
 末尾symlinkでないregularファイル、グループまたはその他ユーザーから書き込み可能でないモード、128 KiB以下、
 読取前後で変化しないサイズ・モードおよびバイト数を満たす必要がある。入力を解釈する独立parserは持たず、同じ設定と
 指定ルートから`provision.Build`で生成した正規バイト列との完全一致だけを受理する。成功時の出力は
-`provision manifest version=1 actions=10 verified`という固定要約だけであり、失敗時も入力パス、設定値、
+`provision manifest version=1 actions=11 verified`という固定要約だけであり、失敗時も入力パス、設定値、
 manifest本文、ユーザー名、OSエラー本文を診断へ含めない。設定、manifest、指定ルートその他ホスト状態は
 変更せず、OS適用処理、管理者権限、systemd、プロセス、ネットワーク、IPCはこの検証境界の対象外である。
 
