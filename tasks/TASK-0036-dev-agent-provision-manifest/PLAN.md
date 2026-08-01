@@ -1,16 +1,16 @@
 ---
 task_id: "TASK-0036"
 change_class: "product"
-status: draft
+status: approved
 planner_agent: "planner-agent-terra-medium"
 approved_dev_profile: "luna-xhigh"
 approved_dev_profile_reason: "標準libraryだけを使う純粋なmanifest組立てと既存setup CLIへの局所配線であり、OS executor、network、IPC、Credential、永続stateを追加せず、約810行の手書き実装・testをhermeticに検証できる候補であるため"
 approved_dev_profile_risk_signals: []
-approved_by: ""
-approved_at: ""
-planning_reviewed_by: ""
-planning_review_decision: "pending"
-planning_reviewed_at: ""
+approved_by: "main-agent-sol-high"
+approved_at: "2026-08-01T10:41:15+10:00"
+planning_reviewed_by: "reviewer-agent-terra-medium"
+planning_review_decision: "pass"
+planning_reviewed_at: "2026-08-01T10:41:15+10:00"
 classification_approved_by: ""
 classification_approved_at: ""
 classification_approval_reason: ""
@@ -111,11 +111,11 @@ estimate_points = 1, 2, 3, 5, 8, 13のうちmax(1, file_score, line_score)以上
 
 ## main Agentレビュー
 
-- [ ] TASKの全AC-IDへ設計判断、パス、順序、失敗時の扱いを対応させ、条件本文を複製していない。
-- [ ] 設計観点と代替案を検討している。
-- [ ] QA_PLANがTASK-firstで独立作成されている。
-- [ ] `dependency-ready reconciliation`と完了経路preflightが完了している。
-- [ ] 見積もりが規則どおりである。
-- [ ] DEV開始を承認した。
+- [x] TASKの全AC-IDへ設計判断、パス、順序、失敗時の扱いを対応させ、条件本文を複製していない。
+- [x] 設計観点と代替案を検討している。
+- [x] QA_PLANがTASK-firstで独立作成されている。
+- [x] `dependency-ready reconciliation`と完了経路preflightが完了している。
+- [x] 見積もりが規則どおりである。
+- [x] DEV開始を承認した。
 
 安全契約変更でv2契約を選ぶ場合は、コメントを外して`safety_contract_version: 2`と予定パス・生成パスの配列を記録し、DEV前に`make task-preflight TASK=TASK-0036`を実行する。変更しない種別は空配列とし、通常の予定パスと生成パスを重複させない。独立計画レビューのPASSとMainの分類承認をフロントマターへ記録する。分類変更時はTask、PLAN、QA_PLANを再承認し、承認者と時刻を更新する。
