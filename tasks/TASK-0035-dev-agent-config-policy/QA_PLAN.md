@@ -4,8 +4,8 @@ change_class: "product"
 status: approved
 qa_agent: "qa-agent-terra-medium"
 approved_by: "main-agent-sol-high"
-approved_at: "2026-08-01T10:00:25+10:00"
-revision: 2
+approved_at: "2026-08-01T10:06:00+10:00"
+revision: 3
 implementation_reviewed_at: ""
 expectation_changed: false
 expectation_change_approved_by: ""
@@ -32,7 +32,7 @@ expectation_change_approved_by: ""
 | QA-035-04 | AC-4 | local fixtureでsymlink、directory、FIFO等non-regular、regular 0640/0660/0606、64 KiBちょうど/64 KiB超を作る。open後にpathをsymlink/別fileへ置換するrace fixtureも、実装が提供するtest seamまたは繰返しbounded testで実行する。 | `focused-rerun` / file descriptor基準のfile-policyは権限昇格なしの一時fileで再現でき、外部作用を伴わない。 | symlink/non-regular/group-or-world writable/over-sizeは全てnonzeroかつ非漏洩stderr。64 KiB境界と安全modeのregular fileは期待どおり。race testはpath再解決ではなくopen済みFDのtype/size/modeを判断して危険側を拒否することを観測し、外部作用なしを確認する。 | FD基準raceのテスト/証跡なし、危険file受理、size/mode境界誤りは`implementation_defect`候補。OSがFIFO/symlink作成を禁じる場合は`environment_issue`としてPASSに代替しない。 |
 | QA-035-05 | AC-5 | candidateのvalid/invalid unit・CLI testを独立実行し、unknown、duplicate、version、trailing-data、path、user、network、file-type、permission、sizeのcase名、入力、期待を対照する。各拒否判定を受理側へ反転する最小mutationを一時copyで作り、該当testが失敗することを確認する。 | `focused-rerun` / mutationは隔離copyでbounded、元candidateを変更せず検出能力を直接測定できる。 | 全カテゴリにpositive/negativeがあり、各mutationで対応testがnonzero。testのskip、削除、broad matcher、exitだけの弱いassertion、secret echoを許すassertionがないことをdiff/test bodyで監査する。 | 未網羅、mutationを検出しない、test弱体化は`implementation_defect`候補。mutation手順がcandidateを変更し得る/cleanup不能は`qa_plan_defect`又は`environment_issue`。 |
 | QA-035-06 | AC-6 | setupの`--help`、`-h`、`--version`をREF-2 scaffold contractと比較する。`check-config`成功/失敗に加え、setupの未知/通常操作、broker、egress、approval、launcher、git-credentialの各通常起動を実行し、stdout/stderr/exitをcaptureする。 | `focused-rerun` / 全6 binaryはcandidate build outputでローカル実行できる。 | setupの既存help/version契約を保ち、導入された`check-config`だけが定義どおり動く。他5 binaryおよびsetupの非`check-config` operational invocationはzeroにならずfail-closedし、成功出力や外部作用を生まない。 | help/version後方互換破壊は`regression`候補。通常起動の成功、拒否緩和、外部作用痕跡は`implementation_defect`候補。 |
-| QA-035-07 | AC-7 | clean candidateで`go test ./...`、`./configure`、`make check`、`make distcheck`を実行する。別のtemporary `DESTDIR`に`make install`後、配置済みconfigure済みexampleをcopyせずそのinstall pathからsetup binaryで検証する。 | `focused-rerun` / configure/build/dist/installはローカルtemporary rootに閉じ、Taskが明示的に実行要求する。 | 全command exit 0。distcheck tarball内でも同じ検査が通る。install先のexampleは配置され、check-configがexit 0、非漏洩summaryとなる。実`/etc`等に書込みがないこと、生成済み`configure`が意図せず差分化されないことも記録する。 | command nonzero、tarball欠落、install例の不検証、install先外への書込み、生成物/設定例の不整合は`implementation_defect`候補。toolchain/autoconf欠落は`environment_issue`でありPASSに代替しない。 |
+| QA-035-07 | AC-7 | clean candidateで`go test ./...`、`./configure --prefix=/usr/local --sysconfdir=/etc --localstatedir=/var --runstatedir=/run`、`make check`、`make distcheck`を実行する。別のtemporary `DESTDIR`に`make install`後、同じconfigure実行で展開されたinstall exampleをcopyせずそのinstall pathからsetup binaryで検証する。 | `focused-rerun` / configure/build/dist/installはローカルtemporary rootに閉じ、Taskが明示的に実行要求する。 | 全command exit 0。distcheck tarball内でも同じ検査が通る。install先のexampleは配置され、check-configがexit 0、非漏洩summaryとなる。実`/etc`等に書込みがないこと、生成済み`configure`が意図せず差分化されないことも記録する。 | command nonzero、tarball欠落、install例の不検証、install先外への書込み、生成物/設定例の不整合は`implementation_defect`候補。toolchain/autoconf欠落は`environment_issue`でありPASSに代替しない。 |
 | QA-035-08 | AC-8 | candidate diffを許可path・生成物・fixture・文書・Task/Wikiへ分類し、手書き実装+testだけのadded/modified行を算定する。新module/import、socket/network/process/credential/state/service操作を静的検索し、REF-1の後続境界へ侵入していないかを確認する。 | `evidence-review` / 行数・scope・新境界はcandidate-bound diffとsource監査が真実で、再実行で増える確証ではない。 | 手書き実装+testが目安範囲内、又は超過見込み/新security boundaryがMainへ分割判断として明示済み。外部moduleなし、許可外pathなし、Credential/network/IPC/persistence/OS操作なしをdiff digestと検索結果で記録する。 | 1,200行超過又は新boundaryをMain判断なしで含めるのは`requirement_gap`/`implementation_defect`候補（Mainが最終分類）。行数分類不能、scope不明、candidate不一致はPASS不可。 |
 
 ## 横断検査と失敗分類
@@ -55,3 +55,4 @@ expectation_change_approved_by: ""
 |---:|---|---|---|---|
 | 1 | 2026-08-01 | qa-agent-terra-medium | TASK-firstの独立QA計画。AC-1〜AC-8へ8ケース（focused-rerun 7、evidence-review 1）を対応し、実環境依存は割り当てない。 | pending |
 | 2 | 2026-08-01 | qa-agent-terra-medium | 計画レビューP1に従い、V1の`allowlist`は不存在であり、空を含む入力をunknown fieldとして拒否する期待へ一意化した。 | main-agent-sol-high / 2026-08-01T10:00:25+10:00 |
+| 3 | 2026-08-01 | qa-agent-terra-medium | `qa_plan_defect`訂正: QA-035-07のconfigure fixtureを固定の明示prefix/sysconfdir/localstatedir/runstatedir引数へ変更し、未展開`${prefix}`を避けて同じconfigure済みinstall exampleを検証する。期待結果は不変。 | main-agent-sol-high / 2026-08-01T10:06:00+10:00 |
