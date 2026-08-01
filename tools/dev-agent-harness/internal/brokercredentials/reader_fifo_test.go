@@ -17,7 +17,7 @@ func TestRejectsFIFOWithoutBlocking(t *testing.T) {
 	if err := syscall.Mkfifo(fifo, 0o600); err != nil {
 		t.Skipf("FIFO unsupported: %v", err)
 	}
-	path := filepath.Join(dir, githubClientID)
+	path := filepath.Join(dir, proxyCACert)
 	if err := os.Remove(path); err != nil {
 		t.Fatal(err)
 	}

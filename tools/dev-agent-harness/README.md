@@ -16,10 +16,12 @@ Kakesuを開発するための外部開発基盤である。Kakesu本体のラ�
 ## ブローカーの認証情報
 
 `internal/brokercredentials` は、trusted ブローカーだけが読む秘密情報の境界である。配置ディレクトリには
-`github-client-id`、`github-installation-id`、`github-private-key.pem`、`openai-api-key` の4 basename
-だけを使い、実効UID所有、グループ/other権限なし、ディレクトリのオーナー read/execute、ファイルのオーナー read
-（実行不可）を満たす必要がある。Linuxでは一度開いたディレクトリ descriptorから固定basenameを`openat`で
-読み、symlink、通常ファイルでないnode、上限超過、読込み前後のメタデータ変化を拒否する。非Linux readerは開発テスト用
+`github-client-id`、`github-installation-id`、`github-private-key.pem`、`openai-api-key`、
+`proxy-ca-cert.pem`、`proxy-ca-key.pem` の6 basenameだけを固定順で使い、実効UID所有、グループ/other権限なし、
+ディレクトリのオーナー read/execute、ファイルのオーナー read（実行不可）を満たす必要がある。Linuxでは一度開いた
+ディレクトリ descriptorから固定basenameを`openat`で読み、symlink、hardlink、通常ファイルでないnode、上限超過、
+読込み前後のメタデータ変化を拒否する。6ファイルはstartup時に同じ秘密ディレクトリから一度だけスナップショットされ、全ての
+検証に成功した場合だけtrusted compositionへ検証済みの`proxyca.Authority`と公開CA証明書のコピーを渡す。非Linux readerは開発テスト用
 であり、本番サポートを意味しない。
 
 正常に読み込まれたバンドルは、検証済みのクライアント ID、installation ID、OpenAI API キーと、GitHub App用の
