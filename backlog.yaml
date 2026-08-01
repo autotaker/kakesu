@@ -756,3 +756,23 @@ tasks:
       dev: dev-agent-luna-xhigh
       reviewer: reviewer-agent-terra-medium
       qa: qa-agent-terra-medium
+  - id: TASK-0043
+    title: GitHub installation token交換とprovider resolverを実装する
+    type: feature
+    change_class: product
+    epic: EPIC-001
+    status: dev
+    priority: P1
+    estimate_points: 1
+    task_dir: tasks/TASK-0043-dev-agent-provider-resolver
+    depends_on:
+      - TASK-0041
+      - TASK-0042
+    branch: task/TASK-0043-dev-agent-provider-resolver
+    worktree: worktrees/TASK-0043-dev-agent-provider-resolver
+    assignees:
+      main: main-agent-sol-high
+      planner: planner-agent-terra-medium
+      dev: dev-agent-luna-xhigh
+      reviewer: reviewer-agent-terra-medium
+      qa: qa-agent-terra-medium
