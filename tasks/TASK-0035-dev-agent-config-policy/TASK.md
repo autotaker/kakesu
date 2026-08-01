@@ -1,7 +1,7 @@
 ---
 task_id: "TASK-0035"
 title: "Development Agent Harnessの設定・deny-by-defaultポリシー基盤を実装する"
-status: draft
+status: dev
 created_at: "2026-08-01"
 ---
 

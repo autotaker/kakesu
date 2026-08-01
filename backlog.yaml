@@ -608,9 +608,9 @@ tasks:
     type: feature
     change_class: product
     epic: EPIC-001
-    status: plan
+    status: dev
     priority: P1
-    estimate_points: 1
+    estimate_points: 3
     task_dir: tasks/TASK-0035-dev-agent-config-policy
     depends_on: []
     branch: task/TASK-0035-dev-agent-config-policy
