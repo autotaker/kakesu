@@ -101,6 +101,14 @@
       ]
     },
     {
+      "path": "wiki/semantic/schemas/development-agent-harness-provision-manifest.md",
+      "kind": "schema",
+      "title": "Development Agent Harness Provision Manifest",
+      "links": [
+        "../../../tasks/TASK-0036-dev-agent-provision-manifest/HANDOVER.md"
+      ]
+    },
+    {
       "path": "wiki/semantic/schemas/mvp-wire-contracts.md",
       "kind": "schema",
       "title": "MVP Wire Contracts",
