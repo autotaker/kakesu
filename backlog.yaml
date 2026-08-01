@@ -627,13 +627,14 @@ tasks:
     type: feature
     change_class: product
     epic: EPIC-001
-    status: dev
+    status: done
     priority: P1
     estimate_points: 2
     task_dir: tasks/TASK-0036-dev-agent-provision-manifest
     depends_on: []
     branch: task/TASK-0036-dev-agent-provision-manifest
     worktree: worktrees/TASK-0036-dev-agent-provision-manifest
+    merged_commit: 0efd3a1b7fcf2ecc452bfda97cecdeee907c4b4d
     assignees:
       main: main-agent-sol-high
       planner: planner-agent-terra-medium

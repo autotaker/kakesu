@@ -1,7 +1,7 @@
 ---
 task_id: "TASK-0036"
 title: "Development Agent HarnessのUbuntu provision manifestを実装する"
-status: dev
+status: done
 created_at: "2026-08-01"
 ---
 
@@ -35,15 +35,15 @@ created_at: "2026-08-01"
 
 ### 受け入れ条件
 
-- [ ] AC-1: validなversion 1設定とabsolute/cleanな`target-root`でCLIはexit 0となり、header 1行とaction 10行のcanonical JSONLだけをstdoutへ出し、stderrを空にする。同一入力の複数実行はbyte-for-byte一致する。
-- [ ] AC-2: headerは`kind=manifest`、`version=1`、`platform=ubuntu`、`default=deny`、target root、`action_count=10`を持ち、actionは連番1〜10かつuser→directory→serviceの固定順序になる。
-- [ ] AC-3: 3 user actionは設定のagent/runtime/brokerをroleへ一意に対応させ、home `/nonexistent`、shell `/usr/sbin/nologin`、`locked=true`、`create_home=false`を必須とする。
-- [ ] AC-4: config/state/runtime/audit directory actionはlogical path、target-root配下のtarget path、4桁mode、owner/groupを持つ。configは`root:broker`、他3件は`broker:broker`、全modeは`0750`、auditはstate配下とする。
-- [ ] AC-5: 3 service actionはbroker、egress、approvalの固定名とbroker userを持ち、`enabled=false`、`started=false`である。Agent/Runtime userとしてserviceを起動するactionを出さない。
-- [ ] AC-6: target rootが空、相対、非clean、NULを含む場合、引数が不足/余剰の場合、または設定が不正な場合はnon-zeroかつstdout空となる。writer失敗もnon-zeroとし、同じmanifestをretry/re-emitしない。いずれもstderrへ入力path/user/config本文を出さない。
-- [ ] AC-7: CLI前後でtarget root配下とhost状態にfile作成・mode/owner変更がなく、外部process、network、IPCを開始しないことをtest seamと一時directory snapshotで証明する。他のsetup操作と5 binaryは既存どおりfail-closedする。
-- [ ] AC-8: `go test ./...`、harness `make check`、`make distcheck`、root docs lintがPASSし、negative mutationでorder、disabled/stopped、path containment、writer errorの各guardを弱めると対応testが失敗する。
-- [ ] AC-9: 手書き実装＋testは700〜1,200行を目安とする。1,200行超過またはexecutor/OS変更という新security boundaryが必要なら、Mainへ戻し、Task分割はプロセス改善で解決できない場合の最後の手段とする。
+- [x] AC-1: validなversion 1設定とabsolute/cleanな`target-root`でCLIはexit 0となり、header 1行とaction 10行のcanonical JSONLだけをstdoutへ出し、stderrを空にする。同一入力の複数実行はbyte-for-byte一致する。
+- [x] AC-2: headerは`kind=manifest`、`version=1`、`platform=ubuntu`、`default=deny`、target root、`action_count=10`を持ち、actionは連番1〜10かつuser→directory→serviceの固定順序になる。
+- [x] AC-3: 3 user actionは設定のagent/runtime/brokerをroleへ一意に対応させ、home `/nonexistent`、shell `/usr/sbin/nologin`、`locked=true`、`create_home=false`を必須とする。
+- [x] AC-4: config/state/runtime/audit directory actionはlogical path、target-root配下のtarget path、4桁mode、owner/groupを持つ。configは`root:broker`、他3件は`broker:broker`、全modeは`0750`、auditはstate配下とする。
+- [x] AC-5: 3 service actionはbroker、egress、approvalの固定名とbroker userを持ち、`enabled=false`、`started=false`である。Agent/Runtime userとしてserviceを起動するactionを出さない。
+- [x] AC-6: target rootが空、相対、非clean、NULを含む場合、引数が不足/余剰の場合、または設定が不正な場合はnon-zeroかつstdout空となる。writer失敗もnon-zeroとし、同じmanifestをretry/re-emitしない。いずれもstderrへ入力path/user/config本文を出さない。
+- [x] AC-7: CLI前後でtarget root配下とhost状態にfile作成・mode/owner変更がなく、外部process、network、IPCを開始しないことをtest seamと一時directory snapshotで証明する。他のsetup操作と5 binaryは既存どおりfail-closedする。
+- [x] AC-8: `go test ./...`、harness `make check`、`make distcheck`、root docs lintがPASSし、negative mutationでorder、disabled/stopped、path containment、writer errorの各guardを弱めると対応testが失敗する。
+- [x] AC-9: 手書き実装＋testは700〜1,200行を目安とする。1,200行超過またはexecutor/OS変更という新security boundaryが必要なら、Mainへ戻し、Task分割はプロセス改善で解決できない場合の最後の手段とする。
 
 ### 安定した参照
 
@@ -97,7 +97,7 @@ scaffoldはsystemd/sysusers/tmpfilesを配布するが、OS変更前に「何を
 
 ## 完成の定義
 
-- [ ] AC-1〜AC-9、独立REVIEW/QA、final root check、Wiki ingest、no-ff merge、main pushが完了している。
+- [x] AC-1〜AC-9、独立REVIEW/QA、final root check、Wiki ingest、no-ff merge、main pushが完了している。
 
 ## 関連コンテキスト
 
