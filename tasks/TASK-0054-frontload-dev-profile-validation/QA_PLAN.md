@@ -6,8 +6,8 @@ qa_agent: "qa-agent-terra-medium"
 qa_role: "independent-qa"
 approved_by: "main-agent-sol-high"
 approved_at: "2026-08-01T15:29:18Z"
-revision: 1
-implementation_reviewed_at: ""
+revision: 2
+implementation_reviewed_at: "2026-08-01T15:41:43Z"
 expectation_changed: false
 expectation_change_approved_by: ""
 ---
@@ -48,14 +48,15 @@ QA は root `make check`、agent-routing test、`git diff --check`、追加 test
 
 ## 実装後の再確認
 
-- [ ] candidate source/test、HANDOVER、DEV check evidence を独立確認した。
-- [ ] 指定 focused-rerun を repository root で一回だけ実行した。
-- [ ] planning 前の既存 validator 一回呼出し、三項目欠落時の Git/dirty-input 原子性、valid planning と three-commit 回帰の failure detection を確認した。
-- [ ] 変更が許可二 path と追加＋削除 300 行以内に収まり、新 field/gate/check/manual step がないことを確認した。
-- [ ] root `make check`、agent-routing test、`git diff --check` を再実行せず DEV 証跡だけを監査し、期待値または scope を変更していないことを確認した。
+- [x] candidate source/test、HANDOVER、DEV check evidence を独立確認した。
+- [x] 指定 focused-rerun を repository root で一回だけ実行した。
+- [x] planning 前の既存 validator 一回呼出し、三項目欠落時の Git/dirty-input 原子性、valid planning と three-commit 回帰の failure detection を確認した。
+- [x] 変更が許可二 path と追加＋削除 300 行以内に収まり、新 field/gate/check/manual step がないことを確認した。
+- [x] root `make check`、agent-routing test、`git diff --check` を再実行せず DEV 証跡だけを監査し、期待値または scope を変更していないことを確認した。
 
 ## 改訂履歴
 
 | 改訂 | 日付 | 変更者 | 変更内容 | main承認 |
 |---:|---|---|---|---|
 | 1 | 2026-08-02 | QA (Terra/medium) | Planning input packet に基づく独立 QA 計画 | `approved` |
+| 2 | 2026-08-02 | QA (Terra/medium) | 固定candidate `2cee2f2120b689ba511d2a710a9c6e534ecb49d4` の独立実施結果を反映。期待値・範囲は不変。 | `approved` |

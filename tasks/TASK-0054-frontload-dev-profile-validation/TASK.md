@@ -33,11 +33,11 @@ planning gateが承認済みPLANをcommit/pushする前に、completionで既に
 
 <!-- AC-IDはTask内で一意かつ安定させ、観測可能な結果をここに一度だけ記載する。 -->
 
-- [ ] AC-1: planning gateは既存`validateDevSelection`を正本として、DEV profile/reason/risk signals/promotion不正をplanning commitより前に同じerror codeで拒否する。検証logicを複製せず、completionの意味を変更しない。
-- [ ] AC-2: profile不正時はmain HEAD、Task branch HEAD、Task worktree HEAD、indexを変更せず、未commitのplanning入力を保持し、commit/push又はworktree fast-forwardを行わない。
-- [ ] AC-3: 有効な`luna-xhigh`又は`sol-high` planningは従来どおり一つのplanning commitだけを作り、Task branchを同commitへfast-forwardできる。新しいfield、gate、手動stepを要求しない。
-- [ ] AC-4: integration testは少なくともTASK-0053と同じfrontmatter三項目欠落をplanning gateで失敗検出し、既存`validateDevSelection` unit matrixとthree-commit lifecycle testを弱体化しない。
-- [ ] AC-5: root `make check`、focused process test、`git diff --check`がPASSし、許可path内で追加＋削除300行以下とする。
+- [x] AC-1: planning gateは既存`validateDevSelection`を正本として、DEV profile/reason/risk signals/promotion不正をplanning commitより前に同じerror codeで拒否する。検証logicを複製せず、completionの意味を変更しない。
+- [x] AC-2: profile不正時はmain HEAD、Task branch HEAD、Task worktree HEAD、indexを変更せず、未commitのplanning入力を保持し、commit/push又はworktree fast-forwardを行わない。
+- [x] AC-3: 有効な`luna-xhigh`又は`sol-high` planningは従来どおり一つのplanning commitだけを作り、Task branchを同commitへfast-forwardできる。新しいfield、gate、手動stepを要求しない。
+- [x] AC-4: integration testは少なくともTASK-0053と同じfrontmatter三項目欠落をplanning gateで失敗検出し、既存`validateDevSelection` unit matrixとthree-commit lifecycle testを弱体化しない。
+- [x] AC-5: root `make check`、focused process test、`git diff --check`がPASSし、許可path内で追加＋削除300行以下とする。
 
 ### 安定した参照
 
@@ -91,9 +91,9 @@ TASK-0053ではPLAN本文に`luna-xhigh`があったがfrontmatter三項目が�
 
 ## 完成の定義
 
-- [ ] 受け入れ条件を満たしている。
-- [ ] planning/candidate/completionの3 commitsとcandidate一回のroot `make check`を満たしている。
-- [ ] 同一candidateの独立REVIEW/QAとpost-merge task-checkを完了している。
+- [x] 受け入れ条件を満たしている。
+- [x] planning/candidate/completionの3 commitsとcandidate一回のroot `make check`を満たしている。
+- [x] 同一candidateの独立REVIEW/QAとpost-merge task-checkを完了している。
 
 ## 関連コンテキスト
 
