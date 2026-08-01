@@ -1,0 +1,42 @@
+---
+task_id: "TASK-0037"
+change_class: "product"
+status: "approved"
+qa_agent: "qa-agent-terra-medium"
+approved_by: "main-agent-sol-high"
+approved_at: "2026-08-01T02:08:37Z"
+revision: 1
+created_at: "2026-08-01"
+implementation_reviewed_at: null
+expectation_changed: false
+expectation_change_approved_by: ""
+---
+
+# TASK-first QA Plan — TASK-0037
+
+This is an independent plan derived only from the current TASK-0037 packet.
+QA starts on the HANDOVER-fixed candidate without waiting for REVIEW. Standard
+case evidence is limited to case ID, HANDOVER candidate, command, and result;
+additional context is recorded only when needed to explain a result.
+
+| Case | AC | Mode | Failure hypothesis and observation | Reject when |
+|---|---|---|---|---|
+| Q-01 planning is atomic and minimal | AC-1, AC-3 | focused-rerun | For a new Task, begin with taskStart’s untracked empty REVIEW/QA/HANDOVER scaffolds and verify they may join the first planning commit with a nonempty changed planning subset. For an existing Task, exercise each nonempty changed subset of PLAN, QA_PLAN, TASK, and backlog without forcing already tracked files dirty. Verify final approval/role/status validation and one lock, scope check, validation, and commit; use invalid final-state and extra-path variants. | Initial scaffolds cannot be committed together, an existing file must be dirtied for form, empty/invalid/extra scope is accepted, a transaction stage repeats, or partial state remains. |
+| Q-02 completion is one exact merge | AC-2, AC-3 | focused-rerun | Place HANDOVER, REVIEW, and QA as uncommitted main-side completion evidence before invocation; complete an exact product-only one-commit candidate fixture and inspect one no-ff merge with HANDOVER candidate as second parent and all required completion changes. Negatively vary REVIEW/QA decision, branch/base or candidate-commit count, scope, and post-validation staged bytes; snapshot pre-invocation quality-evidence bytes and index/stage state. | A bad input merges, candidate has other than one product commit since merge-base, required main-side evidence is absent, second parent is wrong, staged/merge state remains, or failed completion does not restore evidence bytes and stage state exactly. |
+| Q-03 hook skips only equivalent work | AC-3 | focused-rerun | Instrument parent and hook validation. Same complete parent/staged content must validate once total; changed staged content, a supplied-digest mismatch, and normal commits must run hook validation. | Equivalent work validates twice, or tampered/ordinary work skips hook validation. |
+| Q-04 fixed candidate and Git facts | AC-4 | focused-rerun | Supply the only candidate reference in main-side dirty HANDOVER and independently derive tree, product diff, and managed digest from Git. Test missing/stale HANDOVER candidate, candidate self-reference, and a HANDOVER committed on the candidate branch or another evidence commit; confirm REVIEW/QA do not need copied candidate/tree/digest facts. | Candidate is not fixed only by main-side pre-completion HANDOVER, candidate self-reference or another evidence commit is accepted, Git-derived facts disagree or are not used, or deleted duplicate-formalism becomes required. |
+| Q-05 independent quality roles | AC-5 | evidence-review | Inspect candidate and tests for distinct DEV/REVIEW/QA identities, reviewer PASS plus independent review of candidate diff/DEV check evidence, and QA focused reruns with P0/P1 rejection. Confirm Main alone creates the no-ff merge and reviewer does not repeat the identical `make check` without a separate hypothesis. | Roles are shared or serially dependent, review merely repeats DEV’s command, P0/P1/focused QA is weakened, or merge ownership moves from Main. |
+| Q-06 removed gates stay removed | AC-6, AC-8, AC-9, AC-10, AC-12 | focused-rerun | Exercise completed fixtures with estimate mismatches, no Wiki knowledge, changed candidates, minimal QA evidence, and observed model/effort mismatch. Inspect that estimates do not block; changed candidates rerun affected focused checks (full only when impact is unknown); model mismatch warns/records; and no mandatory artifact-format, cache/exit, CF checklist, version/mode, or line-count gate is reintroduced. Missing roles, shared identities, unknown sandbox/authority, and missing candidate still block. | A removed formal gate blocks or is recreated, a changed candidate reuses old QA, warning-only mismatch stops work, or retained identity/authority/candidate safety boundaries no longer fail closed. |
+| Q-07 Wiki is conditional | AC-7 | focused-rerun | Complete a no-reusable-knowledge fixture without receipt, then a reusable-knowledge fixture whose Wiki change joins the completion transaction. Check no Wiki/HANDOVER hash order is needed. | Receipt is universal, relevant Wiki is excluded, or ordering/hash dependency blocks completion. |
+| Q-08 start and three-commit path | AC-11 | focused-rerun | Run task start in a clean fixture: scaffold, branch, and worktree appear atomically but main remains at the same commit. After planning, require branch/worktree fast-forward to that planning commit; then require Main’s one product-only candidate commit and completion validation that `merge-base..candidate` has count one. Verify normal history is planning commit, candidate commit, completion no-ff merge; derive completion-only values from Git without evidence rewrite. Test multiple candidate commits as a negative, `ALLOW_MERGE=1` exact merge, and omitted-flag direct-product rejection. | Start commits to main or partially allocates, branch/worktree is not fast-forwarded after planning, candidate has multiple/non-product commits, normal path exceeds three commits without rework/recovery/live-E2E cause, post-completion values are transcribed, wrapper loses allow-merge, or direct product paths pass. |
+| Q-09 scope, secrets, and permission boundaries | AC-1, AC-2, AC-5, AC-10 | evidence-review | Audit allowed-path enforcement and test fixtures for forbidden path and secret-like input handling. Verify only Main owns merge/Git write authority; unclear sandbox/permission boundary blocks. | Completion/planning accepts out-of-scope or secret-bearing changes, authority is ambiguous, or a non-Main role can merge. |
+| Q-10 live E2E remains conditional | AC-11, AC-12 | evidence-review | Confirm this hermetic process change uses focused reruns; inspect the documented decision rule that real external/OS/auth/deploy/restart/rollback effects require live E2E and stay blocked if the environment or safe cleanup is unavailable. | Live E2E is required without an environment-dependent failure hypothesis, or environment-dependent work is passed through focused evidence alone. |
+| Q-11 minimal rules and pruning | AC-13 | evidence-review | Inspect the development-process change: a new mandatory rule/gate must cite repeated concrete failure or a severe one-off safety/recovery risk and say how it detects that risk. Confirm the review occurs in the existing retrospective after every 10 completed Tasks, uses existing logs for detection record, false positives, time, and maintenance cost, and deletes or warns on low-value rules without a new checklist, version field, Task, or dedicated commit. | A single minor event creates a permanent rule, rule rationale/detection path is absent, the 10-Task existing-retrospective cadence is missing, retrospective adds ceremony, or low-value rules are retained without review. |
+| Q-12 candidate regression | AC-12 | focused-rerun | Independently run changed process tests and `make task-check TASK=TASK-0037` on the fixed candidate. Audit the DEV-run, candidate-bound single root `make check` evidence (command and result) rather than repeating the identical root command; inspect that tests directly cover Q-01–Q-11 hypotheses rather than added form fields. | A command fails, candidate differs, DEV `make check` evidence is absent/non-passing/non-bound, QA duplicates that command without a distinct hypothesis, or the implementation substitutes redundant formal checks for the required behavior. |
+
+## Result rule
+
+All cases pass on one fixed candidate. Candidate change reruns the affected
+focused cases, or all cases if impact cannot be bounded. Classify a failure as
+`implementation_defect`, `qa_plan_defect`, `requirement_gap`,
+`environment_issue`, or `regression`; do not presume DEV fault.

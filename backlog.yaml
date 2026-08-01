@@ -641,3 +641,21 @@ tasks:
       dev: dev-agent-luna-xhigh
       reviewer: reviewer-agent-terra-medium
       qa: qa-agent-terra-medium
+  - id: TASK-0037
+    title: Taskゲートの重複transactionと検査を削減する
+    type: chore
+    change_class: product
+    epic: EPIC-001
+    status: dev
+    priority: P1
+    estimate_points: 3
+    task_dir: tasks/TASK-0037-streamline-task-gates
+    depends_on: []
+    branch: task/TASK-0037-streamline-task-gates
+    worktree: worktrees/TASK-0037-streamline-task-gates
+    assignees:
+      main: main-agent-sol-high
+      planner: planner-agent-terra-medium
+      dev: dev-agent-luna-xhigh
+      reviewer: reviewer-agent-terra-medium
+      qa: qa-agent-terra-medium
