@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "task_id": "TASK-0047",
+  "handover_sha256": "76f4d4365813fb3c0bd27f89d5ec5b3c41b699cc0baece50254785cd13861d0d",
+  "ingested_at": "2026-08-01T10:47:24Z",
+  "updated_pages": [
+    "wiki/semantic/schemas/development-agent-harness-egress-transaction.md"
+  ],
+  "created_decisions": [],
+  "deferred": [
+    "実GitHub/OpenAI、実認証情報、Internet DNS/TLS/system trust、Agent proxy/response writerはlive E2E境界として未確認である。pagination/rate-limit等の上流header、listener/production wiring、Git Smart HTTP、streaming、redirect/retryも別Taskで扱う。"
+  ]
+}

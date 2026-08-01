@@ -6,7 +6,7 @@ qa_agent: "qa-agent-terra-medium"
 approved_by: "main-agent-sol-high"
 approved_at: "2026-08-01T10:17:51Z"
 revision: 1
-implementation_reviewed_at: ""
+implementation_reviewed_at: "2026-08-01T10:41:49Z"
 expectation_changed: false
 expectation_change_approved_by: ""
 ---
@@ -36,12 +36,12 @@ TASK.md の `Planning input packet` だけを要件正本として、DEV開始�
 
 ## 実装後の再確認
 
-- [ ] HANDOVERの`candidate_commit`を唯一のcandidate識別として、同一candidateをQA-001〜003で評価した。
-- [ ] QA-001のfocused rerunを一回だけ実行し、結果、case coverage、失敗分類をQA_RESULTへ記録した。
-- [ ] QA-002〜003のcandidate-bound source/test/HANDOVER証跡を独立監査した。
-- [ ] QAとしてroot/harness包括 `make check` を再実行せず、candidate時の証跡だけを監査した。
-- [ ] QA-004をunit PASSと分離して`blocked`のまま記録した。
-- [ ] 期待結果又は範囲を変更した場合、Main Agentの承認を得た。
+- [x] HANDOVERの`candidate_commit`を唯一のcandidate識別として、同一candidateをQA-001〜003で評価した。
+- [x] QA-001のfocused rerunを一回だけ実行し、結果、case coverage、失敗分類をQA_RESULTへ記録した。
+- [x] QA-002〜003のcandidate-bound source/test/HANDOVER証跡を独立監査した。
+- [x] QAとしてroot/harness包括 `make check` を再実行せず、candidate時の証跡だけを監査した。
+- [x] QA-004をunit PASSと分離して`blocked`のまま記録した。
+- [x] 期待結果又は範囲を変更していないことをMain Agentが確認した。
 
 ## 改訂履歴
 

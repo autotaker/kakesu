@@ -37,7 +37,13 @@ ForwarderがGitHub又はOpenAIへ送る最初の接続境界には、固定allow
 
 このtransportは一request一接続で、環境proxy、keep-alive、自動compression、HTTP/2、redirect、retryを持たない。TCP接続失敗時だけ未使用の検査済みIPへ進めるが、TLS handshake又はHTTP送信開始後は再dialしない。TLS 1.2未満又はHTTP/1.1以外、失敗response、下位のDNS/TLS/socket detailは公開せず、失敗時のbodyはtransportがcloseする。
 
-この性質だけではForwarder実装、秘密情報ストア、実network上のprovider受理、Agent側proxy、response capture又はauditを証明しない。Forwarderが実認証情報を保持、記録、Agent側へ返さず、上流responseを別途fail-closedに扱うことは後続境界で検証する。
+## Forwarderで再検証して縮退する応答
+
+`internal/upstreamforwarder`は`PreparedRequest`を受けた後、transportへ渡す前に同じpolicyでrequestを再評価し、正規scopeの完全一致と上流Bearerを再検証する。GitHub GET/HEADは空Content-Typeかつ空本文だけに狭め、検証済みrequestを注入RoundTripperへ一回だけ送る。上流headerは実Authorization、固定AcceptとUser-Agent、およびOpenAIのContent-Typeだけに限定し、Agent由来headerやopaque capability handleを転記しない。本文はcaller所有sliceから独立copyする。
+
+成功responseはsize上限内で完全にread、検証、closeしてから、status、正規JSON media type、独立した本文だけをrequest単位sinkへ一回渡す。HEAD/204 responseは空本文だけを受理し、provider error本文と上流headerはAgent側へ返さない。2xx以外、想定外media type、上限超過、UTF-8/JSON不正、read/close/timeout、sinkの各失敗はfail closedにする。
+
+この性質だけでは秘密情報ストア、実network上のprovider受理、Agent側proxy、response writer又はauditを証明しない。実GitHub/OpenAI、実認証情報、Internet DNS/TLS/system trust、Agent proxy/response writerはlive E2Eで別途確認する。
 
 ## 適用限界
 
@@ -47,5 +53,6 @@ ForwarderがGitHub又はOpenAIへ送る最初の接続境界には、固定allow
 
 - [TASK-0041 HANDOVER](../../../tasks/TASK-0041-dev-agent-egress-transaction/HANDOVER.md)
 - [TASK-0045 HANDOVER](../../../tasks/TASK-0045-dev-agent-upstream-transport/HANDOVER.md)
+- [TASK-0047 HANDOVER](../../../tasks/TASK-0047-dev-agent-upstream-forwarder/HANDOVER.md)
 - [Development Agent Harness Egress Policy](development-agent-harness-egress-policy.md)
 - [Development Agent Harness Capability Registry](development-agent-harness-capability-registry.md)

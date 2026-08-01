@@ -1,7 +1,7 @@
 ---
 task_id: "TASK-0047"
 title: "provider上流response Forwarderを実装する"
-status: plan
+status: done
 created_at: "2026-08-01"
 ---
 
@@ -36,12 +36,12 @@ TASK-0041のtrusted `Forwarder`境界とTASK-0045の上流HTTPS `http.RoundTripp
 
 ### 受け入れ条件
 
-- [ ] AC-1: `New`はPolicy、RoundTripper、ResponseSink、1ms以上30秒以下のtimeout、1 byte以上1 MiB以下のresponse上限を検査・保持し、不正Rulesへ固定errorを返す。Forwarderは`egresstransaction.Forwarder`を実装し、nil/zero receiverを含む失敗をpanic又は入力detailなしの固定errorにする。
-- [ ] AC-2: `Forward`は`PreparedRequest`のmethod/URL/content type/bodyを同じPolicyで再評価し、正規scopeが`PreparedRequest.Scope`と完全一致し、Authorizationが`Bearer `に続く1〜4,096 byteのvisible ASCII値である場合だけtransportへ到達する。拒否時はtransport/sinkを0回とし、caller所有sliceを変更・保持しない。
-- [ ] AC-3: 許可requestはtimeout付きcontextと独立本文で一つの`http.Request`へ変換し、上流へ渡すheaderを実`Authorization`、固定`Accept: application/json`、固定`User-Agent`、OpenAI時の`Content-Type: application/json`だけに限定する。注入RoundTripperを同期的に一回だけ呼び、Forwarder自身はredirect、retry、environment proxy又はdefault transportを使わない。
-- [ ] AC-4: 2xxかつ非nil bodyのresponseだけを読み、必ずcloseする。HEAD/204は0-byte本文だけを空responseとして受理し、それ以外の0-byte本文も空responseとする。本文ありは上限内、UTF-8、有効なJSON、`application/json`又は`application/*+json` media typeだけを受理する。HEAD/204の非empty本文、上限超過、非2xx、invalid status/content type/JSON、read/close error、response+error又はtimeout/cancelはsinkへ渡さず固定errorにする。
-- [ ] AC-5: 成功時だけResponseSinkを一回呼び、status code、空又は正規`application/json` content type、caller/transportとaliasしない本文だけを渡す。上流header、Authorization、URL、scope、provider error本文及びunderlying errorはsink、error、formatへ出さず、sink失敗も再試行しない。
-- [ ] AC-6: fake RoundTripper/body/sinkによるhermetic testが両provider成功、scope再評価・不一致、header allowlist、単回transport/sink、timeout/cancel、2xx/HEAD/204/JSON media type、size/UTF-8/JSON/status/read/close/sink異常、response+error、body close、copy ownership、固定error/non-leakを検出する。`go test -race ./internal/upstreamforwarder`、harness `make check`/`make distcheck`、candidate launcherのroot `make check`がPASSし、base...candidate差分は追加＋削除1,000行以下である。
+- [x] AC-1: `New`はPolicy、RoundTripper、ResponseSink、1ms以上30秒以下のtimeout、1 byte以上1 MiB以下のresponse上限を検査・保持し、不正Rulesへ固定errorを返す。Forwarderは`egresstransaction.Forwarder`を実装し、nil/zero receiverを含む失敗をpanic又は入力detailなしの固定errorにする。
+- [x] AC-2: `Forward`は`PreparedRequest`のmethod/URL/content type/bodyを同じPolicyで再評価し、正規scopeが`PreparedRequest.Scope`と完全一致し、Authorizationが`Bearer `に続く1〜4,096 byteのvisible ASCII値である場合だけtransportへ到達する。拒否時はtransport/sinkを0回とし、caller所有sliceを変更・保持しない。
+- [x] AC-3: 許可requestはtimeout付きcontextと独立本文で一つの`http.Request`へ変換し、上流へ渡すheaderを実`Authorization`、固定`Accept: application/json`、固定`User-Agent`、OpenAI時の`Content-Type: application/json`だけに限定する。注入RoundTripperを同期的に一回だけ呼び、Forwarder自身はredirect、retry、environment proxy又はdefault transportを使わない。
+- [x] AC-4: 2xxかつ非nil bodyのresponseだけを読み、必ずcloseする。HEAD/204は0-byte本文だけを空responseとして受理し、それ以外の0-byte本文も空responseとする。本文ありは上限内、UTF-8、有効なJSON、`application/json`又は`application/*+json` media typeだけを受理する。HEAD/204の非empty本文、上限超過、非2xx、invalid status/content type/JSON、read/close error、response+error又はtimeout/cancelはsinkへ渡さず固定errorにする。
+- [x] AC-5: 成功時だけResponseSinkを一回呼び、status code、空又は正規`application/json` content type、caller/transportとaliasしない本文だけを渡す。上流header、Authorization、URL、scope、provider error本文及びunderlying errorはsink、error、formatへ出さず、sink失敗も再試行しない。
+- [x] AC-6: fake RoundTripper/body/sinkによるhermetic testが両provider成功、scope再評価・不一致、header allowlist、単回transport/sink、timeout/cancel、2xx/HEAD/204/JSON media type、size/UTF-8/JSON/status/read/close/sink異常、response+error、body close、copy ownership、固定error/non-leakを検出する。`go test -race ./internal/upstreamforwarder`、harness `make check`/`make distcheck`、candidate launcherのroot `make check`がPASSし、base...candidate差分は追加＋削除1,000行以下である。
 
 ### 安定した参照
 
@@ -97,10 +97,10 @@ policy、capability消費、credential解決、上流DNS/TLS transportは個別�
 
 ## 完成の定義
 
-- [ ] 受け入れ条件を満たしている。
-- [ ] planning/candidate/completionの3 commit経路とcandidate一回のroot `make check`を満たしている。
-- [ ] 同一candidateの独立REVIEW/QAを完了し、実provider/Agent proxyのlive E2E未実施境界をPASSと誤記していない。
-- [ ] 再利用可能な知識が生じた場合だけ意味Wikiを既存ページへ同化し、post-merge `task-check`をPASSしている。
+- [x] 受け入れ条件を満たしている。
+- [x] planning/candidate/completionの3 commit経路とcandidate一回のroot `make check`を満たしている。
+- [x] 同一candidateの独立REVIEW/QAを完了し、実provider/Agent proxyのlive E2E未実施境界をPASSと誤記していない。
+- [x] 再利用可能な知識が生じた場合だけ意味Wikiを既存ページへ同化し、post-merge `task-check`をPASSしている。
 
 ## 関連コンテキスト
 

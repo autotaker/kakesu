@@ -134,6 +134,7 @@
       "links": [
         "../../../tasks/TASK-0041-dev-agent-egress-transaction/HANDOVER.md",
         "../../../tasks/TASK-0045-dev-agent-upstream-transport/HANDOVER.md",
+        "../../../tasks/TASK-0047-dev-agent-upstream-forwarder/HANDOVER.md",
         "development-agent-harness-egress-policy.md",
         "development-agent-harness-capability-registry.md"
       ]
