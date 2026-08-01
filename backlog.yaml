@@ -891,3 +891,22 @@ tasks:
       dev: dev-agent-luna-xhigh
       reviewer: reviewer-agent-terra-medium
       qa: qa-agent-terra-medium
+  - id: TASK-0050
+    title: broker内TLS CA読込とleaf証明書発行を実装する
+    type: feature
+    change_class: product
+    epic: EPIC-001
+    status: plan
+    priority: P1
+    estimate_points: 1
+    task_dir: tasks/TASK-0050-dev-agent-proxy-ca
+    depends_on:
+      - TASK-0049
+    branch: task/TASK-0050-dev-agent-proxy-ca
+    worktree: worktrees/TASK-0050-dev-agent-proxy-ca
+    assignees:
+      main: main-agent-sol-high
+      planner: planner-agent-terra-medium
+      dev: dev-agent-luna-xhigh
+      reviewer: reviewer-agent-terra-medium
+      qa: qa-agent-terra-medium
