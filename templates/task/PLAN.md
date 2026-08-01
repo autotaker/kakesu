@@ -5,9 +5,6 @@ status: draft
 planner_agent: ""
 approved_by: ""
 approved_at: ""
-planning_reviewed_by: ""
-planning_review_decision: "pending"
-planning_reviewed_at: ""
 classification_approved_by: ""
 classification_approved_at: ""
 classification_approval_reason: ""
@@ -70,4 +67,4 @@ TASKの条件本文を再掲せず、`planning input packet`のAC-IDに設計を
 - [ ] `dependency-ready reconciliation`と完了経路preflightが完了している。
 - [ ] DEV開始を承認した。
 
-安全契約変更でv2契約を選ぶ場合は、コメントを外して`safety_contract_version: 2`と予定パス・生成パスの配列を記録し、DEV前に`make task-preflight TASK={{TASK_ID}}`を実行する。変更しない種別は空配列とし、通常の予定パスと生成パスを重複させない。独立計画レビューのPASSとMainの分類承認をフロントマターへ記録する。分類変更時はTask、PLAN、QA_PLANを再承認し、承認者と時刻を更新する。
+安全契約変更でv2契約を選ぶ場合は、コメントを外して`safety_contract_version: 2`と予定パス・生成パスの配列を記録し、DEV前に`make task-preflight TASK={{TASK_ID}}`を実行する。変更しない種別は空配列とし、通常の予定パスと生成パスを重複させない。MainはPLAN/QA_PLANの意図・スコープ・受け入れ経路を確認し、分類承認をフロントマターへ記録する。分類変更時はTask、PLAN、QA_PLANを再承認し、承認者と時刻を更新する。

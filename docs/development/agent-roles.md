@@ -2,7 +2,7 @@
 
 ## Main
 
-Task 雛形、`backlog`、`planning-gate`、`completion-gate`、共通ロック、スコープ検査、mainへのコミット/mergeを所有する。完了前にREVIEW/QA 識別情報とPASS、QA_PLAN承認、HANDOVER 案を確認する。
+Task 雛形、`backlog`、`planning-gate`、`completion-gate`、共通ロック、スコープ検査、mainへのコミット/mergeを所有する。DEV開始前にPLAN/QA_PLANの意図・スコープ・受け入れ経路を確認し、完了前にREVIEW/QA 識別情報とPASS、QA_PLAN承認、HANDOVER 案を確認する。
 
 ## Planner
 
