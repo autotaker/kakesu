@@ -11,7 +11,8 @@ Development Taskは、目的、受け入れ条件、設計観点、完成の定�
 
 - `TASK-NNNN`で一意に識別する。
 - 一つのトピックブランチとworktreeに対応する。
-- PLAN、DEV、QAの3フェーズを通る。
+- Main所有のplanning input packetが、PlannerとQAに共通の入力を与える。
+- PLAN、DEV、独立REVIEW/QAのフェーズを通る。QA_PLANはDEV前に作成する。
 - Task本文と実行証跡を製品リポジトリ外へ保持する。
 
 ## Taskではないもの
@@ -23,5 +24,6 @@ Development Taskは、目的、受け入れ条件、設計観点、完成の定�
 ## 関連
 
 - [Task delivery](../scripts/task-delivery.md)
+- [Planning input packet](planning-input-packet.md)
 - [Work repository boundary](../schemas/work-repository-boundary.md)
-- [PLAN DEV QA process](../../decisions/DECISION-0001-plan-dev-qa-process.md)
+- [Risk-based candidate QA](../../decisions/DECISION-0005-risk-based-candidate-qa.md)

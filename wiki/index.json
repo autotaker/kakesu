@@ -6,7 +6,7 @@
       "kind": "decision",
       "title": "PLAN DEV QA Process",
       "decision_id": "DECISION-0001",
-      "status": "accepted",
+      "status": "superseded",
       "links": [
         "../../tasks/TASK-0001-development-process-foundation/TASK.md"
       ]
@@ -42,6 +42,42 @@
       ]
     },
     {
+      "path": "wiki/decisions/DECISION-0005-risk-based-candidate-qa.md",
+      "kind": "decision",
+      "title": "Risk-based Candidate QA",
+      "decision_id": "DECISION-0005",
+      "status": "superseded",
+      "links": [
+        "../../tasks/TASK-0024-risk-based-qa-evidence/TASK.md",
+        "../../tasks/TASK-0024-risk-based-qa-evidence/PLAN.md",
+        "../../tasks/TASK-0024-risk-based-qa-evidence/QA_PLAN.md"
+      ]
+    },
+    {
+      "path": "wiki/decisions/DECISION-0006-lean-planning-contract.md",
+      "kind": "decision",
+      "title": "Lean Planning Contract",
+      "decision_id": "DECISION-0006",
+      "status": "accepted",
+      "links": [
+        "../../tasks/TASK-0030-lean-planning-contract/TASK.md",
+        "../../tasks/TASK-0030-lean-planning-contract/PLAN.md",
+        "../../tasks/TASK-0030-lean-planning-contract/QA_PLAN.md"
+      ]
+    },
+    {
+      "path": "wiki/decisions/DECISION-0007-streamlined-task-gates.md",
+      "kind": "decision",
+      "title": "Streamlined Task Gates",
+      "decision_id": "DECISION-0007",
+      "status": "accepted",
+      "links": [
+        "../../tasks/TASK-0037-streamline-task-gates/TASK.md",
+        "../../tasks/TASK-0037-streamline-task-gates/HANDOVER.md",
+        "../../tasks/TASK-0037-streamline-task-gates/QA_PLAN.md"
+      ]
+    },
+    {
       "path": "wiki/semantic/case-patterns/qa-fail-attribution.md",
       "kind": "case-pattern",
       "title": "QA FAIL Attribution",
@@ -65,8 +101,20 @@
       "title": "Development Task",
       "links": [
         "../scripts/task-delivery.md",
+        "planning-input-packet.md",
         "../schemas/work-repository-boundary.md",
-        "../../decisions/DECISION-0001-plan-dev-qa-process.md"
+        "../../decisions/DECISION-0005-risk-based-candidate-qa.md"
+      ]
+    },
+    {
+      "path": "wiki/semantic/concepts/planning-input-packet.md",
+      "kind": "concept",
+      "title": "Planning Input Packet",
+      "links": [
+        "../scripts/task-delivery.md",
+        "development-task.md",
+        "../../decisions/DECISION-0006-lean-planning-contract.md",
+        "../../../tasks/TASK-0030-lean-planning-contract/TASK.md"
       ]
     },
     {
@@ -210,7 +258,9 @@
       "title": "Task Delivery",
       "links": [
         "../case-patterns/qa-fail-attribution.md",
-        "../../decisions/DECISION-0001-plan-dev-qa-process.md",
+        "../concepts/planning-input-packet.md",
+        "../../decisions/DECISION-0007-streamlined-task-gates.md",
+        "../../decisions/DECISION-0006-lean-planning-contract.md",
         "../../../tasks/TASK-0005-main-agent-efficient-delivery/HANDOVER.md"
       ]
     },

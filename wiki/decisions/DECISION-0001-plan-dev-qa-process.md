@@ -2,7 +2,7 @@
 kind: decision
 decision_id: DECISION-0001
 title: PLAN DEV QA Process
-status: accepted
+status: superseded
 decided_at: 2026-07-14
 supersedes: []
 ---

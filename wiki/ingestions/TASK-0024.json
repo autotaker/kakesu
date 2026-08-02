@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "task_id": "TASK-0024",
+  "handover_sha256": "21dbf55b9189c2f6ea7c44e131c8112e7a7850fccd49801d4d62d008d9f01108",
+  "ingested_at": "2026-08-02T09:51:31+10:00",
+  "updated_pages": [
+    "wiki/semantic/concepts/development-task.md",
+    "wiki/semantic/scripts/task-delivery.md"
+  ],
+  "created_decisions": [
+    "DECISION-0005"
+  ],
+  "deferred": [
+    "The TASK-0024 HANDOVER is a TODO-only placeholder. Task-specific implementation and validation claims were not promoted; the reusable decision and process change are grounded in TASK.md, PLAN.md, QA_PLAN.md, and the current development contract."
+  ]
+}

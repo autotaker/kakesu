@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "task_id": "TASK-0037",
+  "handover_sha256": "bc4bb2b3f52551dd3bb9abd7468098a241df584376524688b3728ae2fbfa013d",
+  "ingested_at": "2026-08-02T09:56:34+10:00",
+  "updated_pages": [
+    "wiki/semantic/scripts/task-delivery.md"
+  ],
+  "created_decisions": [
+    "DECISION-0007"
+  ],
+  "deferred": [
+    "TASK-0037's fixture names, test counts, candidate and merge identifiers, measured duration, and individual implementation paths are task-specific evidence rather than Semantic rules.",
+    "The former detailed qa_carry_forward checklist, all-task Wiki receipt requirement, and line/file estimate arithmetic are not promoted because the current streamlined contract removes them."
+  ]
+}

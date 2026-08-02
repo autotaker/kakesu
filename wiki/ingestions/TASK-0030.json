@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "task_id": "TASK-0030",
+  "handover_sha256": "78deee7a0ccad3e3abca131af599ab381c1865bd9902e8292cc98116d86151ab",
+  "ingested_at": "2026-08-02T09:55:02+10:00",
+  "updated_pages": [
+    "wiki/semantic/concepts/development-task.md",
+    "wiki/semantic/scripts/task-delivery.md"
+  ],
+  "created_decisions": [
+    "DECISION-0006"
+  ],
+  "deferred": [
+    "TASK-0030's measured line counts, individual merge identifiers, and the one-task recovery through TASK-0031 are evidence rather than reusable Semantic rules. The contract retains the general reconciliation and fail-closed principles without promoting those task-specific details."
+  ]
+}

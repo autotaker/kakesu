@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "task_id": "TASK-0026",
+  "handover_sha256": "2ee9b3f1f4c1166eb0b19ec973e3b300aae6dc2dd9c27700a423edacc283e9a4",
+  "ingested_at": "2026-08-02T09:53:26+10:00",
+  "updated_pages": [],
+  "created_decisions": [],
+  "deferred": [
+    "The HANDOVER is a TODO-only placeholder and supplies no reusable outcome, counterexample, or update candidate.",
+    "TASK.md and PLAN.md propose reviewer/QA child-agent stage and commit authority for minor fixes, but the current governing contract prohibits child-agent stage, commit, merge, and .git writes. With no superseding Task evidence that reconciles this conflict, the historical task-specific proposal is not promoted to Semantic Wiki or a Decision."
+  ]
+}
