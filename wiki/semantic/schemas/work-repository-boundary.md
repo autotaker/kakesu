@@ -19,9 +19,10 @@ title: Work Repository Boundary
 
 - 製品変更はTaskブランチとworktreeで行う。
 - 運用リポジトリは`main`一本で運用する。
-- 運用リポジトリへの書き込みはロックで直列化する。
-- Agentは所有範囲だけを直接コミットする。
-- Wiki本文の所有者はWiki Agent、Wiki Schemaの所有者はmain Agentである。
+- 運用リポジトリへの公開はMainが共通lockで直列化する。
+- Wiki AgentはMain指定のWiki本文だけを編集する。標準起動は`agents.spawn_agent(agent_type="wiki")`であり、独立`codex exec` launcherは使わない。
+- Mainが許可path、差分scope、索引生成が必要な場合の実行、検証、stage、commit、pushを所有する。Wiki Agentはlock、検証、Git操作又は`.git`書込みを行わない。
+- Wiki receiptは明示的ingest時だけの任意成果物であり、Wiki依頼がないTaskの完了条件ではない。
 
 ## 関連
 
