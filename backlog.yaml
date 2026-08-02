@@ -1371,3 +1371,21 @@ tasks:
       dev: dev-agent-sol-high
       reviewer: reviewer-agent-terra-medium
       qa: qa-agent-terra-medium
+  - id: TASK-0075
+    title: 安全契約completionの偽PASSと重複digestを廃止する
+    type: chore
+    change_class: product
+    epic: EPIC-001
+    status: plan
+    priority: P0
+    estimate_points: 1
+    task_dir: tasks/TASK-0075-repair-safety-contract-completion
+    depends_on: []
+    branch: task/TASK-0075-repair-safety-contract-completion
+    worktree: worktrees/TASK-0075-repair-safety-contract-completion
+    assignees:
+      main: main-agent-sol-high
+      planner: planner-agent-terra-medium
+      dev: dev-agent-sol-high
+      reviewer: reviewer-agent-terra-medium
+      qa: qa-agent-terra-medium
