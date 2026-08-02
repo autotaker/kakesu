@@ -29,10 +29,11 @@ BuildとParseはcallerのslice/raw bytesを保持せず、`RefUpdates()`と`Enco
 
 ## 認可との境界
 
-validなManifestは承認候補となるcontentを一意に表すだけであり、**approved、granted、pushableを意味しない**。[Approval Request Store](development-agent-harness-approval-request-store.md)が現在時刻、TTL、request ID一意性、policyの信頼性を所有し、Passkey challengeとone-shot push grantはその後続の別境界である。Manifest自身はGit receive-pack/pkt-lineを解析せず、remoteのold SHAを観測せず、forceをwireから推定せず、credential、実push、audit、network又は永続stateを持たない。
+validなManifestは承認候補となるcontentを一意に表すだけであり、**approved、granted、pushableを意味しない**。[Approval Request Store](development-agent-harness-approval-request-store.md)が現在時刻、TTL、request ID一意性、policyの信頼性を所有し、[Passkey Challenge Lifecycle](development-agent-harness-passkey-challenge-lifecycle.md)がrequest digestとdecisionへ一回限りのverifier入力を束縛する。one-shot push grantはさらに後続の別境界である。Manifest自身はGit receive-pack/pkt-lineを解析せず、remoteのold SHAを観測せず、forceをwireから推定せず、credential、実push、audit、network又は永続stateを持たない。
 
 ## 関連
 
 - [TASK-0070 HANDOVER](../../../tasks/TASK-0070-push-approval-manifest/HANDOVER.md)
 - [Approval Request Store](development-agent-harness-approval-request-store.md)
+- [Development Agent Harness Passkey Challenge Lifecycle](development-agent-harness-passkey-challenge-lifecycle.md)
 - [Development Agent Harness Egress Transaction](development-agent-harness-egress-transaction.md)

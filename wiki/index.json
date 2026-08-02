@@ -170,8 +170,10 @@
       "title": "Development Agent Harness Approval Request Store",
       "links": [
         "development-agent-harness-push-approval-manifest.md",
+        "development-agent-harness-passkey-challenge-lifecycle.md",
         "../../../tasks/TASK-0071-approval-request-store/HANDOVER.md",
-        "development-agent-harness-push-approval-manifest.md"
+        "development-agent-harness-push-approval-manifest.md",
+        "development-agent-harness-passkey-challenge-lifecycle.md"
       ]
     },
     {
@@ -265,6 +267,17 @@
       ]
     },
     {
+      "path": "wiki/semantic/schemas/development-agent-harness-passkey-challenge-lifecycle.md",
+      "kind": "schema",
+      "title": "Development Agent Harness Passkey Challenge Lifecycle",
+      "links": [
+        "development-agent-harness-approval-request-store.md",
+        "../../../tasks/TASK-0072-passkey-challenge-lifecycle/HANDOVER.md",
+        "development-agent-harness-approval-request-store.md",
+        "development-agent-harness-push-approval-manifest.md"
+      ]
+    },
+    {
       "path": "wiki/semantic/schemas/development-agent-harness-provider-credentials.md",
       "kind": "schema",
       "title": "Development Agent Harness プロバイダー認証情報の解決",
@@ -303,8 +316,10 @@
       "title": "Development Agent Harness Push Approval Manifest",
       "links": [
         "development-agent-harness-approval-request-store.md",
+        "development-agent-harness-passkey-challenge-lifecycle.md",
         "../../../tasks/TASK-0070-push-approval-manifest/HANDOVER.md",
         "development-agent-harness-approval-request-store.md",
+        "development-agent-harness-passkey-challenge-lifecycle.md",
         "development-agent-harness-egress-transaction.md"
       ]
     },

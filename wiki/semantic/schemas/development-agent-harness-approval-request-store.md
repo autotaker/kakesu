@@ -21,7 +21,7 @@ canonicalなpush approval manifestを、再起動後も一意に参照できるr
 
 mutation、`Get`、expiry処理はtrusted clockをmutex下で比較し、期限到達をdecisionより先に`expired`として永続化する。clock rollback、policy/epoch又はdigest mismatch、terminal state再遷移、approved以外からのstaleは拒否する。この順序により、期限切れrecordをapproval可能として返さない。
 
-`approved`はverified decisionが保存された状態であり、grant、push authorization、one-shot consumption、実push成功を意味しない。それらは後続の別境界である。
+`approved`はverified decisionが保存された状態であり、grant、push authorization、one-shot consumption、実push成功を意味しない。Passkey/WebAuthn verifierの前段となるchallengeのreservationと消費は[Passkey Challenge Lifecycle](development-agent-harness-passkey-challenge-lifecycle.md)が所有し、それらの上位認可は後続の別境界である。
 
 ## Snapshotの確定境界と復旧
 
@@ -37,3 +37,4 @@ mutationはcopy-on-write snapshotをtemp regular fileへ全write、file sync、c
 
 - [TASK-0071 HANDOVER](../../../tasks/TASK-0071-approval-request-store/HANDOVER.md)
 - [Development Agent Harness Push Approval Manifest](development-agent-harness-push-approval-manifest.md)
+- [Development Agent Harness Passkey Challenge Lifecycle](development-agent-harness-passkey-challenge-lifecycle.md)

@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "task_id": "TASK-0072",
+  "handover_sha256": "b3153045881696c54530b24a5ad31cd02c4982edbac8224c8558742ec3d18d80",
+  "ingested_at": "2026-08-02T08:25:57Z",
+  "updated_pages": [
+    "wiki/semantic/schemas/development-agent-harness-passkey-challenge-lifecycle.md",
+    "wiki/semantic/schemas/development-agent-harness-approval-request-store.md",
+    "wiki/semantic/schemas/development-agent-harness-push-approval-manifest.md"
+  ],
+  "created_decisions": [],
+  "deferred": [
+    "実WebAuthnのclientData/authenticatorData/signature、RP ID hash、origin、UV flag、counterの暗号学的検証、credential登録・失効・recovery、実スマートフォンは未実装・未確認であり、hermetic lifecycle検査のPASSで代替しない。",
+    "Tailscale identity/Serve、HTTP/UI/session/CSRF、approvalstate mutation、verified-decision API、grantの発行・consuming/consumed/indeterminate遷移、実pushとreconciliationは別境界であり、このchallenge managerはauthorizationを発行しない。",
+    "実OS/auth/network、multi-process/host共有、永続化/restart recovery、backup、外部作用を含む接続はlive E2Eで未実施であり、in-memory managerのPASSで代替しない。"
+  ]
+}
