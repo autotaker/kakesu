@@ -203,6 +203,23 @@ systemdソケット、VPS配置の受理を保証しない。
 作る直前の取得境界に限られ、本コンポーネントはディスクへ書かない。`net.Pipe`による成功は実OS権限、別UID、実Git/libcurlの
 信頼、GitHub/OpenAI/DNS/TLS、systemd/VPS配置を保証せず、それらは承認済み環境で別途live E2E確認する。
 
+## Agent用loopbackプロキシ中継
+
+`internal/proxybridge`は、HTTPプロキシの接続先だけを受け取れるAgentクライアントと、既存の接続元に束縛された外向き通信用
+Unixソケットの間を接続する前段である。待受けは固定のIPv4 loopbackで`tcp4`を使い、OS割り当ての一時ポートだけを
+使用する。呼出元へは正規なloopback HTTP endpointだけを返す。各クライアント接続は構築時に固定した絶対かつ
+正規化済みのUnixソケットへ、期限付きで一回だけ接続する。接続上限の枠は受理前に取得し、再試行、別ソケット、
+TCP上流、代替経路を選ばない。
+
+Unixソケットへの接続成功後はHTTP、CONNECT、TLS、認証情報を解釈・変更せず、バイトを双方向へそのまま
+ストリーム転送する。一方向のEOFは反対側の書き込み側half-closeへ伝える。キャンセル、接続失敗、待受け失敗では
+両端を閉じ、全接続処理の完了を待つ。主体の割り当て、CONNECT/制御の認可、TLS/inner HTTPポリシーは引き続き
+Unixソケット側の外向き通信サービスだけが所有し、loopback中継は認可プロキシや診断境界にならない。
+
+このパッケージはAgentネットワーク名前空間の隔離、Unixソケットの権限と接続元UID、CA信頼用ファイル、Git設定、
+子プロセスやシグナルのライフサイクル、実Git/`gh`/OpenAIクライアントのプロキシ対応、systemd/VPS配置を構成または
+証明しない。偽の待受けと接続器、および`net.Pipe`によるhermeticテストも、これらのlive環境条件のPASSを意味しない。
+
 ## Git read用認証情報helper
 
 `git-credential-dev-agent`は、allowlistにある正規な`github.com`リポジトリをHTTPSで読むための、
