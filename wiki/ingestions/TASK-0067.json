@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "task_id": "TASK-0067",
+  "handover_sha256": "e26a05753d916baa58155d8f9cbc0b1b49f70b015616631d66ff33871fdbeb7c",
+  "ingested_at": "2026-08-02T04:17:03Z",
+  "updated_pages": [
+    "wiki/semantic/schemas/development-agent-harness-loopback-proxy-bridge.md"
+  ],
+  "created_decisions": [],
+  "deferred": [
+    "launcher、child process/signal/environment lifecycle、CA trust file、Git設定は未実装である。実OS network namespace/loopback isolation、Unix socket permission/peer UID、実Git/gh/OpenAI clientのproxy対応、CA trust、systemd/VPSは未確認であり、hermetic testのPASSで代替しない。"
+  ]
+}

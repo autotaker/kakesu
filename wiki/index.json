@@ -215,6 +215,16 @@
       ]
     },
     {
+      "path": "wiki/semantic/schemas/development-agent-harness-loopback-proxy-bridge.md",
+      "kind": "schema",
+      "title": "Development Agent Harness Loopback Proxy Bridge",
+      "links": [
+        "../../../tasks/TASK-0067-agent-loopback-proxy-bridge/HANDOVER.md",
+        "development-agent-harness-egress-transaction.md",
+        "development-agent-harness-proxy-ca.md"
+      ]
+    },
+    {
       "path": "wiki/semantic/schemas/development-agent-harness-provider-credentials.md",
       "kind": "schema",
       "title": "Development Agent Harness プロバイダー認証情報の解決",
