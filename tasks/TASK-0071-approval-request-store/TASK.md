@@ -1,7 +1,7 @@
 ---
 task_id: "TASK-0071"
 title: "Approval request永続state storeを実装する"
-status: draft
+status: done
 created_at: "2026-08-02"
 ---
 

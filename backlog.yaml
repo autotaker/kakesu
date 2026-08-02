@@ -1300,7 +1300,7 @@ tasks:
     type: feature
     change_class: product
     epic: EPIC-001
-    status: plan
+    status: done
     priority: P1
     estimate_points: 1
     task_dir: tasks/TASK-0071-approval-request-store
