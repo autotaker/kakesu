@@ -6,9 +6,10 @@ import YAML from "yaml";
 import {
   REPO_ROOT, REQUIRED_TASK_FILES, acquireWorkRepoLock, assertSlug, assertTaskId, dateInTimezone,
   changedContentDigest, findMainWorktree, git, isMainManagedPath, parseArgs, parseFrontmatter, readYaml, replaceTemplate,
-  resolveInside, taskById, writeYaml,
+  resolveInside, taskById, writeFileAtomic, writeYaml,
 } from "./lib.mjs";
 import { validateDevSelection } from "./agent-routing.mjs";
+import { buildWikiIndex } from "./wiki-index.mjs";
 
 const ACTION_FILES = {
   task: ["TASK.md"], plan: ["PLAN.md"], "qa-plan": ["QA_PLAN.md"], review: ["REVIEW_RESULT.md"],
@@ -162,14 +163,24 @@ export function evidenceCommit({ root, action, taskId, message, push = true, val
   let planningBranchBefore = null;
   let planningWorktree = null;
   try {
-    prevalidatedDigest = validate ? changedContentDigest(root, { cached: false }) : null;
-    const changed = changedFiles(root);
-    if (!changed.length) return { commit: null, pushed: false, changed: [] };
-    if (action === "planning-gate") validatePlanningState(root, taskId, changed);
+    const inputChanged = changedFiles(root);
+    if (!inputChanged.length) return { commit: null, pushed: false, changed: [] };
+    if (action === "planning-gate") validatePlanningState(root, taskId, inputChanged);
     else {
-      const forbidden = changed.filter((file) => !matches(file, rules));
+      const forbidden = inputChanged.filter((file) => !matches(file, rules));
       if (forbidden.length) throw new Error(`Evidence scope violation for ${action}: ${forbidden.join(", ")}`);
     }
+    if (action === "wiki") {
+      const output = path.join(root, "wiki", "index.json");
+      writeFileAtomic(output, `${JSON.stringify(buildWikiIndex(root), null, 2)}\n`);
+    }
+    const changed = changedFiles(root);
+    if (!changed.length) return { commit: null, pushed: false, changed: [] };
+    if (action === "wiki") {
+      const forbidden = changed.filter((file) => !matches(file, rules));
+      if (forbidden.length) throw new Error(`Evidence scope violation for ${action} after index generation: ${forbidden.join(", ")}`);
+    }
+    prevalidatedDigest = validate ? changedContentDigest(root, { cached: false }) : null;
     if (action === "planning-gate") {
       const { task } = taskContext(root, taskId);
       planningWorktree = resolveInside(root, task.worktree, `${taskId} worktree`);

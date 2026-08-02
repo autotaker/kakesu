@@ -39,12 +39,11 @@ const isMain = process.argv[1] && path.resolve(process.argv[1]) === new URL(impo
 if (isMain) {
   const args = parseArgs(process.argv.slice(2));
   const root = workRoot(args.work_root);
-  const outerWriter = process.env.WORK_REPO_LOCK_HELD === "1";
-  const release = outerWriter ? () => {} : acquireWorkRepoLock(root);
+  const release = acquireWorkRepoLock(root);
   try {
     const output = path.join(root, "wiki", "index.json");
     writeFileAtomic(output, `${JSON.stringify(buildWikiIndex(root), null, 2)}\n`);
-    if (!outerWriter && git(root, ["status", "--porcelain", "wiki/index.json"])) {
+    if (git(root, ["status", "--porcelain", "wiki/index.json"])) {
       git(root, ["add", "wiki/index.json"]);
       git(root, ["commit", "-m", "wiki: refresh index"]);
     }

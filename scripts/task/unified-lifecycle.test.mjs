@@ -20,6 +20,17 @@ function command(program, argv, cwd, expected = 0) {
 
 function git(root, ...argv) { return command("git", argv, root).stdout.trim(); }
 
+function nodeModulesDirectory(start) {
+  let current = path.resolve(start);
+  while (true) {
+    const candidate = path.join(current, "node_modules");
+    if (fs.existsSync(candidate)) return candidate;
+    const parent = path.dirname(current);
+    if (parent === current) throw new Error(`node_modules not found from ${start}`);
+    current = parent;
+  }
+}
+
 function writeProject(file) {
   fs.writeFileSync(file, "version: 2\nproject_id: agent-harness\nrepository_path: .\nevidence_root: .\ndefault_branch: main\ntimezone: Pacific/Guam\nworktree_root: worktrees\n");
 }
@@ -95,7 +106,7 @@ function initTaskStartRepository() {
   fs.cpSync(path.join(ROOT, "schemas/operations"), path.join(root, "schemas/operations"), { recursive: true });
   fs.mkdirSync(path.join(root, "scripts"), { recursive: true });
   fs.cpSync(path.join(ROOT, "scripts/task"), path.join(root, "scripts/task"), { recursive: true });
-  fs.symlinkSync(path.join(ROOT, "node_modules"), path.join(root, "node_modules"), "dir");
+  fs.symlinkSync(nodeModulesDirectory(ROOT), path.join(root, "node_modules"), "dir");
   fs.writeFileSync(path.join(root, "backlog.yaml"), ["version: 1", "project: agent-harness", "epics:", "  - id: EPIC-001", "    title: fixture", "    target_start: '2026-01-01'", "    target_end: '2026-12-31'", "tasks: []", ""].join("\n"));
   fs.mkdirSync(path.join(root, "wiki"));
   fs.writeFileSync(path.join(root, "wiki/index.json"), `${JSON.stringify({ version: 1, pages: [] }, null, 2)}\n`);
@@ -103,6 +114,13 @@ function initTaskStartRepository() {
   const remote = fs.mkdtempSync(path.join(os.tmpdir(), "task-start-remote-"));
   command("git", ["init", "--bare"], remote); git(root, "remote", "add", "origin", remote); git(root, "push", "-u", "origin", "main");
   return root;
+}
+
+function writeSemanticPage(root, name = "fixture.md", { title = "Fixture" } = {}) {
+  const file = path.join(root, "wiki", "semantic", name);
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, `---\nkind: concept\n${title ? `title: ${title}\n` : ""}---\n# ${title || "Untitled"}\n`);
+  return file;
 }
 
 function setFrontmatter(file, values) {
@@ -253,6 +271,134 @@ test("evidence transaction commits only the action allowlist and fails closed on
   fs.mkdirSync(lock, { recursive: true });
   fs.writeFileSync(path.join(lock, "owner.json"), `${JSON.stringify({ pid: process.pid })}\n`);
   assert.throws(() => evidenceCommit({ root, action: "handover", taskId: "TASK-9000", message: "lock", push: false, validate: false }), /holds/);
+});
+
+test("wiki evidence transaction builds the final index under the common lock and commits one publish unit", () => {
+  const root = initTaskStartRepository();
+  const before = git(root, "rev-parse", "HEAD");
+  writeSemanticPage(root);
+
+  const result = evidenceCommit({ root, action: "wiki", taskId: "TASK-9000", message: "wiki fixture", push: false });
+
+  assert.deepEqual(result.changed, ["wiki/index.json", "wiki/semantic/fixture.md"]);
+  assert.deepEqual(git(root, "diff-tree", "--no-commit-id", "--name-only", "-r", "HEAD").split("\n"), result.changed);
+  assert.equal(git(root, "rev-list", "--count", `${before}..HEAD`), "1");
+  assert.equal(git(root, "status", "--porcelain"), "");
+  assert.deepEqual(JSON.parse(fs.readFileSync(path.join(root, "wiki/index.json"), "utf8")).pages, [{
+    path: "wiki/semantic/fixture.md",
+    kind: "concept",
+    title: "Fixture",
+    links: [],
+  }]);
+  assert.equal(fs.existsSync(workRepoLockDir(root)), false);
+});
+
+test("wiki evidence transaction checks input scope before index generation and honors the common lock", () => {
+  const scoped = initTaskStartRepository();
+  writeSemanticPage(scoped);
+  fs.appendFileSync(path.join(scoped, "README.md"), "forbidden\n");
+  const indexBeforeScope = fs.readFileSync(path.join(scoped, "wiki/index.json"), "utf8");
+  assert.throws(() => evidenceCommit({ root: scoped, action: "wiki", taskId: "TASK-9000", message: "scope", push: false }), /scope violation/);
+  assert.equal(fs.readFileSync(path.join(scoped, "wiki/index.json"), "utf8"), indexBeforeScope);
+
+  const locked = initTaskStartRepository();
+  writeSemanticPage(locked);
+  const indexBeforeLock = fs.readFileSync(path.join(locked, "wiki/index.json"), "utf8");
+  const lock = workRepoLockDir(locked);
+  fs.mkdirSync(lock, { recursive: true });
+  fs.writeFileSync(path.join(lock, "owner.json"), `${JSON.stringify({ pid: process.pid })}\n`);
+  assert.throws(() => evidenceCommit({ root: locked, action: "wiki", taskId: "TASK-9000", message: "lock", push: false }), /holds/);
+  assert.equal(fs.readFileSync(path.join(locked, "wiki/index.json"), "utf8"), indexBeforeLock);
+  fs.rmSync(lock, { recursive: true, force: true });
+});
+
+test("wiki evidence validation and hook failures retain generated and source edits without a commit", () => {
+  const invalid = initTaskStartRepository();
+  const invalidHead = git(invalid, "rev-parse", "HEAD");
+  writeSemanticPage(invalid, "invalid.md", { title: "" });
+  assert.throws(() => evidenceCommit({ root: invalid, action: "wiki", taskId: "TASK-9000", message: "invalid", push: false }), /title is required/);
+  assert.equal(git(invalid, "rev-parse", "HEAD"), invalidHead);
+  assert.deepEqual(git(invalid, "status", "--porcelain").split("\n"), ["M wiki/index.json", "?? wiki/semantic/"]);
+  assert.equal(JSON.parse(fs.readFileSync(path.join(invalid, "wiki/index.json"), "utf8")).pages[0].path, "wiki/semantic/invalid.md");
+
+  const rejected = initTaskStartRepository();
+  const rejectedHead = git(rejected, "rev-parse", "HEAD");
+  const page = writeSemanticPage(rejected, "hook.md");
+  const hook = path.join(rejected, ".git", "hooks", "pre-commit");
+  fs.writeFileSync(hook, "#!/bin/sh\nexit 1\n", { mode: 0o755 });
+  assert.throws(() => evidenceCommit({ root: rejected, action: "wiki", taskId: "TASK-9000", message: "hook", push: false }), /transaction_start/);
+  assert.equal(git(rejected, "rev-parse", "HEAD"), rejectedHead);
+  assert.deepEqual(git(rejected, "diff", "--cached", "--name-only").split("\n"), ["wiki/index.json", "wiki/semantic/hook.md"]);
+  assert.match(fs.readFileSync(page, "utf8"), /title: Fixture/);
+});
+
+test("wiki push failure keeps the existing reconciliation commit without an index-only commit", () => {
+  const root = initTaskStartRepository();
+  const before = git(root, "rev-parse", "HEAD");
+  const remote = git(root, "remote", "get-url", "origin");
+  fs.writeFileSync(path.join(remote, "hooks", "pre-receive"), "#!/bin/sh\nexit 1\n", { mode: 0o755 });
+  writeSemanticPage(root, "push.md");
+
+  assert.throws(() => evidenceCommit({ root, action: "wiki", taskId: "TASK-9000", message: "wiki push", push: true }), /push retry limit/);
+  assert.equal(git(root, "rev-list", "--count", `${before}..HEAD`), "1");
+  assert.equal(git(root, "rev-parse", "HEAD^"), before);
+  assert.deepEqual(git(root, "diff-tree", "--no-commit-id", "--name-only", "-r", "HEAD").split("\n"), ["wiki/index.json", "wiki/semantic/push.md"]);
+});
+
+test("wiki evidence transaction preserves the immutable Decision hook", () => {
+  const root = initTaskStartRepository();
+  fs.writeFileSync(path.join(root, ".git/hooks/pre-commit"), "#!/bin/sh\nexec node \"$PWD/scripts/task/work-pre-commit.mjs\" --work-root \"$PWD\"\n", { mode: 0o755 });
+  const decision = path.join(root, "wiki/decisions/DECISION-9000-fixture.md");
+  fs.mkdirSync(path.dirname(decision), { recursive: true });
+  fs.writeFileSync(decision, [
+    "---", "kind: decision", "decision_id: DECISION-9000", "title: Fixture Decision", "status: accepted",
+    "decided_at: 2026-08-02", "supersedes: []", "---", "", "# Fixture Decision", "", "Accepted body.", "",
+  ].join("\n"));
+  evidenceCommit({ root, action: "wiki", taskId: "TASK-9000", message: "create decision", push: false });
+  const before = git(root, "rev-parse", "HEAD");
+
+  fs.writeFileSync(decision, fs.readFileSync(decision, "utf8").replaceAll("Fixture Decision", "Changed Decision"));
+  assert.throws(() => evidenceCommit({ root, action: "wiki", taskId: "TASK-9000", message: "mutate decision", push: false }), /accepted Decision content is immutable/);
+  assert.equal(git(root, "rev-parse", "HEAD"), before);
+  assert.deepEqual(git(root, "diff", "--cached", "--name-only").split("\n"), ["wiki/decisions/DECISION-9000-fixture.md", "wiki/index.json"]);
+});
+
+test("standalone wiki index remains a clean maintenance generator without an outer-lock bypass", () => {
+  const root = initRepository();
+  writeSemanticPage(root, "standalone.md");
+  fs.mkdirSync(path.join(root, "wiki"), { recursive: true });
+  fs.writeFileSync(path.join(root, "wiki/index.json"), `${JSON.stringify({ version: 1, pages: [] }, null, 2)}\n`);
+  git(root, "add", "wiki");
+  git(root, "commit", "-m", "stale standalone fixture");
+  const before = git(root, "rev-parse", "HEAD");
+
+  command(process.execPath, [path.join(ROOT, "scripts/task/wiki-index.mjs"), "--work-root", root], ROOT);
+  assert.equal(git(root, "rev-list", "--count", `${before}..HEAD`), "1");
+  assert.equal(git(root, "diff-tree", "--no-commit-id", "--name-only", "-r", "HEAD"), "wiki/index.json");
+
+  fs.appendFileSync(path.join(root, "wiki/semantic/standalone.md"), "dirty\n");
+  const bypass = spawnSync(process.execPath, [path.join(ROOT, "scripts/task/wiki-index.mjs"), "--work-root", root], {
+    cwd: ROOT,
+    env: { ...process.env, WORK_REPO_LOCK_HELD: "1" },
+    encoding: "utf8",
+  });
+  assert.notEqual(bypass.status, 0);
+  assert.match(bypass.stderr, /must be clean/);
+});
+
+test("non-wiki evidence actions do not generate the wiki index", () => {
+  const root = initRepository();
+  writeSemanticPage(root, "non-wiki.md");
+  fs.writeFileSync(path.join(root, "wiki/index.json"), `${JSON.stringify({ version: 1, pages: [] }, null, 2)}\n`);
+  git(root, "add", "wiki");
+  git(root, "commit", "-m", "stale non-wiki fixture");
+  const indexBefore = fs.readFileSync(path.join(root, "wiki/index.json"), "utf8");
+  fs.appendFileSync(path.join(root, "tasks/TASK-9000-fixture/HANDOVER.md"), "publish\n");
+
+  evidenceCommit({ root, action: "handover", taskId: "TASK-9000", message: "handover", push: false, validate: false });
+
+  assert.equal(fs.readFileSync(path.join(root, "wiki/index.json"), "utf8"), indexBefore);
+  assert.equal(git(root, "diff-tree", "--no-commit-id", "--name-only", "-r", "HEAD"), "tasks/TASK-9000-fixture/HANDOVER.md");
 });
 
 test("bootstrap lock stays outside an old main working tree without .locks ignore", () => {
