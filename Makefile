@@ -72,10 +72,11 @@ lint-governance:
 	cd governance && $(CARGO) fmt --check
 	cd governance && $(CARGO) clippy --locked --all-targets -- -D warnings
 
+lint-docs: export UV := $(UV)
+lint-docs: export PNPM := $(PNPM)
+lint-docs: export UV_CACHE_DIR := $(CURDIR)/.build/uv-cache
 lint-docs: node-deps
-	$(UV_ENV) $(UV) run --project memory python scripts/validate-terminology.py
-	$(PNPM) lint:docs
-	git diff --check
+	$(NODE) scripts/run-doc-lints.mjs
 
 check: lint-docs build test lint-core lint-memory lint-governance
 	$(NODE) scripts/build-tabletop-viewer-data.mjs
