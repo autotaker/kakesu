@@ -2,6 +2,28 @@
 
 Kakesuを開発するための外部開発基盤である。Kakesu本体のランタイム、Goモジュール、配布物には含めない。
 
+## Push承認manifestの値境界
+
+`internal/approvalmanifest`は、後続の承認ストア、Passkey許可確認、一回限りのpush許可が同じpush内容を
+参照するためのpure Go値境界である。呼出し側が用意したリクエストID、Agent/workspace識別情報、正規
+`owner/repo`と完全一致するGitHub HTTPSリモート、ポリシーバージョン/失効世代、UTC秒単位の作成/失効時刻、
+および順序付き参照更新を`Build`へ渡すと、不変なmanifestを返す。値、時刻、ID、ポリシー、認可を生成又は
+信頼判定せず、ファイルシステム、ネットワーク、Git子プロセス、永続状態を使用しない。
+
+V1は1〜32件の`refs/heads/`安全部分集合だけを受理する。各更新は40桁小文字SHA-1 object IDとzeroセンチネル、
+明示的な`force`/`delete`によって作成、通常更新、強制更新、削除のいずれかを表す。参照の入力順も承認内容へ
+含まれ、重複、無変更、flag/センチネル不整合、tagその他の参照は拒否される。
+
+manifestは固定フィールド順のcompact JSONである。`request_digest`以外の全フィールドを含むペイロードへ
+`dev-agent-harness/push-approval-manifest/v1`のNUL終端ドメイン分離prefixを付け、実際にSHA-256を計算する。
+公開ダイジェストは`sha256:`と64桁小文字hexであり、呼出し側から指定できない。`Parse`は32,768バイトを上限に、
+重複/未知/欠落キー、型・意味不整合、ダイジェスト改変、フィールド順、空白、エスケープ、数値・時刻表記、
+後続データを拒否し、パッケージ自身の正規バイト列だけを受理する。`Encoding`と`RefUpdates`は毎回コピーを返す。
+
+妥当なmanifestは承認済み、許可済み、消費済み又はpush可能を意味しない。このパッケージは未加工Smart HTTP/pkt-line、
+リモート旧SHA観測、force推定、Passkey、承認/許可状態、署名・発行・原子的消費、実認証情報、実push、
+GitHub通信、監査を実装しない。これらは正規値へ明示的に束縛する後続境界と実環境確認の責務である。
+
 `dev-agent-egress serve --config PATH` が唯一の外向き通信サービス起動面である。起動は設定、実行時識別情報、固定
 `config_dir/credentials` 認証情報束、既存constructorの依存構成、ソケット受領、Serveの順に一回ずつ進み、どの失敗も固定診断へ
 畳む。SIGINT/SIGTERMは協調的なキャンセル処理へ変換される。
