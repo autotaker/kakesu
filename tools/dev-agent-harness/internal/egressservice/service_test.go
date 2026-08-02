@@ -15,9 +15,11 @@ import (
 	"github.com/autotaker/kakesu/tools/dev-agent-harness/internal/brokerhttp"
 	"github.com/autotaker/kakesu/tools/dev-agent-harness/internal/brokerlistener"
 	"github.com/autotaker/kakesu/tools/dev-agent-harness/internal/capability"
+	"github.com/autotaker/kakesu/tools/dev-agent-harness/internal/capabilitycontrol"
 	"github.com/autotaker/kakesu/tools/dev-agent-harness/internal/config"
 	"github.com/autotaker/kakesu/tools/dev-agent-harness/internal/connectsession"
 	"github.com/autotaker/kakesu/tools/dev-agent-harness/internal/egresspolicy"
+	"github.com/autotaker/kakesu/tools/dev-agent-harness/internal/egresstransaction"
 	"github.com/autotaker/kakesu/tools/dev-agent-harness/internal/peerbinder"
 	"github.com/autotaker/kakesu/tools/dev-agent-harness/internal/providercredentials"
 	"github.com/autotaker/kakesu/tools/dev-agent-harness/internal/socketactivation"
@@ -187,6 +189,7 @@ func TestProductionGraphConstructorRulesAndIdentityWiring(t *testing.T) {
 	input := graphInput{config: serviceTestConfig(), identity: serviceTestIdentity(), credentials: credentialSnapshot{bundle: &brokercredentials.Bundle{}, authority: fakeAuthority{}}}
 	var policyRules egresspolicy.Rules
 	var registryRules capability.Rules
+	var controlRules capabilitycontrol.Rules
 	var providerRules providercredentials.Rules
 	var exchangeRules brokerexchange.Rules
 	var handlerRules brokerhttp.Rules
@@ -197,6 +200,7 @@ func TestProductionGraphConstructorRulesAndIdentityWiring(t *testing.T) {
 	var events []string
 	var policyPtr *egresspolicy.Policy
 	var registryPtr *capability.Registry
+	var controlPtr *capabilitycontrol.Controller
 	var transportPtr *upstreamtransport.Transport
 	var credentialsPtr *providercredentials.Resolver
 	var exchangePtr *brokerexchange.Exchange
@@ -215,6 +219,15 @@ func TestProductionGraphConstructorRulesAndIdentityWiring(t *testing.T) {
 			registryRules = r
 			registryPtr, _ = capability.New(r)
 			return registryPtr, nil
+		},
+		control: func(r capabilitycontrol.Rules) (*capabilitycontrol.Controller, error) {
+			events = append(events, "control")
+			controlRules = r
+			r.Resolver = capabilitycontrol.SubjectResolverFunc(func(context.Context) (egresstransaction.Subject, error) {
+				return input.identity.subject, nil
+			})
+			controlPtr, _ = capabilitycontrol.New(r)
+			return controlPtr, nil
 		},
 		transport: func() *upstreamtransport.Transport {
 			events = append(events, "transport")
@@ -280,13 +293,51 @@ func TestProductionGraphConstructorRulesAndIdentityWiring(t *testing.T) {
 	if binderRules.ExpectedUID != input.identity.agentUID || binderRules.Subject != input.identity.subject || receiverRules.BrokerUID != input.identity.brokerUID || receiverRules.AgentGID != input.identity.agentGID || receiverRules.RuntimeDir != input.config.Paths.RuntimeDir {
 		t.Fatalf("identity wiring binder=%+v receiver=%+v", binderRules, receiverRules)
 	}
-	if strings.Join(events, ",") != "policy,registry,transport,credentials,exchange,handler,session,binder,server,receiver" || providerRules.Transport != transportPtr || exchangeRules.Policy != policyPtr || exchangeRules.Registry != registryPtr || exchangeRules.Resolver != credentialsPtr || exchangeRules.Transport != transportPtr || handlerRules.Exchange != exchangePtr || sessionRules.Handler != handlerPtr || serverRules.Binder != binderPtr || serverRules.Session != sessionPtr {
+	if strings.Join(events, ",") != "policy,registry,control,transport,credentials,exchange,handler,session,binder,server,receiver" || controlRules.Registry != registryPtr || providerRules.Transport != transportPtr || exchangeRules.Policy != policyPtr || exchangeRules.Registry != registryPtr || exchangeRules.Resolver != credentialsPtr || exchangeRules.Transport != transportPtr || handlerRules.Exchange != exchangePtr || sessionRules.Handler != handlerPtr || sessionRules.Control != controlPtr || serverRules.Binder != binderPtr || serverRules.Session != sessionPtr {
 		t.Fatalf("constructor order/pointer wiring events=%v provider=%+v exchange=%+v handler=%+v session=%+v server=%+v", events, providerRules, exchangeRules, handlerRules, sessionRules, serverRules)
 	}
 	if handlerRules.Resolver == nil || sessionRules.Handler == nil || sessionRules.Authority != input.credentials.authority {
 		// The resolver is a concrete zero-value value; fake constructor rules
 		// must still receive it, and the one authority snapshot is reused.
 		t.Fatalf("unexpected handler/session dependency wiring resolver=%#v handler=%#v authority=%#v", handlerRules.Resolver, sessionRules.Handler, sessionRules.Authority)
+	}
+	if _, ok := controlRules.Resolver.(brokerlistener.Resolver); !ok {
+		t.Fatalf("control resolver is not brokerlistener.Resolver: %#v", controlRules.Resolver)
+	}
+	var resolved, forwarded int
+	transaction, err := egresstransaction.New(egresstransaction.Rules{
+		Policy: policyPtr, Registry: registryPtr, MaxCredentialBytes: 64,
+		Resolver: egresstransaction.CredentialResolverFunc(func(string, string) (string, error) {
+			resolved++
+			return "upstream-secret", nil
+		}),
+		Forwarder: egresstransaction.ForwarderFunc(func(egresstransaction.PreparedRequest) error {
+			forwarded++
+			return nil
+		}),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	handle, err := controlPtr.Issue(context.Background(), capability.ProviderGitHub, "octo/repo")
+	if err != nil {
+		t.Fatal(err)
+	}
+	request := egresstransaction.Request{Method: "GET", URL: "https://api.github.com/repos/octo/repo", Authorization: []string{"token " + handle}}
+	if err := transaction.Execute(input.identity.subject, request); err != nil {
+		t.Fatalf("shared registry transaction: %v", err)
+	}
+	if err := transaction.Execute(input.identity.subject, request); err != egresstransaction.ErrDenied || resolved != 1 || forwarded != 1 {
+		t.Fatalf("reuse err=%v resolved=%d forwarded=%d", err, resolved, forwarded)
+	}
+	revoked, err := controlPtr.Issue(context.Background(), capability.ProviderGitHub, "octo/repo")
+	revokeErr := controlPtr.Revoke(context.Background(), revoked)
+	if err != nil || revokeErr != nil {
+		t.Fatalf("issue/revoke=(%v,%v)", err, revokeErr)
+	}
+	request.Authorization = []string{"token " + revoked}
+	if err := transaction.Execute(input.identity.subject, request); err != egresstransaction.ErrDenied || resolved != 1 || forwarded != 1 {
+		t.Fatalf("revoked use err=%v resolved=%d forwarded=%d", err, resolved, forwarded)
 	}
 }
 
@@ -313,6 +364,13 @@ func TestProductionGraphRejectsNilConstructorResults(t *testing.T) {
 			c.registry = func(r capability.Rules) (*capability.Registry, error) {
 				value, _ := base(r)
 				return value, errors.New("registry")
+			}
+		}},
+		{"control", func(c *constructorSet) {
+			c.control = func(capabilitycontrol.Rules) (*capabilitycontrol.Controller, error) { return nil, nil }
+		}, func(c *constructorSet) {
+			c.control = func(capabilitycontrol.Rules) (*capabilitycontrol.Controller, error) {
+				return &capabilitycontrol.Controller{}, errors.New("control")
 			}
 		}},
 		{"transport", func(c *constructorSet) { c.transport = func() *upstreamtransport.Transport { return nil } }, nil},
@@ -386,8 +444,11 @@ func TestProductionGraphRejectsNilConstructorResults(t *testing.T) {
 
 func validTestConstructors() constructorSet {
 	return constructorSet{
-		policy:    func(r egresspolicy.Rules) (*egresspolicy.Policy, error) { return egresspolicy.New(r) },
-		registry:  func(r capability.Rules) (*capability.Registry, error) { return capability.New(r) },
+		policy:   func(r egresspolicy.Rules) (*egresspolicy.Policy, error) { return egresspolicy.New(r) },
+		registry: func(r capability.Rules) (*capability.Registry, error) { return capability.New(r) },
+		control: func(r capabilitycontrol.Rules) (*capabilitycontrol.Controller, error) {
+			return capabilitycontrol.New(r)
+		},
 		transport: func() *upstreamtransport.Transport { return upstreamtransport.New() },
 		credentials: func(providercredentials.Rules) (*providercredentials.Resolver, error) {
 			return &providercredentials.Resolver{}, nil

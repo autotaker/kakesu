@@ -135,12 +135,20 @@ P-256 leaf鍵と短命のサーバー証明書を発行する。CA秘密鍵、�
 
 ## Agent側CONNECTセッション
 
-`internal/connectsession` は、受理済みの一つの接続だけを所有し、strictな二つのホスト向けCONNECTを一度だけ
-検査してから、発行済み証明書でTLS 1.2以上・SNI一致・ALPN `http/1.1`を終端する。その後は呼び出し元コンテキストを
-そのまま引き継いだHTTP/1.1リクエスト一件だけを注入済み`brokerhttp.Handler`へ同期的に渡し、レスポンス完了後に
-接続を閉じる。CONNECTヘッダーの上限と各フェーズは5秒（呼び出し元の期限またはキャンセルが早ければそちら）に固定し、
-拒否は空本文の403、TLS後の失敗は追加HTTP応答なしでcloseする。keep-alive、HTTP/2、upgrade、汎用CONNECT、
-再試行、接続受付、呼び出し元識別情報生成、CAファイルの信頼設定はこの境界に含めない。
+`internal/connectsession` は、受理済みの一つの接続だけを所有し、厳格な二つのホスト向けCONNECTまたは
+同じソケット上の一操作制御を明確に分岐する。CONNECTでは発行済み証明書でTLS 1.2以上・SNI一致・
+ALPN `http/1.1`を終端し、呼び出し元コンテキストを引き継いだHTTP/1.1リクエスト一件だけを注入済み
+`brokerhttp.Handler`へ同期的に渡す。制御では`POST /v1/capabilities`によるGitHub/OpenAIケイパビリティ発行と、
+`DELETE /v1/capabilities/cap_...`による失効だけを扱い、TLS・CA・inner HTTP handlerへ進まない。
+
+制御リクエストは16,384バイト以下のリクエスト行とヘッダー、正規`Content-Length`、発行時だけ1〜512バイトの厳格な
+JSONと`Content-Type: application/json`を要求する。chunked、upgrade、keep-alive、追加ヘッダー、earlyバイト、
+複数リクエストを拒否し、成功・失敗とも一操作後にcloseする。発行成功時は不透明handleだけ、失効時は空本文を返し、
+拒否は入力値やhandle、URL、allowlist、主体、認証情報、下位エラーを含まない空本文403へ畳む。
+
+CONNECTヘッダーの上限と各フェーズは5秒（呼び出し元の期限またはキャンセルが早ければそちら）に固定し、
+TLS後の失敗は追加HTTP応答なしでcloseする。HTTP/2、汎用CONNECT、再試行、接続受付、呼び出し元識別情報生成、
+CAファイルの信頼設定、制御クライアントや認証情報helperはこの境界に含めない。
 
 `net.Pipe`とメモリ内CA、fake依存でのテスト成功は、実接続受付、OS識別情報、実クライアントの証明書信頼、外部ネットワーク、
 GitHub/OpenAIのlive E2Eを保証しない。これらの配置・認証・環境依存の確認は後続のlive E2E境界で行う。
@@ -161,6 +169,22 @@ hermetic テストは、実環境の到達制御や OS 識別情報を保証し�
 接続内容、アドレス、PID/GID、自己申告値から Subject を生成・補完せず、非Linuxではフェイルクローズとする。
 この境界のテストは実 UID 分離、ソケットの所有者/モード、名前空間、待受けの生成・合成、
 systemd、または VPS の live 配置を検証しない。
+
+## Agent向けケイパビリティ制御
+
+`internal/capabilitycontrol` は、`brokerlistener.Resolver`が接続コンテキストから解決したAgentインスタンス、UID 0以外、
+workspaceだけを主体として、本番トランザクションと同じメモリー内`capability.Registry`へ短命・一回限りのhandleを
+発行する。リクエストから主体、TTL、使用回数、操作、ホストを受け取らない。GitHubは設定allowlist内の正規
+`owner/repo`一件に固定し、OpenAIは設定のモデルallowlistが非空の場合だけプロバイダースコープを発行する。個別モデルは
+制御やケイパビリティスコープへ複製せず、既存の外向き通信ポリシーが実リクエスト本文から検査する。
+
+失効は同じ接続元由来の主体のインスタンス/UID/workspaceが完全一致する正規handle一件だけを削除する。
+unknown、malformed、期限切れ、別主体は固定拒否となり、handle以外の秘密や許可内部値をAgentへ返さない。
+別レジストリ、永続化、cache、ロールバック、再試行、認証情報コピーは持たない。Unixソケットクライアント、認証情報helper、
+起動機構、環境変数注入は後続Taskの境界である。
+
+hermeticテストはこのメモリー内ライフサイクルと既存CONNECTの回帰を確認するが、実DNS/TLS、実GitHub/OpenAI、実NSS/別UID、
+systemdソケット、VPS配置の受理を保証しない。
 
 ## Build
 
@@ -243,7 +267,7 @@ handleは32バイトのcrypto/rand値をpaddingなしbase64urlで符号化した
 map キーはSHA-256 ダイジェストだけである。`Consume(Request)` はAgent インスタンス、non-root UID、workspace、
 プロバイダー、リポジトリ、操作、宛先 ホストを完全一致させ、期限、失効世代、残使用回数の判定と
 一回の消費をmutex下で原子的に行う。スコープ不一致は使用回数を消費せず、最後の使用、期限切れ、
-`Revoke`、失効世代の更新後は再利用できない。
+`Revoke`、接続元由来の主体完全一致を要求する`RevokeForSubject`、失効世代の更新後は再利用できない。
 
 productionではmonotonic elapsedを内部TTLに使い、呼出元へ返すIssued/Expires時刻だけUTCへ変換する。
 

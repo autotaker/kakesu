@@ -17,6 +17,7 @@ import (
 	"math/big"
 	"net"
 	"net/http"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -73,6 +74,13 @@ type testExchange struct {
 	calls int
 }
 
+type allowControl struct{}
+
+func (allowControl) Issue(context.Context, string, string) (string, error) {
+	return "cap_" + strings.Repeat("A", 43), nil
+}
+func (allowControl) Revoke(context.Context, string) error { return nil }
+
 func (e *testExchange) Do(egresstransaction.Subject, egresstransaction.Request) (brokerexchange.Response, error) {
 	e.mu.Lock()
 	e.calls++
@@ -111,7 +119,7 @@ func TestSessionConnectTLSAndRealHandler(t *testing.T) {
 	exchange := &testExchange{}
 	handler, err := brokerhttp.New(brokerhttp.Rules{Exchange: exchange, Resolver: resolver, MaxBodyBytes: 4096})
 	must(t, err)
-	session, err := New(Rules{Authority: authority, Handler: handler})
+	session, err := New(Rules{Authority: authority, Handler: handler, Control: allowControl{}})
 	must(t, err)
 	for _, host := range []string{githubHost, openAIHost} {
 		t.Run(host, func(t *testing.T) {
@@ -168,7 +176,7 @@ func TestConcurrentSessionsKeepContextAndHostIsolated(t *testing.T) {
 		mu.Unlock()
 		_, _ = io.WriteString(w, marker)
 	})
-	session, err := New(Rules{Authority: authority, Handler: handler})
+	session, err := New(Rules{Authority: authority, Handler: handler, Control: allowControl{}})
 	must(t, err)
 	results := make(chan error, 2)
 	for _, tc := range []struct{ host, marker string }{{githubHost, "gh"}, {openAIHost, "oa"}} {
@@ -196,7 +204,7 @@ func TestHTTPPhaseDeadlinePropagation(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			authority, caCert := newTestAuthority(t)
 			seen := make(chan [2]time.Time, 1)
-			session, err := New(Rules{Authority: authority, Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			session, err := New(Rules{Authority: authority, Control: allowControl{}, Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				deadline, _ := r.Context().Deadline()
 				seen <- [2]time.Time{time.Now(), deadline}
 				_, _ = io.WriteString(w, "ok")
@@ -244,7 +252,7 @@ func TestResponseFailuresCloseWithoutInnerResponse(t *testing.T) {
 		}),
 	} {
 		t.Run(name, func(t *testing.T) {
-			session, err := New(Rules{Authority: authority, Handler: handler})
+			session, err := New(Rules{Authority: authority, Handler: handler, Control: allowControl{}})
 			must(t, err)
 			server, client := net.Pipe()
 			done := make(chan error, 1)
@@ -307,7 +315,7 @@ func TestHandlerPanicAndHTTPContextCancelClose(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			authority, caCert := newTestAuthority(t)
-			session, err := New(Rules{Authority: authority, Handler: handler})
+			session, err := New(Rules{Authority: authority, Handler: handler, Control: allowControl{}})
 			must(t, err)
 			server, client := net.Pipe()
 			done := make(chan error, 1)
@@ -341,7 +349,7 @@ func must(t *testing.T, err error) {
 }
 func TestTLSVersionAndALPNFailures(t *testing.T) {
 	authority, caCert := newTestAuthority(t)
-	session, err := New(Rules{Authority: authority, Handler: http.HandlerFunc(func(http.ResponseWriter, *http.Request) { t.Error("handler called") })})
+	session, err := New(Rules{Authority: authority, Handler: http.HandlerFunc(func(http.ResponseWriter, *http.Request) { t.Error("handler called") }), Control: allowControl{}})
 	must(t, err)
 	for name, config := range map[string]*tls.Config{
 		"tls 1.1":   {RootCAs: trust(caCert), ServerName: githubHost, MinVersion: tls.VersionTLS10, MaxVersion: tls.VersionTLS11, NextProtos: []string{"http/1.1"}},
@@ -379,7 +387,7 @@ func TestTLSVersionAndALPNFailures(t *testing.T) {
 func trust(c *x509.Certificate) *x509.CertPool { p := x509.NewCertPool(); p.AddCert(c); return p }
 func TestConnectPhaseStallTimesOut(t *testing.T) {
 	authority, _ := newTestAuthority(t)
-	session, err := New(Rules{Authority: authority, Handler: http.HandlerFunc(func(http.ResponseWriter, *http.Request) {})})
+	session, err := New(Rules{Authority: authority, Handler: http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}), Control: allowControl{}})
 	must(t, err)
 	server, _ := net.Pipe()
 	done := make(chan error, 1)
@@ -402,8 +410,8 @@ func TestValidationFormatAndIssueFailure(t *testing.T) {
 	authority, _ := newTestAuthority(t)
 	var nilAuthority *countingAuthority
 	for name, rules := range map[string]Rules{
-		"zero": {}, "typed nil authority": {Authority: nilAuthority, Handler: http.HandlerFunc(func(http.ResponseWriter, *http.Request) {})},
-		"typed nil handler": {Authority: authority, Handler: (*nilHandler)(nil)},
+		"zero": {}, "typed nil authority": {Authority: nilAuthority, Handler: http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}), Control: allowControl{}},
+		"typed nil handler": {Authority: authority, Handler: (*nilHandler)(nil), Control: allowControl{}},
 	} {
 		t.Run(name, func(t *testing.T) {
 			if session, err := New(rules); session != nil || !errors.Is(err, ErrInvalidRules) {
@@ -419,7 +427,7 @@ func TestValidationFormatAndIssueFailure(t *testing.T) {
 		t.Fatalf("zero Serve error=%v", err)
 	}
 	authority.err = errors.New("issuer detail")
-	session, err := New(Rules{Authority: authority, Handler: http.HandlerFunc(func(http.ResponseWriter, *http.Request) {})})
+	session, err := New(Rules{Authority: authority, Handler: http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}), Control: allowControl{}})
 	must(t, err)
 	server, client := net.Pipe()
 	done := make(chan error, 1)
@@ -440,7 +448,7 @@ type nilHandler struct{}
 func (*nilHandler) ServeHTTP(http.ResponseWriter, *http.Request) {}
 func TestStrictFramingAndHeaderFailures(t *testing.T) {
 	authority, _ := newTestAuthority(t)
-	session, err := New(Rules{Authority: authority, Handler: http.HandlerFunc(func(http.ResponseWriter, *http.Request) { t.Error("handler called") })})
+	session, err := New(Rules{Authority: authority, Handler: http.HandlerFunc(func(http.ResponseWriter, *http.Request) { t.Error("handler called") }), Control: allowControl{}})
 	must(t, err)
 	cases := []string{
 		"CONNECT api.github.com:80 HTTP/1.1\r\nHost: api.github.com:80\r\n\r\n",
@@ -476,6 +484,133 @@ func TestStrictFramingAndHeaderFailures(t *testing.T) {
 	if authority.count() != 0 {
 		t.Fatalf("authority reached=%d", authority.count())
 	}
+}
+
+type recordingControl struct {
+	mu         sync.Mutex
+	issues     int
+	revokes    int
+	provider   string
+	repository string
+	handle     string
+	err        error
+}
+
+func (c *recordingControl) Issue(_ context.Context, provider, repository string) (string, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.issues++
+	c.provider, c.repository = provider, repository
+	if c.err != nil {
+		return "", c.err
+	}
+	return "cap_" + strings.Repeat("A", 43), nil
+}
+
+func (c *recordingControl) Revoke(_ context.Context, handle string) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.revokes++
+	c.handle = handle
+	return c.err
+}
+
+func TestControlIssueAndRevokeExactResponses(t *testing.T) {
+	authority, _ := newTestAuthority(t)
+	control := &recordingControl{}
+	session, err := New(Rules{
+		Authority: authority, Control: control,
+		Handler: http.HandlerFunc(func(http.ResponseWriter, *http.Request) { t.Error("handler called") }),
+	})
+	must(t, err)
+	body := `{"repository":"octo/repo","provider":"github"}`
+	response, serveErr := runControl(session, "POST /v1/capabilities HTTP/1.1\r\nContent-Length: "+strconv.Itoa(len(body))+"\r\nContent-Type: application/json\r\n\r\n"+body)
+	wantBody := `{"handle":"cap_` + strings.Repeat("A", 43) + `"}`
+	want := "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: " + strconv.Itoa(len(wantBody)) + "\r\nConnection: close\r\n\r\n" + wantBody
+	if serveErr != nil || response != want {
+		t.Fatalf("issue err=%v response=%q", serveErr, response)
+	}
+	handle := "cap_" + strings.Repeat("A", 43)
+	response, serveErr = runControl(session, "DELETE /v1/capabilities/"+handle+" HTTP/1.1\r\nContent-Length: 0\r\n\r\n")
+	if serveErr != nil || response != controlNoContent {
+		t.Fatalf("revoke err=%v response=%q", serveErr, response)
+	}
+	control.mu.Lock()
+	defer control.mu.Unlock()
+	if control.issues != 1 || control.revokes != 1 || control.provider != "github" || control.repository != "octo/repo" || control.handle != handle || authority.count() != 0 {
+		t.Fatalf("control=%+v authority=%d", control, authority.count())
+	}
+}
+
+func TestControlStrictFramingJSONAndFixedDenial(t *testing.T) {
+	authority, _ := newTestAuthority(t)
+	for name, input := range map[string]string{
+		"unknown method":     "GET /v1/capabilities HTTP/1.1\r\nContent-Length: 0\r\n\r\n",
+		"unknown path":       "POST /v2/capabilities HTTP/1.1\r\nContent-Length: 2\r\nContent-Type: application/json\r\n\r\n{}",
+		"host":               "POST /v1/capabilities HTTP/1.1\r\nHost: local\r\nContent-Length: 2\r\nContent-Type: application/json\r\n\r\n{}",
+		"duplicate length":   "POST /v1/capabilities HTTP/1.1\r\nContent-Length: 2\r\nContent-Length: 2\r\nContent-Type: application/json\r\n\r\n{}",
+		"leading zero":       "POST /v1/capabilities HTTP/1.1\r\nContent-Length: 02\r\nContent-Type: application/json\r\n\r\n{}",
+		"missing type":       "POST /v1/capabilities HTTP/1.1\r\nContent-Length: 2\r\n\r\n{}",
+		"chunked":            "POST /v1/capabilities HTTP/1.1\r\nTransfer-Encoding: chunked\r\nContent-Length: 2\r\nContent-Type: application/json\r\n\r\n{}",
+		"keep alive":         "POST /v1/capabilities HTTP/1.1\r\nConnection: keep-alive\r\nContent-Length: 2\r\nContent-Type: application/json\r\n\r\n{}",
+		"upgrade":            "POST /v1/capabilities HTTP/1.1\r\nUpgrade: h2c\r\nContent-Length: 2\r\nContent-Type: application/json\r\n\r\n{}",
+		"duplicate json":     issueWire(`{"provider":"openai","provider":"github"}`),
+		"unknown json":       issueWire(`{"provider":"openai","model":"secret-model"}`),
+		"subject json":       issueWire(`{"provider":"openai","subject":"agent"}`),
+		"null":               issueWire(`{"provider":null}`),
+		"missing repository": issueWire(`{"provider":"github"}`),
+		"extra repository":   issueWire(`{"provider":"openai","repository":"octo/repo"}`),
+		"body over limit":    issueWire(strings.Repeat("x", maxControlBody+1)),
+		"invalid utf8":       issueWire(string([]byte{'{', '"', 'p', 'r', 'o', 'v', 'i', 'd', 'e', 'r', '"', ':', '"', 0xff, '"', '}'})),
+		"early bytes":        issueWire(`{"provider":"openai"}`) + "GET /second HTTP/1.1\r\n\r\n",
+		"revoke body":        "DELETE /v1/capabilities/cap_" + strings.Repeat("A", 43) + " HTTP/1.1\r\nContent-Length: 1\r\n\r\nx",
+		"revoke query":       "DELETE /v1/capabilities/cap_" + strings.Repeat("A", 43) + "?x=1 HTTP/1.1\r\nContent-Length: 0\r\n\r\n",
+		"bad handle":         "DELETE /v1/capabilities/cap_bad HTTP/1.1\r\nContent-Length: 0\r\n\r\n",
+	} {
+		t.Run(name, func(t *testing.T) {
+			control := &recordingControl{}
+			session, err := New(Rules{Authority: authority, Control: control, Handler: http.HandlerFunc(func(http.ResponseWriter, *http.Request) { t.Error("handler called") })})
+			must(t, err)
+			response, serveErr := runControl(session, input)
+			if response != connectDenied || !errors.Is(serveErr, ErrDenied) {
+				t.Fatalf("response=%q err=%v", response, serveErr)
+			}
+			control.mu.Lock()
+			defer control.mu.Unlock()
+			if control.issues != 0 || control.revokes != 0 {
+				t.Fatalf("controller reached: %+v", control)
+			}
+		})
+	}
+	if authority.count() != 0 {
+		t.Fatalf("authority reached=%d", authority.count())
+	}
+}
+
+func TestControlDependencyFailureIsFixedAndCloses(t *testing.T) {
+	authority, _ := newTestAuthority(t)
+	control := &recordingControl{err: errors.New("secret handle url allowlist lower error")}
+	session, err := New(Rules{Authority: authority, Control: control, Handler: http.HandlerFunc(func(http.ResponseWriter, *http.Request) { t.Error("handler called") })})
+	must(t, err)
+	response, serveErr := runControl(session, issueWire(`{"provider":"openai"}`))
+	if response != connectDenied || !errors.Is(serveErr, ErrDenied) || strings.Contains(response, "secret") {
+		t.Fatalf("response=%q err=%v", response, serveErr)
+	}
+}
+
+func issueWire(body string) string {
+	return "POST /v1/capabilities HTTP/1.1\r\nContent-Length: " + strconv.Itoa(len(body)) + "\r\nContent-Type: application/json\r\n\r\n" + body
+}
+
+func runControl(session *Session, input string) (string, error) {
+	server, client := net.Pipe()
+	done := make(chan error, 1)
+	go func() { done <- session.Serve(context.Background(), server) }()
+	go func() { _, _ = io.WriteString(client, input) }()
+	_ = client.SetReadDeadline(time.Now().Add(time.Second))
+	response, _ := io.ReadAll(client)
+	_ = client.Close()
+	return string(response), <-done
 }
 func readHeader(t *testing.T, conn net.Conn) string {
 	t.Helper()
