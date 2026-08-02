@@ -18,7 +18,8 @@ tasks:
     priority: P1
     estimate_points: 8
     task_dir: tasks/TASK-0001-development-process-foundation
-    depends_on: []
+    depends_on:
+      - TASK-0071
     assignees:
       main: main-agent
       planner: main-agent-bootstrap
@@ -1308,6 +1309,24 @@ tasks:
       - TASK-0070
     branch: task/TASK-0071-approval-request-store
     worktree: worktrees/TASK-0071-approval-request-store
+    assignees:
+      main: main-agent-sol-high
+      planner: planner-agent-terra-medium
+      dev: dev-agent-sol-high
+      reviewer: reviewer-agent-terra-medium
+      qa: qa-agent-terra-medium
+  - id: TASK-0072
+    title: Passkey challengeの一回限りlifecycleを実装する
+    type: feature
+    change_class: product
+    epic: EPIC-001
+    status: plan
+    priority: P1
+    estimate_points: 1
+    task_dir: tasks/TASK-0072-passkey-challenge-lifecycle
+    depends_on: []
+    branch: task/TASK-0072-passkey-challenge-lifecycle
+    worktree: worktrees/TASK-0072-passkey-challenge-lifecycle
     assignees:
       main: main-agent-sol-high
       planner: planner-agent-terra-medium
