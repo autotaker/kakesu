@@ -62,13 +62,13 @@ agents.spawn_agent(
 
 起動後は、選択したロールの識別情報、role、サンドボックス・権限境界を確認する。境界が不明なら停止する。観測された`model/effort`の不一致はrequested/observed値とランタイム条件を警告として記録し、役割境界が保たれていれば継続する。`agent_type`または内部`Spawn Agent`が利用できない場合は停止する。限定調査だけは一問専用の`make explorer-agent`を使用できる。ロール対応、ゲート順序、`Explorer`の制約、サンドボックス観測限界は[Agent責務](docs/development/agent-roles.md)を正本とする。
 
-`role` TOMLの`sandbox_mode`は意図する契約であり、ランタイムで観測できた値だけを証跡に記録する。実効サンドボックスをTOMLの宣言だけで保証済みとは扱わない。レビュアー/QAの軽微修正コミットを除き、子の`stage`、`commit`、`merge`、`.git`書込みは禁止する。Mainは`main`への統合を所有する。
+`role` TOMLの`sandbox_mode`は意図する契約であり、ランタイムで観測できた値だけを証跡に記録する。実効サンドボックスをTOMLの宣言だけで保証済みとは扱わない。レビュアー/QAの軽微修正コミットを除き、子のステージング、`commit`、`merge`、`.git`書込みは禁止する。Mainは`main`への統合を所有する。
 
 ### Wiki Agentの標準経路
 
-Wiki Agentは`.codex/agents/wiki.toml`のTerra/medium、workspace-write編集専用設定であり、Mainが`agents.spawn_agent(task_name=..., agent_type="wiki", fork_turns="none", ...)`を使って、明示された依頼を一度に一つずつ直列起動する。独立Wiki launcher、Wiki専用`codex exec`、暗黙生成は使用しない。Wiki AgentはMain指定のWiki パスだけを編集し、別Agent起動、共通ロック、スコープ判定、検証、stage、コミット、merge、`.git`書込みを行わない。
+Wiki Agentは`.codex/agents/wiki.toml`のTerra/medium、workspace-write編集専用設定であり、Mainが`agents.spawn_agent(task_name=..., agent_type="wiki", fork_turns="none", ...)`を使って、明示された依頼を一度に一つずつ直列起動する。独立Wiki launcher、Wiki専用`codex exec`、暗黙生成は使用しない。Wiki AgentはMain指定のWiki パスだけを編集し、別Agent起動、共通ロック、スコープ判定、検証、ステージング、コミット、merge、`.git`書込みを行わない。
 
-Mainは起動前に対象Taskと許可パスを固定し、子終了後に差分スコープを確認する。索引変更時だけ`make wiki-index`を実行し、`make work-check`と既存の共通ロック付きpublish トランザクション、コミットをMainが所有する。Wiki receiptは任意成果物であり、Wiki依頼のないTaskはAgentもreceiptもなしで完了できる。
+Mainは起動前に対象Taskと許可パスを固定し、子終了後に差分スコープを確認する。標準公開では`make evidence-commit TASK=... ACTION=wiki`を一度だけ実行し、この共通ロック付きトランザクションがdirty Wiki差分からの索引生成、生成後の最終スコープ検査、`work-check`、ステージング、単一コミット、pushを所有する。スタンドアロンの`make wiki-index`は保守用generatorであり、標準公開には使用しない。Wiki receiptは明示的な取り込み時だけの任意成果物であり、Wiki依頼のないTaskはAgentもreceiptもなしで完了できる。
 
 ## 共通検査
 

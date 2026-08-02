@@ -576,6 +576,8 @@ test("Wiki uses the standard edit-only role without a legacy launcher", () => {
   const makefile = fs.readFileSync(path.join(root, "Makefile"), "utf8");
   const config = fs.readFileSync(path.join(root, ".codex/config.toml"), "utf8");
   const role = fs.readFileSync(path.join(root, ".codex/agents/wiki.toml"), "utf8");
+  const agents = fs.readFileSync(path.join(root, "AGENTS.md"), "utf8");
+  const roleGuide = fs.readFileSync(path.join(root, "docs/development/agent-roles.md"), "utf8");
   assert.equal(fs.existsSync(path.join(root, "scripts/task/run-wiki-agent.mjs")), false);
   for (const removed of ["wiki-context", "wiki-ingest", "WIKI_CONTEXT_TARGET", "WIKI_PROFILE", "WIKI_MODEL", "WIKI_EFFORT", "legacy-wiki"]) {
     assert.doesNotMatch(makefile, new RegExp(removed));
@@ -590,6 +592,13 @@ test("Wiki uses the standard edit-only role without a legacy launcher", () => {
   assert.match(role, /Do not spawn another Agent/);
   assert.match(role, /stage, commit, merge/);
   assert.match(role, /\.git/);
+  for (const contract of [agents, roleGuide]) {
+    assert.match(contract, /make evidence-commit TASK=\.\.\. ACTION=wiki/);
+    assert.match(contract, /dirty Wiki差分[\s\S]*索引生成[\s\S]*生成後の最終スコープ検査[\s\S]*work-check[\s\S]*ステージング[\s\S]*単一コミット[\s\S]*push/);
+    assert.match(contract, /スタンドアロンの`make wiki-index`は保守用generator/);
+    assert.match(contract, /明示的な取り込み時だけ[\s\S]*任意成果物/);
+    assert.doesNotMatch(contract, /索引変更時だけ`make wiki-index`/);
+  }
 });
 
 function createConfigSyncFixture({ hookExit = 0, committedDrift = false } = {}) {
