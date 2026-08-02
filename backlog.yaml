@@ -36,7 +36,9 @@ tasks:
     priority: P1
     estimate_points: 8
     task_dir: tasks/TASK-0002-codex-agent-model-routing
-    depends_on: []
+    depends_on:
+      - TASK-0071
+      - TASK-0072
     assignees:
       main: main-agent-sol-high
       planner: planner-agent-terra-medium
@@ -1327,6 +1329,24 @@ tasks:
     depends_on: []
     branch: task/TASK-0072-passkey-challenge-lifecycle
     worktree: worktrees/TASK-0072-passkey-challenge-lifecycle
+    assignees:
+      main: main-agent-sol-high
+      planner: planner-agent-terra-medium
+      dev: dev-agent-sol-high
+      reviewer: reviewer-agent-terra-medium
+      qa: qa-agent-terra-medium
+  - id: TASK-0073
+    title: 検証済みPasskey判断coordinatorを実装する
+    type: feature
+    change_class: product
+    epic: EPIC-001
+    status: plan
+    priority: P1
+    estimate_points: 1
+    task_dir: tasks/TASK-0073-verified-decision-coordinator
+    depends_on: []
+    branch: task/TASK-0073-verified-decision-coordinator
+    worktree: worktrees/TASK-0073-verified-decision-coordinator
     assignees:
       main: main-agent-sol-high
       planner: planner-agent-terra-medium
