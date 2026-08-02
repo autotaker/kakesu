@@ -1214,3 +1214,23 @@ tasks:
       dev: dev-agent-sol-high
       reviewer: reviewer-agent-terra-medium
       qa: qa-agent-terra-medium
+  - id: TASK-0067
+    title: Agent用loopback proxy bridgeを実装する
+    type: feature
+    change_class: product
+    epic: EPIC-001
+    status: plan
+    priority: P1
+    estimate_points: 1
+    task_dir: tasks/TASK-0067-agent-loopback-proxy-bridge
+    depends_on:
+      - TASK-0051
+      - TASK-0066
+    branch: task/TASK-0067-agent-loopback-proxy-bridge
+    worktree: worktrees/TASK-0067-agent-loopback-proxy-bridge
+    assignees:
+      main: main-agent-sol-high
+      planner: planner-agent-terra-medium
+      dev: dev-agent-sol-high
+      reviewer: reviewer-agent-terra-medium
+      qa: qa-agent-terra-medium
