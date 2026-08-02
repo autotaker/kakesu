@@ -16,6 +16,7 @@ const ACTION_FILES = {
   "qa-result": ["QA_RESULT.md"], handover: ["HANDOVER.md"],
 };
 const PLANNING_FILES = ["TASK.md", "PLAN.md", "QA_PLAN.md", "REVIEW_RESULT.md", "QA_RESULT.md", "HANDOVER.md"];
+const SAFETY_CHECK_KEYS = ["process_tests", "contract_scope", "docs_lint", "make_check"];
 
 function run(command, argv, options = {}) {
   const result = spawnSync(command, argv, { encoding: "utf8", ...options });
@@ -427,7 +428,8 @@ export function completionGate({ root, taskId, message = `task: complete ${taskI
   const { task, taskDir } = taskContext(root, taskId);
   const stagedBefore = lines(git(root, ["diff", "--cached", "--name-only", "--diff-filter=ACMRD"]));
   if (stagedBefore.length) throw new Error(`completion requires an unstaged quality evidence set; staged=${stagedBefore.join(", ")}`);
-  const candidate = parseFrontmatter(path.join(root, taskDir, "HANDOVER.md")).candidate_commit;
+  const handover = parseFrontmatter(path.join(root, taskDir, "HANDOVER.md"));
+  const candidate = handover.candidate_commit;
   if (!/^[0-9a-f]{40}$/.test(candidate ?? "")) throw new Error("completion requires a main-side HANDOVER candidate_commit");
   if (git(root, ["branch", "--show-current"]) !== "main") throw new Error("completion requires main");
   if (output("git", ["cat-file", "-e", `${candidate}^{commit}`], root, true).status !== 0) throw new Error("candidate commit does not exist");
@@ -439,14 +441,32 @@ export function completionGate({ root, taskId, message = `task: complete ${taskI
   if (forbidden.length) throw new Error(`candidate is not product-only: ${forbidden.join(", ")}`);
   const candidateEvidence = output("git", ["cat-file", "-e", `${candidate}:${taskDir}/HANDOVER.md`], root, true);
   if (candidateEvidence.status === 0 && diffPaths(root, base, candidate).includes(`${taskDir}/HANDOVER.md`)) throw new Error("candidate-side HANDOVER is forbidden");
-  const review = parseFrontmatter(path.join(root, taskDir, "REVIEW_RESULT.md"));
-  const qa = parseFrontmatter(path.join(root, taskDir, "QA_RESULT.md"));
   const qaPlan = parseFrontmatter(path.join(root, taskDir, "QA_PLAN.md"));
-  if (review.decision !== "pass" || review.reviewer_agent !== task.assignees?.reviewer) throw new Error("completion requires independent REVIEW PASS with reviewer identity");
-  const reviewText = fs.readFileSync(path.join(root, taskDir, "REVIEW_RESULT.md"), "utf8");
-  if (!/candidate/i.test(reviewText) || !/(?:DEV|make\s+check)/i.test(reviewText)) throw new Error("completion requires REVIEW candidate diff and DEV check audit");
-  if (!new Set(["pass", "accepted_with_bugs"]).has(qa.decision) || qa.qa_agent !== task.assignees?.qa) throw new Error("completion requires independent QA PASS");
-  if (qaPlan.status !== "approved") throw new Error("completion requires the approved QA PLAN");
+  if (task.change_class === "safety_contract") {
+    if (qaPlan.status !== "approved" || qaPlan.approved_by !== task.assignees?.main) {
+      throw new Error("safety_contract completion requires the approved QA PLAN from the assigned main Agent");
+    }
+    const safetyChecks = handover.safety_checks;
+    const safetyCheckKeys = safetyChecks && !Array.isArray(safetyChecks) && typeof safetyChecks === "object"
+      ? Object.keys(safetyChecks).sort()
+      : [];
+    if (safetyCheckKeys.length !== SAFETY_CHECK_KEYS.length
+        || safetyCheckKeys.some((key, index) => key !== [...SAFETY_CHECK_KEYS].sort()[index])
+        || SAFETY_CHECK_KEYS.some((key) => safetyChecks[key] !== "pass")
+        || typeof handover.safety_checked_at !== "string"
+        || handover.safety_checked_at.trim() === ""
+        || Number.isNaN(Date.parse(handover.safety_checked_at))) {
+      throw new Error("safety_contract completion requires the exact passed safety_checks and checked_at");
+    }
+  } else {
+    const review = parseFrontmatter(path.join(root, taskDir, "REVIEW_RESULT.md"));
+    const qa = parseFrontmatter(path.join(root, taskDir, "QA_RESULT.md"));
+    if (review.decision !== "pass" || review.reviewer_agent !== task.assignees?.reviewer) throw new Error("completion requires independent REVIEW PASS with reviewer identity");
+    const reviewText = fs.readFileSync(path.join(root, taskDir, "REVIEW_RESULT.md"), "utf8");
+    if (!/candidate/i.test(reviewText) || !/(?:DEV|make\s+check)/i.test(reviewText)) throw new Error("completion requires REVIEW candidate diff and DEV check audit");
+    if (!new Set(["pass", "accepted_with_bugs"]).has(qa.decision) || qa.qa_agent !== task.assignees?.qa) throw new Error("completion requires independent QA PASS");
+    if (qaPlan.status !== "approved") throw new Error("completion requires the approved QA PLAN");
+  }
   const allowed = completionAllowed(root, taskId);
   const preHead = git(root, ["rev-parse", "HEAD"]);
   const beforeChanged = changedFiles(root);

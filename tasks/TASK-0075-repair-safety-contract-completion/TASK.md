@@ -1,7 +1,7 @@
 ---
 task_id: "TASK-0075"
 title: "安全契約completionの偽PASSと重複digestを廃止する"
-status: draft
+status: done
 created_at: "2026-08-02"
 ---
 
@@ -39,11 +39,11 @@ created_at: "2026-08-02"
 
 <!-- AC-IDはTask内で一意かつ安定させ、観測可能な結果をここに一度だけ記載する。 -->
 
-- [ ] AC-1: safety contractのcompletionはREVIEW_RESULT/QA_RESULTがpendingでも、承認済みQA_PLAN、canonical candidate、Main安全検査が揃えば進行し、両結果のPASSを生成又は要求しない。
-- [ ] AC-2: safety contract doneはHANDOVERのcandidate_commit一箇所を正本とし、merged_commit、candidate/merge tree、digest転記なしで、Gitからexact no-ff second-parent mergeを検証する。
-- [ ] AC-3: v2 planned/generated pathはcandidate diffから検証され、未宣言path、main-managed path、rename/copy、製品除外逸脱を従来どおり拒否する。
-- [ ] AC-4: 既存4 safety checks、時刻、Main分類/PLAN/QA_PLAN承認を維持し、新field/version/receipt/追加transactionを導入しない。
-- [ ] AC-5: product completionは固定candidateへの独立REVIEW/QA、candidate diff/DEV check監査、no-ff second parentを従来どおり要求し、focused negative testsとroot `make check`がPASSする。
+- [x] AC-1: safety contractのcompletionはREVIEW_RESULT/QA_RESULTがpendingでも、承認済みQA_PLAN、canonical candidate、Main安全検査が揃えば進行し、両結果のPASSを生成又は要求しない。
+- [x] AC-2: safety contract doneはHANDOVERのcandidate_commit一箇所を正本とし、merged_commit、candidate/merge tree、digest転記なしで、Gitからexact no-ff second-parent mergeを検証する。
+- [x] AC-3: v2 planned/generated pathはcandidate diffから検証され、未宣言path、main-managed path、rename/copy、製品除外逸脱を従来どおり拒否する。
+- [x] AC-4: 既存4 safety checks、時刻、Main分類/PLAN/QA_PLAN承認を維持し、新field/version/receipt/追加transactionを導入しない。
+- [x] AC-5: product completionは固定candidateへの独立REVIEW/QA、candidate diff/DEV check監査、no-ff second parentを従来どおり要求し、focused negative testsとroot `make check`がPASSする。
 
 ### 安定した参照
 
@@ -101,9 +101,9 @@ TASK-0074の安全契約candidate固定後、現行completionは製品用REVIEW/
 
 ## 完成の定義
 
-- [ ] 受け入れ条件を満たしている。
-- [ ] 選択した`change_class`の完了経路と`make check`を満たしている。
-- [ ] 製品変更の場合: 実装、テスト、文書、同一案の独立REVIEW/QA、完了後の環境依存ケース確認が完了している。
+- [x] 受け入れ条件を満たしている。
+- [x] 選択した`change_class`の完了経路と`make check`を満たしている。
+- [x] 製品変更の場合: 実装、テスト、文書、同一案の独立REVIEW/QA、完了後の環境依存ケース確認が完了している。
 - [ ] 安全契約変更の場合: Mainの意図・スコープ・受け入れ経路確認、契約検査、許可された統制文書差分の確認が完了している。
 
 ## 関連コンテキスト

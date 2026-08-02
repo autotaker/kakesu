@@ -6,7 +6,7 @@ qa_agent: "qa-agent-terra-medium"
 approved_by: "main-agent-sol-high"
 approved_at: "2026-08-02T09:28:29Z"
 revision: 1
-implementation_reviewed_at: ""
+implementation_reviewed_at: "2026-08-02T09:59:31Z"
 expectation_changed: false
 expectation_change_approved_by: ""
 ---
@@ -53,8 +53,8 @@ node --test scripts/task/development-process.test.mjs scripts/task/unified-lifec
 
 ## 実装後の再確認
 
-- [ ] 実装差分とレビュー結果を確認した。
-- [ ] 操作手順と期待結果を現行実装に合わせた。
+- [x] 実装差分とレビュー結果を確認した。
+- [x] 操作手順と期待結果を現行実装に合わせた。
 - [ ] 期待結果または範囲を変更した場合、main Agentの承認を得た。
 
 ## 改訂履歴
