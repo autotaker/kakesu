@@ -6,6 +6,37 @@ Kakesuを開発するための外部開発基盤である。Kakesu本体のラ�
 `config_dir/credentials` 認証情報束、既存constructorの依存構成、ソケット受領、Serveの順に一回ずつ進み、どの失敗も固定診断へ
 畳む。SIGINT/SIGTERMは協調的なキャンセル処理へ変換される。
 
+`dev-agent-launcher`は次の一形式だけで一つのcoding-agentセッションを起動する。
+
+```text
+dev-agent-launcher run --repository owner/repo -- COMMAND [ARG...]
+```
+
+リポジトリは小文字の正規`owner/repo`、`COMMAND`は空でない直接実行`argv`でなければならない。`launcher`はシェル、ランタイム指定の
+ソケット/helper/プロバイダー/モデル/プロキシ、追加optionを受理しない。`--help`、`-h`、`--version`以外の不完全または並べ替えた形式は、
+制御ソケット又は子へ到達する前に`usage` エラーとなる。`COMMAND`の`argv`境界とstdin/stdout/stderrは直接子へ渡される。
+
+セッションはbuild/install layoutから埋め込まれた外向き通信用Unix ソケットとGit 認証情報 helperだけを使う。公開プロキシ CA、対象
+リポジトリのGitHub REST用Opaque handle、OpenAI Responses用Opaque handleをこの順で各一回取得し、literal `/tmp`配下のセッション専用
+`0700` ディレクトリへ公開CAだけを`0600` `regular` ファイルとして置いて、IPv4 loopback `bridge`を一つ起動する。handleはディスク、`argv`、診断へ書かず、
+子の`GH_TOKEN`と`OPENAI_API_KEY`だけへ渡す。Git Smart HTTP readは固定helperが操作ごとにsingle-use handleを取得する。
+
+子 environmentは親environmentから`HOME`、`PATH`、`TERM`、`LANG`/正規`LC_*`、任意の`CODEX_HOME`だけを選び直す。
+`HOME`/`CODEX_HOME`は子自身がCodex認証を探索できる場所として保持するだけで、`launcher`はその内容を読取り、複製、検証又は出力しない。
+親のAPI 認証情報、プロキシ/CA、Git 認証情報/`config`、SSH、loader/ランタイム injection値は継承しない。セッション値としてupper/lower HTTP(S)
+プロキシ、CA `trust`変数、非対話Git設定を一意に設定し、Git コマンド スコープでは既存認証情報 helper列を空値でresetしてから固定absolute helperだけを
+追加し、GitHubのpath-aware 認証情報、プロキシ、CA、prompt無効化を固定する。システム/全体 Git `config`は読み込まず、ローカル設定は変更しない。
+
+子終了、通常のnonzero exit、起動失敗、親キャンセル、予期しない`bridge`終了の全経路で、新規受理を止め、`active` `bridge`を`drain`してからCA
+ディレクトリを一回削除し、発行済みAPI handleを各一回失効要求する。キャンセル又は`bridge` failureでは子を停止して待機してから戻る。正常終了は0、
+通常の子 nonzeroはその状態を保ち、`signal`、setup/start/待機/ローカル クリーンアップ failureは固定failureへ畳む。失効要求がunknown又は期限切れで失敗しても
+子の既存状態を秘密付き診断へ置き換えず、短いTTLを残余fail-safeとする。
+
+この`launcher`とプロキシ environmentはネットワーク隔離の強制境界ではない。クライアントがプロキシを無視して直接通信することを防ぐdefault-deny ファイアウォール/
+ネットワーク 名前空間、loopback隔離、Unix ソケットの所有権と`peer` UID、実Codex/Git/`gh`/OpenAI SDKのプロキシ/CA/helper受理、実認証情報、DNS/TLS、
+プロバイダー受理、systemd/VPS配置・`restart`・ロールバック・クリーンアップは承認済み環境のlive E2E対象である。hermetic テスト又はinstall stagingの成功はこれらを
+証明しない。
+
 その他の補助実行ファイルは従来どおり`--version`と検査系の明示面だけを提供し、未実装の通常起動はfail-closedで拒否する。
 
 ## プロバイダー上流HTTPS 転送方式

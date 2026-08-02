@@ -4,9 +4,11 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/autotaker/kakesu/tools/dev-agent-harness/internal/config"
 	"github.com/autotaker/kakesu/tools/dev-agent-harness/internal/egressservice"
+	"github.com/autotaker/kakesu/tools/dev-agent-harness/internal/launchsession"
 	"github.com/autotaker/kakesu/tools/dev-agent-harness/internal/provision"
 )
 
@@ -17,6 +19,8 @@ var Version = "devel"
 // cancellation, and fixed-diagnostic handling without starting systemd.
 var runEgressService = egressservice.Serve
 
+var runLaunchSession = launchsession.Run
+
 // Run implements the fail-closed command surface shared by scaffold binaries.
 func Run(name string, args []string, stdout, stderr io.Writer) int {
 	return RunContext(context.Background(), name, args, stdout, stderr)
@@ -25,6 +29,15 @@ func Run(name string, args []string, stdout, stderr io.Writer) int {
 // RunContext is the command boundary used by binaries that translate
 // termination signals into cooperative context cancellation.
 func RunContext(ctx context.Context, name string, args []string, stdout, stderr io.Writer) int {
+	return RunContextIO(ctx, name, args, nil, stdout, stderr)
+}
+
+// RunContextIO is the launcher entrypoint that preserves all three standard
+// streams. Other command surfaces do not consume stdin.
+func RunContextIO(ctx context.Context, name string, args []string, stdin io.Reader, stdout, stderr io.Writer) int {
+	if name == "dev-agent-launcher" {
+		return runLauncher(ctx, args, stdin, stdout, stderr)
+	}
 	if name == "dev-agent-harness-setup" && len(args) > 0 && args[0] == "check-config" {
 		return checkConfig(args[1:], stdout, stderr)
 	}
@@ -56,6 +69,62 @@ func RunContext(ctx context.Context, name string, args []string, stdout, stderr 
 	}
 	fmt.Fprintf(stderr, "%s: operational behavior is not implemented; refusing to start\n", name)
 	return 78
+}
+
+func runLauncher(ctx context.Context, args []string, stdin io.Reader, stdout, stderr io.Writer) int {
+	if len(args) == 1 && args[0] == "--version" {
+		fmt.Fprintf(stdout, "dev-agent-launcher %s\n", Version)
+		return 0
+	}
+	if len(args) == 1 && (args[0] == "--help" || args[0] == "-h") {
+		fmt.Fprintln(stdout, "usage: dev-agent-launcher run --repository owner/repo -- COMMAND [ARG...]")
+		return 0
+	}
+	if len(args) < 5 || args[0] != "run" || args[1] != "--repository" || args[3] != "--" ||
+		!canonicalRepository(args[2]) || args[4] == "" {
+		fmt.Fprintln(stderr, "dev-agent-launcher: invalid arguments")
+		return 2
+	}
+	for _, argument := range args {
+		if strings.ContainsRune(argument, '\x00') {
+			fmt.Fprintln(stderr, "dev-agent-launcher: invalid arguments")
+			return 2
+		}
+	}
+	result := runLaunchSession(ctx, launchsession.Request{
+		Repository: args[2],
+		Argv:       append([]string(nil), args[4:]...),
+		Stdin:      stdin,
+		Stdout:     stdout,
+		Stderr:     stderr,
+	})
+	if result.SessionFailed {
+		fmt.Fprintln(stderr, "dev-agent-launcher: session failed")
+	}
+	return result.ExitCode
+}
+
+func canonicalRepository(repository string) bool {
+	parts := strings.Split(repository, "/")
+	if len(parts) != 2 {
+		return false
+	}
+	for _, part := range parts {
+		if part == "" || part == "." || part == ".." || !lowerAlphaNumeric(part[0]) {
+			return false
+		}
+		for index := 1; index < len(part); index++ {
+			character := part[index]
+			if !lowerAlphaNumeric(character) && character != '.' && character != '_' && character != '-' {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+func lowerAlphaNumeric(character byte) bool {
+	return character >= 'a' && character <= 'z' || character >= '0' && character <= '9'
 }
 
 func serveEgress(ctx context.Context, args []string, stderr io.Writer) int {

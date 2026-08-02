@@ -31,6 +31,7 @@ PACKAGE_TARNAME = dev-agent-harness-$(PACKAGE_VERSION)
 MODULE = github.com/autotaker/kakesu/tools/dev-agent-harness
 LDFLAGS = -X $(MODULE)/internal/command.Version=$(PACKAGE_VERSION)
 GIT_CREDENTIAL_SOCKET = $(runstatedir)/dev-agent-harness/egress.sock
+LAUNCHER_HELPER = $(bindir)/git-credential-dev-agent
 
 LIBEXEC_PROGRAMS = dev-agent-approval dev-agent-broker dev-agent-egress dev-agent-launcher
 BIN_PROGRAMS = git-credential-dev-agent
@@ -53,6 +54,9 @@ $(BUILD_DIR)/%: $(GO_SOURCES)
 
 $(BUILD_DIR)/git-credential-dev-agent: LDFLAGS += -X $(MODULE)/internal/gitcredential.socketPath=$(GIT_CREDENTIAL_SOCKET)
 
+$(BUILD_DIR)/dev-agent-launcher: LDFLAGS += -X $(MODULE)/internal/launchsession.controlSocketPath=$(GIT_CREDENTIAL_SOCKET) \
+	-X $(MODULE)/internal/launchsession.credentialHelperPath=$(LAUNCHER_HELPER)
+
 check: check-unit check-binaries check-live
 
 check-unit:
@@ -62,10 +66,11 @@ check-unit:
 check-binaries: all
 	@for program in $(PROGRAMS); do \
 		$(BUILD_DIR)/$$program --version >/dev/null || exit 1; \
-		if $(BUILD_DIR)/$$program >/dev/null 2>&1; then \
+		if test "$$program" != dev-agent-launcher && $(BUILD_DIR)/$$program >/dev/null 2>&1; then \
 			echo "$$program must fail closed until implemented" >&2; exit 1; \
 		fi; \
 	done
+	@$(BUILD_DIR)/dev-agent-launcher >/dev/null 2>&1; test $$? -eq 2
 
 check-live:
 	@if test "$(enable_live_tests)" = yes; then \
