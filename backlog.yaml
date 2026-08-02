@@ -1193,3 +1193,24 @@ tasks:
       dev: dev-agent-sol-high
       reviewer: reviewer-agent-terra-medium
       qa: qa-agent-terra-medium
+  - id: TASK-0066
+    title: Agent用proxy CA取得境界を実装する
+    type: feature
+    change_class: product
+    epic: EPIC-001
+    status: dev
+    priority: P1
+    estimate_points: 1
+    task_dir: tasks/TASK-0066-proxy-ca-control-client
+    depends_on:
+      - TASK-0050
+      - TASK-0051
+      - TASK-0065
+    branch: task/TASK-0066-proxy-ca-control-client
+    worktree: worktrees/TASK-0066-proxy-ca-control-client
+    assignees:
+      main: main-agent-sol-high
+      planner: planner-agent-terra-medium
+      dev: dev-agent-sol-high
+      reviewer: reviewer-agent-terra-medium
+      qa: qa-agent-terra-medium
