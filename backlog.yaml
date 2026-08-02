@@ -1121,3 +1121,21 @@ tasks:
       dev: dev-agent-sol-high
       reviewer: reviewer-agent-terra-medium
       qa: qa-agent-terra-medium
+  - id: TASK-0061
+    title: Agent向けCapability発行・失効control sessionを実装する
+    type: feature
+    change_class: product
+    epic: EPIC-001
+    status: plan
+    priority: P1
+    estimate_points: 1
+    task_dir: tasks/TASK-0061-dev-agent-capability-control
+    depends_on: []
+    branch: task/TASK-0061-dev-agent-capability-control
+    worktree: worktrees/TASK-0061-dev-agent-capability-control
+    assignees:
+      main: main-agent-sol-high
+      planner: planner-agent-terra-medium
+      dev: dev-agent-sol-high
+      reviewer: reviewer-agent-terra-medium
+      qa: qa-agent-terra-medium
