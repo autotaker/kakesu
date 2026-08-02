@@ -1276,3 +1276,22 @@ tasks:
       dev: dev-agent-sol-high
       reviewer: reviewer-agent-terra-medium
       qa: qa-agent-terra-medium
+  - id: TASK-0070
+    title: Push承認manifestのcanonical境界を実装する
+    type: feature
+    change_class: product
+    epic: EPIC-001
+    status: plan
+    priority: P1
+    estimate_points: 1
+    task_dir: tasks/TASK-0070-push-approval-manifest
+    depends_on:
+      - TASK-0069
+    branch: task/TASK-0070-push-approval-manifest
+    worktree: worktrees/TASK-0070-push-approval-manifest
+    assignees:
+      main: main-agent-sol-high
+      planner: planner-agent-terra-medium
+      dev: dev-agent-sol-high
+      reviewer: reviewer-agent-terra-medium
+      qa: qa-agent-terra-medium
