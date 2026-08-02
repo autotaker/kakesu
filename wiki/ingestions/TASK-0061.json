@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "task_id": "TASK-0061",
+  "handover_sha256": "7903387b84826871b0612c29084f9be403dcccea69a1d80e9b0cab22d980e56c",
+  "ingested_at": "2026-08-02T10:16:48Z",
+  "updated_pages": [],
+  "created_decisions": [],
+  "deferred": [
+    "TASK-0068 has already integrated the peer-bound control client and launcher delivery path; no additional reusable knowledge is added here."
+  ]
+}
