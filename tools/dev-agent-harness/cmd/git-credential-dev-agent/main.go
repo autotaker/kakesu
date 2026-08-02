@@ -3,9 +3,9 @@ package main
 import (
 	"os"
 
-	"github.com/autotaker/kakesu/tools/dev-agent-harness/internal/command"
+	"github.com/autotaker/kakesu/tools/dev-agent-harness/internal/gitcredential"
 )
 
 func main() {
-	os.Exit(command.Run("git-credential-dev-agent", os.Args[1:], os.Stdout, os.Stderr))
+	os.Exit(gitcredential.Run(os.Args[1:], os.Stdin, os.Stdout, os.Stderr))
 }

@@ -187,6 +187,23 @@ unknown、malformed、期限切れ、別主体は固定拒否となり、handle�
 hermeticテストはこのメモリー内ライフサイクルと既存CONNECTの回帰を確認するが、実DNS/TLS、実GitHub/OpenAI、実NSS/別UID、
 systemdソケット、VPS配置の受理を保証しない。
 
+## Git read用認証情報helper
+
+`git-credential-dev-agent`は、allowlistにある正規な`github.com`リポジトリをHTTPSで読むための、
+手動設定用Git認証情報helperである。一致する`get`では、既存の外向き通信制御サービスへ一回限りの
+不透明ケイパビリティを要求し、固定ユーザー名`x-access-token`とhandleだけを返す。
+プロバイダーの実トークンは受け取らず、Gitへも返さない。入力又は制御の失敗時は`quit=true`だけを返し、
+別helper又は対話promptへの認証情報探索を停止する。
+
+helperは完全一致するHTTPSホストと正規な`owner/repo.git`パスだけを受理する。`store`は上限付き入力を
+読み捨てて保存せず、`erase`は正規な不透明handle一件だけを失効する。未知の操作はhelperプロトコルに従い、
+出力なしで無視する。
+
+制御用Unixソケットは、configure済み`runstatedir`からリンク時に固定する。コマンド引数、認証情報フィールド、
+環境変数、設定又は作業ディレクトリでは置換できない。このコンポーネントはGit設定を変更せず、
+clone/fetch/pull、push、認証情報のcache又は永続化、起動機構の設定を行わない。配置済みソケット、GitHub、
+DNS、TLS又はsystemdの実環境受け入れ条件もこの境界では確認しない。
+
 ## Build
 
 リリースtarballには生成済み`configure`を含める。
