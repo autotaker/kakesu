@@ -16,13 +16,15 @@ DEVは承認済みPLANの範囲でTask ワークツリーだけを編集する�
 
 ## 完了
 
-Main側のHANDOVERに案 コミットを記録し、REVIEW/QA PASSと承認済みQA_PLANを揃える。`completion-gate`はpre-staged変更を拒否し、main側の証跡バイトを保存したうえで`git merge --no-ff --no-commit`を実行する。案 diffは製品差分だけ、merge後のmain-managed差分はTask証跡と許可されたWikiだけに限定し、検証後に一つのmerge コミットを作る。失敗時はmergeをabortし、保存した証跡とインデックスを復元する。
+製品変更ではMain側のHANDOVERに案 コミットを記録し、REVIEW/QA PASSと承認済みQA_PLANを揃える。`completion-gate`はpre-staged変更を拒否し、main側の証跡バイトを保存したうえで`git merge --no-ff --no-commit`を実行する。案 diffは製品差分だけ、merge後のmain-managed差分はTask証跡と許可されたWikiだけに限定し、検証後に一つのmerge コミットを作る。失敗時はmergeをabortし、保存した証跡とインデックスを復元する。
 
 完了後の分岐を残すmergeは、HANDOVERの`candidate_commit`を第2親に持つmainのmerge コミットからGitで導出する。Wiki receiptや追加の完了コミットは標準完了条件ではない。
 
 ## 安全契約変更
 
-製品成果物を変更しない安全契約変更は、TASK本文だけから独立QA_PLANを作り、MainがPLAN/QA_PLANの意図・スコープ・受け入れ経路を確認する。製品用のDEV/REVIEW/QA PASSを代用せず、契約に必要な統制文書だけを検査する。既存安全契約Taskの専用検査は後方互換のため維持する。
+製品成果物を変更しない安全契約変更は、TASK本文だけから独立QA_PLANを作り、MainがPLAN/QA_PLANの意図・スコープ・受け入れ経路を確認する。planning、固定案、no-ff 完了の3コミット経路を使い、製品用のREVIEW_RESULT/QA_RESULTのPASSを要求も生成もしない。完了にはMain承認済みQA_PLAN、HANDOVERの`candidate_commit`、既存4項目の`safety_checks`と`safety_checked_at`を要求する。
+
+安全契約案のmerge束縛は、merge中の`MERGE_HEAD`又は完了後にmainから到達可能な一意の完全一致 two-parent mergeから導出し、HANDOVER 案が第2親であることを検査する。v2 スコープはmerge-baseから案までのname-status差分を宣言パスと照合し、空差分、名前変更/コピー、未宣言・main-managed・許可外パス、生成パス欠落を拒否する。`merged_commit`、案/merge tree、ダイジェストは要求せず、既存Taskに残る値は遡及変更せず未使用入力として許容する。
 
 既存の振り返りで10 Taskごとにルールの誤検知、検出価値、時間、保守費を見直す。低価値ルールは削除または警告化し、専用checklistやバージョン フィールドを追加しない。
 

@@ -102,6 +102,7 @@ function initTaskStartRepository() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "task-start-"));
   git(root, "init", "-b", "main"); git(root, "config", "user.name", "Fixture"); git(root, "config", "user.email", "fixture@example.invalid");
   fs.writeFileSync(path.join(root, ".gitignore"), ".locks/\nworktrees/\nnode_modules/\n");
+  fs.writeFileSync(path.join(root, "Makefile"), "check:\n\t@true\n");
   writeProject(path.join(root, "project.yaml"));
   fs.cpSync(path.join(ROOT, "schemas/operations"), path.join(root, "schemas/operations"), { recursive: true });
   fs.mkdirSync(path.join(root, "scripts"), { recursive: true });
@@ -154,6 +155,42 @@ function prepareThreeCommitFixture() {
   setFrontmatter(path.join(taskDir, "HANDOVER.md"), { candidate_commit: candidate.candidate_commit });
   setFrontmatter(path.join(taskDir, "REVIEW_RESULT.md"), { reviewer_agent: task.assignees.reviewer, decision: "pass", reviewed_at: "2026-08-01T00:00:00Z" });
   setFrontmatter(path.join(taskDir, "QA_RESULT.md"), { qa_agent: task.assignees.qa, decision: "pass", tested_at: "2026-08-01T00:00:00Z" });
+  return { root, taskDir, task, started, planning, candidate };
+}
+
+function prepareSafetyContractFixture() {
+  const root = initTaskStartRepository();
+  const started = taskStart({ id: "TASK-9016", slug: "safety", title: "safety contract fixture", epic: "EPIC-001", push: "false" }, root);
+  const taskDir = path.join(root, "tasks/TASK-9016-safety");
+  const backlogFile = path.join(root, "backlog.yaml");
+  const backlogValue = parseYaml(fs.readFileSync(backlogFile, "utf8"));
+  const task = backlogValue.tasks.find((entry) => entry.id === "TASK-9016");
+  task.change_class = "safety_contract";
+  fs.writeFileSync(backlogFile, `${JSON.stringify(backlogValue, null, 2)}\n`);
+  fs.appendFileSync(path.join(taskDir, "TASK.md"), "\n- 製品コード、test、runtime/build設定、Schema、製品依存、生成製品入力/成果物、外部観測可能な挙動を変更しない。\n");
+  setFrontmatter(path.join(taskDir, "PLAN.md"), {
+    ...approvedPlan(task),
+    change_class: "safety_contract",
+    classification_approved_by: task.assignees.main,
+    classification_approved_at: "2026-08-01T00:00:00Z",
+    classification_approval_reason: "fixture classification",
+  });
+  setFrontmatter(path.join(taskDir, "QA_PLAN.md"), {
+    change_class: "safety_contract",
+    status: "approved",
+    qa_agent: task.assignees.qa,
+    approved_by: task.assignees.main,
+    approved_at: "2026-08-01T00:00:00Z",
+  });
+  const planning = evidenceCommit({ root, action: "planning-gate", taskId: "TASK-9016", message: "planning TASK-9016", push: false, validate: false });
+  fs.mkdirSync(path.join(started.worktree, "docs/development"), { recursive: true });
+  fs.writeFileSync(path.join(started.worktree, "docs/development/contract.md"), "candidate\n");
+  const candidate = candidateCommit({ root, taskId: "TASK-9016", candidateRoot: started.worktree });
+  setFrontmatter(path.join(taskDir, "HANDOVER.md"), {
+    candidate_commit: candidate.candidate_commit,
+    safety_checks: Object.fromEntries(["process_tests", "contract_scope", "docs_lint", "make_check"].map((key) => [key, "pass"])),
+    safety_checked_at: "2026-08-01T00:00:00Z",
+  });
   return { root, taskDir, task, started, planning, candidate };
 }
 
@@ -584,6 +621,39 @@ test("Q-02/Q-04 completion creates one no-ff merge from main-side HANDOVER", () 
     assert.equal(git(fixture.root, "branch", "--show-current"), "main");
   } finally {
     fs.rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test("safety_contract completion uses Main checks without product REVIEW or QA PASS", () => {
+  const fixture = prepareSafetyContractFixture();
+  try {
+    assert.match(fs.readFileSync(path.join(fixture.taskDir, "REVIEW_RESULT.md"), "utf8"), /decision: pending/);
+    assert.match(fs.readFileSync(path.join(fixture.taskDir, "QA_RESULT.md"), "utf8"), /decision: pending/);
+    const result = completionGate({ root: fixture.root, taskId: "TASK-9016", validate: false, push: false });
+    const parents = git(fixture.root, "rev-list", "--parents", "-n", "1", result.commit).split(" ");
+    assert.deepEqual(parents.slice(1), [fixture.planning.commit, fixture.candidate.candidate_commit]);
+    const handover = fs.readFileSync(path.join(fixture.taskDir, "HANDOVER.md"), "utf8");
+    assert.doesNotMatch(handover, /safety_(?:candidate_tree|merge_tree|check_digest)|merged_commit/);
+  } finally {
+    fs.rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test("safety_contract completion rejects missing Main QA approval or exact safety checks", async (t) => {
+  for (const [name, mutate, expected] of [
+    ["QA PLAN approval", (fixture) => setFrontmatter(path.join(fixture.taskDir, "QA_PLAN.md"), { approved_by: "other" }), /approved QA PLAN/],
+    ["safety checks", (fixture) => setFrontmatter(path.join(fixture.taskDir, "HANDOVER.md"), { safety_checks: { process_tests: "pass" } }), /exact passed safety_checks/],
+    ["safety checked_at", (fixture) => setFrontmatter(path.join(fixture.taskDir, "HANDOVER.md"), { safety_checked_at: "not-a-timestamp" }), /exact passed safety_checks/],
+  ]) {
+    await t.test(name, () => {
+      const fixture = prepareSafetyContractFixture();
+      try {
+        mutate(fixture);
+        assert.throws(() => completionGate({ root: fixture.root, taskId: "TASK-9016", validate: false, push: false }), expected);
+      } finally {
+        fs.rmSync(fixture.root, { recursive: true, force: true });
+      }
+    });
   }
 });
 

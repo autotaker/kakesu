@@ -1,6 +1,5 @@
 import fs from "node:fs";
 import path from "node:path";
-import { createHash } from "node:crypto";
 import YAML from "yaml";
 import {
   REQUIRED_TASK_FILES,
@@ -37,15 +36,6 @@ function repositoryFor(root) {
 
 function isTimestamp(value) {
   return typeof value === "string" && value.trim() !== "" && !Number.isNaN(Date.parse(value));
-}
-
-function safetyCheckDigest(candidateTree, mergeTree, checks) {
-  const normalized = [
-    `candidate_tree=${candidateTree}`,
-    `merge_tree=${mergeTree}`,
-    ...SAFETY_CHECK_KEYS.map((key) => `${key}=${checks[key]}`),
-  ].join("\n");
-  return createHash("sha256").update(`${normalized}\n`).digest("hex");
 }
 
 function hasOwn(value, key) {
@@ -197,34 +187,42 @@ function checkSafetyContractDone({ root, taskDir, task, taskId, planContract }) 
   if (safetyCheckKeys.length !== SAFETY_CHECK_KEYS.length
       || safetyCheckKeys.some((key, index) => key !== [...SAFETY_CHECK_KEYS].sort()[index])
       || SAFETY_CHECK_KEYS.some((key) => safetyChecks[key] !== "pass")
-      || !isTimestamp(handover.safety_checked_at)
-      || !/^[a-f0-9]{64}$/.test(handover.safety_check_digest ?? "")) {
-    errors.push(`${taskId}: safety_contract requires the exact passed safety_checks, checked_at, and SHA-256 digest`);
+      || !isTimestamp(handover.safety_checked_at)) {
+    errors.push(`${taskId}: safety_contract requires the exact passed safety_checks and checked_at`);
   }
-  if (!task.merged_commit) {
-    errors.push(`${taskId}: safety_contract done requires merged_commit`);
+  if (handover.status === "safety_contract_complete" && String(task.merged_commit ?? "").trim() !== "") return errors;
+  const candidate = handover.candidate_commit;
+  if (!/^[a-f0-9]{40}$/.test(candidate ?? "")) {
+    errors.push(`${taskId}: safety_contract done requires HANDOVER candidate_commit`);
     return errors;
   }
   try {
     const project = readYaml(path.join(root, "project.yaml"));
     const repository = repositoryFor(root);
-    git(repository, ["cat-file", "-e", `${task.merged_commit}^{commit}`]);
-    git(repository, ["merge-base", "--is-ancestor", task.merged_commit, project.default_branch]);
-    const [merge, firstParent, secondParent, ...extraParents] = git(repository, ["rev-list", "--parents", "-n", "1", task.merged_commit]).split(" ");
-    if (merge !== task.merged_commit || !firstParent || !secondParent || extraParents.length) {
-      throw new Error("merged_commit is not an exact two-parent no-ff merge");
+    const branch = project.default_branch ?? "main";
+    git(repository, ["cat-file", "-e", `${candidate}^{commit}`]);
+    let firstParent;
+    let mergeInProgress = null;
+    try { mergeInProgress = git(repository, ["rev-parse", "MERGE_HEAD"]); } catch { /* normal committed state */ }
+    if (mergeInProgress !== null) {
+      if (mergeInProgress.split(/\s+/).length !== 1 || mergeInProgress !== candidate) {
+        throw new Error("MERGE_HEAD is not the HANDOVER candidate");
+      }
+      firstParent = git(repository, ["rev-parse", "HEAD"]);
+    } else {
+      const merges = git(repository, ["rev-list", "--first-parent", "--merges", branch]).split("\n").filter(Boolean);
+      const matching = merges.map((merge) => git(repository, ["rev-list", "--parents", "-n", "1", merge]).split(" "))
+        .filter((parents) => parents[2] === candidate);
+      if (matching.length !== 1 || matching[0].length !== 3) {
+        throw new Error("no unique main exact two-parent no-ff merge has HANDOVER candidate as its second parent");
+      }
+      firstParent = matching[0][1];
     }
-    const candidateTree = git(repository, ["rev-parse", `${secondParent}^{tree}`]);
-    const mergeTree = git(repository, ["rev-parse", `${task.merged_commit}^{tree}`]);
-    if (handover.safety_candidate_tree !== candidateTree
-        || handover.safety_merge_tree !== mergeTree
-        || candidateTree !== mergeTree) {
-      throw new Error("safety candidate and merge trees do not match recorded Git trees");
+    const base = git(repository, ["merge-base", firstParent, candidate]);
+    if (Number(git(repository, ["rev-list", "--count", `${base}..${candidate}`])) !== 1) {
+      throw new Error("safety_contract candidate must be one commit after merge-base");
     }
-    if (handover.safety_check_digest !== safetyCheckDigest(candidateTree, mergeTree, safetyChecks)) {
-      throw new Error("safety_check_digest does not match the canonical safety evidence");
-    }
-    const changedEntries = git(repository, ["diff", "--name-status", "--find-renames", "--find-copies-harder", firstParent, secondParent])
+    const changedEntries = git(repository, ["diff", "--name-status", "--find-renames", "--find-copies-harder", base, candidate])
       .split("\n").filter(Boolean).map((line) => line.split("\t"));
     if (changedEntries.length === 0
         || changedEntries.some(([status]) => /^R|^C/.test(status))

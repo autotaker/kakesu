@@ -4,7 +4,6 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { spawnSync } from "node:child_process";
-import { createHash } from "node:crypto";
 import { checkTask } from "./check-task.mjs";
 import { acquireWorkRepoLock, dateInTimezone, git, replaceTemplate, resolveInside, workRepoLockDir } from "./lib.mjs";
 import {
@@ -105,15 +104,6 @@ function writeTaskEvidence(taskDir, filename, metadata, body = "") {
 
 const SAFETY_CHECK_KEYS = ["process_tests", "contract_scope", "docs_lint", "make_check"];
 
-function safetyCheckDigest(candidateTree, mergeTree, checks) {
-  const normalized = [
-    `candidate_tree=${candidateTree}`,
-    `merge_tree=${mergeTree}`,
-    ...SAFETY_CHECK_KEYS.map((key) => `${key}=${checks[key]}`),
-  ].join("\n");
-  return createHash("sha256").update(`${normalized}\n`).digest("hex");
-}
-
 function createDoneTaskFixture({
   taskId = "TASK-0090",
   changeClass,
@@ -122,6 +112,9 @@ function createDoneTaskFixture({
   renameSpoof = false,
   copySpoof = false,
   nonNoFf = false,
+  extraParent = false,
+  emptyDiff = false,
+  mainAdvance = false,
   legacyTask0024 = false,
   legacyProduct = false,
   safetyContractV2 = false,
@@ -149,7 +142,7 @@ function createDoneTaskFixture({
   } else if (copySpoof) {
     fs.copyFileSync(path.join(repository, "docs", "development", "old.md"), path.join(repository, "docs", "development", "copy.md"));
     git(repository, ["add", "docs/development/copy.md"]);
-  } else {
+  } else if (!emptyDiff) {
     const fixturePaths = changedPaths ?? [productPath ? "scripts/product.mjs" : "docs/development/contract.md"];
     for (const changedPath of fixturePaths) {
       fs.mkdirSync(path.dirname(path.join(repository, changedPath)), { recursive: true });
@@ -157,13 +150,25 @@ function createDoneTaskFixture({
       git(repository, ["add", changedPath]);
     }
   }
-  git(repository, ["commit", "-m", "candidate"]);
+  git(repository, emptyDiff ? ["commit", "--allow-empty", "-m", "candidate"] : ["commit", "-m", "candidate"]);
   const candidateCommit = git(repository, ["rev-parse", "HEAD"]);
-  const candidateTree = git(repository, ["rev-parse", "HEAD^{tree}"]);
   git(repository, ["checkout", "main"]);
-  git(repository, nonNoFf ? ["merge", "--ff-only", "task"] : ["merge", "--no-ff", "-m", "merge", "task"]);
+  if (mainAdvance) {
+    fs.writeFileSync(path.join(repository, "main-evidence.md"), "main evidence\n");
+    git(repository, ["add", "main-evidence.md"]);
+    git(repository, ["commit", "-m", "main evidence"]);
+  }
+  if (extraParent) {
+    git(repository, ["checkout", "-b", "other"]);
+    fs.writeFileSync(path.join(repository, "other.md"), "other\n");
+    git(repository, ["add", "other.md"]);
+    git(repository, ["commit", "-m", "other"]);
+    git(repository, ["checkout", "main"]);
+    git(repository, ["merge", "--no-ff", "-m", "merge", "task", "other"]);
+  } else {
+    git(repository, nonNoFf ? ["merge", "--ff-only", "task"] : ["merge", "--no-ff", "-m", "merge", "task"]);
+  }
   const mergedCommit = git(repository, ["rev-parse", "HEAD"]);
-  const mergeTree = git(repository, ["rev-parse", "HEAD^{tree}"]);
   fs.writeFileSync(path.join(root, "project.yaml"), "repository_path: product\ndefault_branch: main\n");
 
   const exclusion = legacyTask0024
@@ -231,9 +236,6 @@ function createDoneTaskFixture({
     candidate_commit: candidateCommit,
     safety_checks: safetyChecks,
     safety_checked_at: "2026-07-20T00:00:00Z",
-    safety_check_digest: safetyCheckDigest(candidateTree, mergeTree, safetyChecks),
-    safety_candidate_tree: candidateTree,
-    safety_merge_tree: mergeTree,
   };
   writeTaskEvidence(taskDir, "HANDOVER.md", handoverMetadata);
   fs.mkdirSync(path.join(root, "wiki", "ingestions"), { recursive: true });
@@ -245,7 +247,7 @@ function createDoneTaskFixture({
     task_dir: path.relative(root, taskDir),
     assignees: { main: "main", planner: "planner", dev: "dev-sol-high", reviewer: "reviewer", qa: "qa" },
   };
-  if (legacyProduct || changeClass === "safety_contract") task.merged_commit = mergedCommit;
+  if (legacyProduct) task.merged_commit = mergedCommit;
   if (changeClass !== undefined) task.change_class = changeClass;
   if (legacyProduct) {
     fs.writeFileSync(path.join(root, "backlog.yaml"), JSON.stringify({ version: 1, project: "agent-harness", epics: [], tasks: [task] }));
@@ -433,18 +435,64 @@ test("new product Done accepts a completion merge in progress and schema leaves 
   }
 });
 
+test("safety_contract Done accepts the HANDOVER candidate while its no-ff merge is in progress", () => {
+  const fixture = createDoneTaskFixture({ changeClass: "safety_contract", mainAdvance: true });
+  try {
+    git(fixture.repository, ["reset", "--hard", `${fixture.mergedCommit}^1`]);
+    git(fixture.repository, ["merge", "--no-ff", "--no-commit", fixture.candidateCommit]);
+    assert.deepEqual(checkTask(fixture.root, fixture.backlog, fixture.taskId), []);
+  } finally {
+    fs.rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
 test("legacy safety_contract planning review fields remain compatible without v2 opt-in", () => {
   const fixture = createDoneTaskFixture({ taskId: "TASK-0024", changeClass: "safety_contract", legacyTask0024: true });
   try {
     fs.rmSync(path.join(fixture.root, "wiki"), { recursive: true, force: true });
     writeTaskEvidence(fixture.taskDir, "REVIEW_RESULT.md", { task_id: fixture.taskId, decision: "pending" });
     writeTaskEvidence(fixture.taskDir, "QA_RESULT.md", { task_id: fixture.taskId, decision: "pending" });
+    fixture.handoverMetadata.status = "safety_contract_complete";
+    delete fixture.handoverMetadata.candidate_commit;
+    fixture.backlog.tasks[0].merged_commit = fixture.mergedCommit;
+    writeTaskEvidence(fixture.taskDir, "HANDOVER.md", fixture.handoverMetadata);
     assert.deepEqual(checkTask(fixture.root, fixture.backlog, fixture.taskId), []);
     fixture.planMetadata.planning_reviewed_by = "other";
     fixture.planMetadata.planning_review_decision = "pending";
     fixture.planMetadata.planning_reviewed_at = "not-a-timestamp";
     writeTaskEvidence(fixture.taskDir, "PLAN.md", fixture.planMetadata);
     assert.deepEqual(checkTask(fixture.root, fixture.backlog, fixture.taskId), []);
+  } finally {
+    fs.rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test("published legacy safety_contract v2 remains compatible without candidate_commit", () => {
+  const fixture = createDoneTaskFixture({ taskId: "TASK-0030", changeClass: "safety_contract", safetyContractV2: true });
+  try {
+    fixture.handoverMetadata.status = "safety_contract_complete";
+    delete fixture.handoverMetadata.candidate_commit;
+    fixture.backlog.tasks[0].merged_commit = fixture.mergedCommit;
+    Object.assign(fixture.handoverMetadata, {
+      safety_check_digest: "0".repeat(64),
+      safety_candidate_tree: "0".repeat(40),
+      safety_merge_tree: "0".repeat(40),
+    });
+    writeTaskEvidence(fixture.taskDir, "HANDOVER.md", fixture.handoverMetadata);
+    assert.deepEqual(checkTask(fixture.root, fixture.backlog, fixture.taskId), []);
+  } finally {
+    fs.rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test("new safety_contract cannot spoof legacy status to omit candidate_commit", () => {
+  const fixture = createDoneTaskFixture({ changeClass: "safety_contract", safetyContractV2: true });
+  try {
+    fixture.handoverMetadata.status = "safety_contract_complete";
+    delete fixture.handoverMetadata.candidate_commit;
+    writeTaskEvidence(fixture.taskDir, "HANDOVER.md", fixture.handoverMetadata);
+    assert.ok(checkTask(fixture.root, fixture.backlog, fixture.taskId)
+      .some((error) => error.includes("requires HANDOVER candidate_commit")));
   } finally {
     fs.rmSync(fixture.root, { recursive: true, force: true });
   }
@@ -459,6 +507,8 @@ test("safety_contract v2 Done verifies candidate diff is declared and generated 
       generatedPaths: ["docs/99-glossary-index.md"],
     });
     try {
+      writeTaskEvidence(fixture.taskDir, "REVIEW_RESULT.md", { task_id: fixture.taskId, decision: "pending" });
+      writeTaskEvidence(fixture.taskDir, "QA_RESULT.md", { task_id: fixture.taskId, decision: "pending" });
       assert.deepEqual(checkTask(fixture.root, fixture.backlog, fixture.taskId), []);
     } finally {
       fs.rmSync(fixture.root, { recursive: true, force: true });
@@ -502,11 +552,36 @@ test("safety_contract rejects product-path classification spoofing", () => {
   }
 });
 
+test("safety_contract rejects main-managed paths and a spoofed HANDOVER candidate", async (t) => {
+  await t.test("main-managed path", () => {
+    const fixture = createDoneTaskFixture({ changeClass: "safety_contract", changedPaths: ["tasks/TASK-0090-fixture/TASK.md"] });
+    try {
+      assert.ok(checkTask(fixture.root, fixture.backlog, fixture.taskId)
+        .some((error) => error.includes("product or unapproved path")));
+    } finally {
+      fs.rmSync(fixture.root, { recursive: true, force: true });
+    }
+  });
+  await t.test("candidate mismatch", () => {
+    const fixture = createDoneTaskFixture({ changeClass: "safety_contract" });
+    try {
+      fixture.handoverMetadata.candidate_commit = git(fixture.repository, ["rev-parse", `${fixture.candidateCommit}^`]);
+      writeTaskEvidence(fixture.taskDir, "HANDOVER.md", fixture.handoverMetadata);
+      assert.ok(checkTask(fixture.root, fixture.backlog, fixture.taskId)
+        .some((error) => error.includes("no unique main exact two-parent no-ff merge")));
+    } finally {
+      fs.rmSync(fixture.root, { recursive: true, force: true });
+    }
+  });
+});
+
 test("safety_contract rejects rename, copy, and non-no-ff spoofing", async (t) => {
   for (const [name, options, expected] of [
     ["rename", { renameSpoof: true }, "product or unapproved path"],
     ["copy", { copySpoof: true }, "product or unapproved path"],
+    ["empty candidate diff", { emptyDiff: true }, "product or unapproved path"],
     ["non-no-ff", { nonNoFf: true }, "two-parent no-ff"],
+    ["extra merge parent", { extraParent: true }, "two-parent no-ff"],
   ]) {
     await t.test(name, () => {
       const fixture = createDoneTaskFixture({ changeClass: "safety_contract", ...options });
@@ -541,13 +616,12 @@ test("safety_contract rejects missing or inconsistent planning evidence", async 
   }
 });
 
-test("safety_contract rejects incomplete checks, digest mismatch, and tree mismatch", async (t) => {
+test("safety_contract rejects incomplete checks and invalid check time", async (t) => {
   const mutations = {
     "missing exact check": (fixture) => { delete fixture.handoverMetadata.safety_checks.docs_lint; },
     "unexpected check": (fixture) => { fixture.handoverMetadata.safety_checks.extra = "pass"; },
     "failed check": (fixture) => { fixture.handoverMetadata.safety_checks.make_check = "pending"; },
-    "digest mismatch": (fixture) => { fixture.handoverMetadata.safety_check_digest = "0".repeat(64); },
-    "tree mismatch": (fixture) => { fixture.handoverMetadata.safety_candidate_tree = "0".repeat(40); },
+    "invalid check time": (fixture) => { fixture.handoverMetadata.safety_checked_at = "not-a-timestamp"; },
   };
   for (const [name, mutate] of Object.entries(mutations)) {
     await t.test(name, () => {
@@ -560,6 +634,22 @@ test("safety_contract rejects incomplete checks, digest mismatch, and tree misma
         fs.rmSync(fixture.root, { recursive: true, force: true });
       }
     });
+  }
+});
+
+test("safety_contract tolerates legacy merge, tree, and digest fields as unused input", () => {
+  const fixture = createDoneTaskFixture({ changeClass: "safety_contract" });
+  try {
+    fixture.backlog.tasks[0].merged_commit = "0".repeat(40);
+    Object.assign(fixture.handoverMetadata, {
+      safety_check_digest: "0".repeat(64),
+      safety_candidate_tree: "0".repeat(40),
+      safety_merge_tree: "0".repeat(40),
+    });
+    writeTaskEvidence(fixture.taskDir, "HANDOVER.md", fixture.handoverMetadata);
+    assert.deepEqual(checkTask(fixture.root, fixture.backlog, fixture.taskId), []);
+  } finally {
+    fs.rmSync(fixture.root, { recursive: true, force: true });
   }
 });
 
