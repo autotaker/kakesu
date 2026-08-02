@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "task_id": "TASK-0075",
+  "handover_sha256": "ac4589a64531d993e9eda320fd778707b0478479b35813c6b4703490ada33292",
+  "ingested_at": "2026-08-02T10:02:06Z",
+  "updated_pages": [
+    "wiki/semantic/schemas/safety-contract-completion-preflight.md"
+  ],
+  "created_decisions": [],
+  "deferred": [
+    "TASK-0074の新しい安全契約経路での実運用受入れは本取り込みの対象外であり、Mainの完了手続きで扱う。"
+  ]
+}
