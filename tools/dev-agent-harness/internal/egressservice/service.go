@@ -16,6 +16,7 @@ import (
 	"github.com/autotaker/kakesu/tools/dev-agent-harness/internal/brokerhttp"
 	"github.com/autotaker/kakesu/tools/dev-agent-harness/internal/brokerlistener"
 	"github.com/autotaker/kakesu/tools/dev-agent-harness/internal/capability"
+	"github.com/autotaker/kakesu/tools/dev-agent-harness/internal/capabilitycontrol"
 	"github.com/autotaker/kakesu/tools/dev-agent-harness/internal/config"
 	"github.com/autotaker/kakesu/tools/dev-agent-harness/internal/connectsession"
 	"github.com/autotaker/kakesu/tools/dev-agent-harness/internal/egresspolicy"
@@ -75,6 +76,7 @@ type serviceFactory struct {
 type constructorSet struct {
 	policy      func(egresspolicy.Rules) (*egresspolicy.Policy, error)
 	registry    func(capability.Rules) (*capability.Registry, error)
+	control     func(capabilitycontrol.Rules) (*capabilitycontrol.Controller, error)
 	transport   func() *upstreamtransport.Transport
 	credentials func(providercredentials.Rules) (*providercredentials.Resolver, error)
 	exchange    func(brokerexchange.Rules) (*brokerexchange.Exchange, error)
@@ -170,7 +172,7 @@ func buildProductionGraph(input graphInput) (runtimeGraph, error) {
 
 func productionConstructors() constructorSet {
 	return constructorSet{
-		policy: egresspolicy.New, registry: capability.New, transport: upstreamtransport.New,
+		policy: egresspolicy.New, registry: capability.New, control: capabilitycontrol.New, transport: upstreamtransport.New,
 		credentials: providercredentials.New, exchange: brokerexchange.New, handler: brokerhttp.New,
 		session: connectsession.New, binder: peerbinder.New, server: brokerlistener.New, receiver: socketactivation.New,
 	}
@@ -180,7 +182,7 @@ func buildProductionGraphWith(input graphInput, constructors constructorSet) (ru
 	if input.config == nil || input.credentials.bundle == nil || isNilDependency(input.credentials.authority) || !validIdentity(input.identity) {
 		return runtimeGraph{}, ErrStart
 	}
-	if constructors.policy == nil || constructors.registry == nil || constructors.transport == nil || constructors.credentials == nil || constructors.exchange == nil || constructors.handler == nil || constructors.session == nil || constructors.binder == nil || constructors.server == nil || constructors.receiver == nil {
+	if constructors.policy == nil || constructors.registry == nil || constructors.control == nil || constructors.transport == nil || constructors.credentials == nil || constructors.exchange == nil || constructors.handler == nil || constructors.session == nil || constructors.binder == nil || constructors.server == nil || constructors.receiver == nil {
 		return runtimeGraph{}, ErrStart
 	}
 	policy, err := constructors.policy(egresspolicy.Rules{
@@ -194,6 +196,14 @@ func buildProductionGraphWith(input graphInput, constructors constructorSet) (ru
 	}
 	registry, err := constructors.registry(capability.Rules{PolicyVersion: "egress-v1", MaxTTL: 10 * time.Minute, MaxUses: 16, InitialRevocationEpoch: 1})
 	if err != nil || registry == nil {
+		return runtimeGraph{}, ErrStart
+	}
+	control, err := constructors.control(capabilitycontrol.Rules{
+		Registry: registry, Resolver: brokerlistener.Resolver{},
+		GitHubRepositories: append([]string(nil), input.config.Egress.GitHubRepositories...),
+		OpenAIModels:       append([]string(nil), input.config.Egress.OpenAIModels...),
+	})
+	if err != nil || control == nil {
 		return runtimeGraph{}, ErrStart
 	}
 	transport := constructors.transport()
@@ -212,7 +222,7 @@ func buildProductionGraphWith(input graphInput, constructors constructorSet) (ru
 	if err != nil || handler == nil {
 		return runtimeGraph{}, ErrStart
 	}
-	session, err := constructors.session(connectsession.Rules{Authority: input.credentials.authority, Handler: handler})
+	session, err := constructors.session(connectsession.Rules{Authority: input.credentials.authority, Handler: handler, Control: control})
 	if err != nil || session == nil {
 		return runtimeGraph{}, ErrStart
 	}

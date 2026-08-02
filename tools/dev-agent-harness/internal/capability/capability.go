@@ -70,6 +70,16 @@ type Request struct {
 	DestinationHost string
 }
 
+// RevokeRequest binds revocation to the same peer-derived subject fields as
+// consumption. Provider scope is intentionally absent: knowledge of a handle
+// is not allowed to replace proof of the subject that owns it.
+type RevokeRequest struct {
+	Handle          string
+	AgentInstanceID string
+	UID             int
+	WorkspaceID     string
+}
+
 // Grant is a copy of the validated scope and remaining lease state. It does
 // not contain the capability handle or any credential.
 type Grant struct {
@@ -276,6 +286,36 @@ func (r *Registry) Revoke(handle string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if _, exists := r.entries[digest]; !exists {
+		return ErrDenied
+	}
+	delete(r.entries, digest)
+	return nil
+}
+
+// RevokeForSubject removes one capability only when all peer-derived subject
+// fields match its stored scope. Unknown, malformed, expired, epoch-invalid,
+// and subject-mismatched requests share the same fixed denial.
+func (r *Registry) RevokeForSubject(req RevokeRequest) error {
+	if r == nil || !validIdentifier(req.AgentInstanceID, 128) || req.UID <= 0 || !validIdentifier(req.WorkspaceID, 128) {
+		return ErrDenied
+	}
+	digest, ok := digestForHandle(req.Handle)
+	if !ok {
+		return ErrDenied
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	e, ok := r.entries[digest]
+	if !ok {
+		return ErrDenied
+	}
+	reading := r.now()
+	expired := reading.elapsed >= e.deadlineElapsed || !reading.wall.Round(0).Before(e.expiresAt.Round(0))
+	if e.revocationEpoch != r.revocationEpoch || e.policyVersion != r.policyVersion || reading.elapsed < e.issuedElapsed || expired {
+		delete(r.entries, digest)
+		return ErrDenied
+	}
+	if e.scope.agentInstanceID != req.AgentInstanceID || e.scope.uid != req.UID || e.scope.workspaceID != req.WorkspaceID {
 		return ErrDenied
 	}
 	delete(r.entries, digest)

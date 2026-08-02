@@ -6,7 +6,7 @@ qa_agent: "qa-agent-terra-medium"
 approved_by: "main-agent-sol-high"
 approved_at: "2026-08-02T00:40:39Z"
 revision: 1
-implementation_reviewed_at: ""
+implementation_reviewed_at: "2026-08-02T01:03:56Z"
 expectation_changed: false
 expectation_change_approved_by: ""
 ---
@@ -51,10 +51,10 @@ zero exitだけでは不十分であり、candidate不一致、対象test欠落�
 
 ## 実装後の再確認
 
-- [ ] 同一candidateでQA-001〜006を独立に評価し、指定focused Go race suiteを一回だけ実行した。
-- [ ] peer-derived subject、GitHub allowlist、OpenAI nonempty-model gate/既存policy委譲、control/CONNECT分離、same Registry lifecycle、subject-bound revoke、fixed non-leak diagnosticsのnegative failure-detectionを確認した。
-- [ ] candidateの許可8 path、約1,000行、対象外差分を監査し、DEV root `make check`/diff checkとReviewer証跡を確認した。QAはfull checkを重複実行していない。
-- [ ] 実GitHub/OpenAI、DNS/TLS、NSS/別UID、systemd socket、VPSをlive-e2eとして計画・PASS主張していない。
+- [x] 同一candidateでQA-001〜006を独立に評価し、指定focused Go race suiteを一回だけ実行した。
+- [x] peer-derived subject、GitHub allowlist、OpenAI nonempty-model gate/既存policy委譲、control/CONNECT分離、same Registry lifecycle、subject-bound revoke、fixed non-leak diagnosticsのnegative failure-detectionを確認した。
+- [x] candidateの許可8 path、約1,000行、対象外差分を監査し、DEV root `make check`/diff checkを確認した。並行していた独立ReviewerのPASSも後続で完了し、QAはfull checkを重複実行していない。
+- [x] 実GitHub/OpenAI、DNS/TLS、NSS/別UID、systemd socket、VPSをlive-e2eとして計画・PASS主張していない。
 
 ## 改訂履歴
 

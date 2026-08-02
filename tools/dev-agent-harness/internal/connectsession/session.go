@@ -5,6 +5,8 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
+	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -12,8 +14,10 @@ import (
 	"net/http"
 	"reflect"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 )
 
 const (
@@ -27,6 +31,8 @@ const (
 	openAIHost         = "api.openai.com"
 	connectDenied      = "HTTP/1.1 403 Forbidden\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
 	connectEstablished = "HTTP/1.1 200 Connection Established\r\nContent-Length: 0\r\n\r\n"
+	controlNoContent   = "HTTP/1.1 204 No Content\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
+	maxControlBody     = 512
 )
 
 type Error string
@@ -43,20 +49,29 @@ const (
 type Authority interface {
 	Issue(string) (tls.Certificate, error)
 }
+
+// CapabilityController applies peer-bound issuance and revocation policy.
+// The session supplies only the minimum provider/repository request fields.
+type CapabilityController interface {
+	Issue(context.Context, string, string) (string, error)
+	Revoke(context.Context, string) error
+}
 type Rules struct {
 	Authority Authority
 	Handler   http.Handler
+	Control   CapabilityController
 }
 type Session struct {
 	authority Authority
 	handler   http.Handler
+	control   CapabilityController
 }
 
 func New(r Rules) (*Session, error) {
-	if isNil(r.Authority) || isNil(r.Handler) {
+	if isNil(r.Authority) || isNil(r.Handler) || isNil(r.Control) {
 		return nil, ErrInvalidRules
 	}
-	return &Session{authority: r.Authority, handler: r.Handler}, nil
+	return &Session{authority: r.Authority, handler: r.Handler, control: r.Control}, nil
 }
 func (s Session) Format(state fmt.State, verb rune) {
 	_, _ = io.WriteString(state, "connectsession.Session")
@@ -72,7 +87,7 @@ func (s *Session) Serve(ctx context.Context, conn net.Conn) (err error) {
 			err = ErrSession
 		}
 	}()
-	if s == nil || isNil(s.authority) || isNil(s.handler) || isNil(ctx) || isNil(conn) {
+	if s == nil || isNil(s.authority) || isNil(s.handler) || isNil(s.control) || isNil(ctx) || isNil(conn) {
 		return ErrInvalidSession
 	}
 	if ctx.Err() != nil {
@@ -92,8 +107,15 @@ func (s *Session) Serve(ctx context.Context, conn net.Conn) (err error) {
 	if err := setDeadline(conn, connectCtx); err != nil {
 		return ErrSession
 	}
-	header, target, ok := readConnect(conn)
-	if !ok || !validConnect(header, target) || hasEarlyByte(conn) {
+	header, ok := readInitialHeader(conn)
+	if !ok {
+		return denyInitial(conn, connectCtx)
+	}
+	if !isConnectHeader(header) {
+		return s.serveControl(connectCtx, conn, header)
+	}
+	target := connectTarget(header)
+	if !validConnect(header, target) || hasEarlyByte(conn) {
 		if !writeFixed(conn, connectDenied) {
 			return ErrSession
 		}
@@ -159,6 +181,83 @@ func (s *Session) Serve(ctx context.Context, conn net.Conn) (err error) {
 	}
 	return nil
 }
+
+func denyInitial(conn net.Conn, ctx context.Context) error {
+	if err := setDeadline(conn, ctx); err != nil || !writeFixed(conn, connectDenied) {
+		return ErrSession
+	}
+	return ErrDenied
+}
+
+type controlRequest struct {
+	issue      bool
+	provider   string
+	repository string
+	handle     string
+	bodyLength int
+}
+
+func (s *Session) serveControl(ctx context.Context, conn net.Conn, header []byte) error {
+	request, ok := parseControlHeader(header)
+	if !ok {
+		return denyInitial(conn, ctx)
+	}
+	body := make([]byte, request.bodyLength)
+	if request.bodyLength > 0 {
+		if _, err := io.ReadFull(conn, body); err != nil {
+			return denyInitial(conn, ctx)
+		}
+	}
+	if hasControlExtraByte(conn) {
+		return denyInitial(conn, ctx)
+	}
+	if request.issue {
+		provider, repository, ok := decodeIssueBody(body)
+		if !ok {
+			return denyInitial(conn, ctx)
+		}
+		handle, err := s.control.Issue(ctx, provider, repository)
+		if err != nil || !canonicalHandle(handle) {
+			return denyInitial(conn, ctx)
+		}
+		responseBody, err := json.Marshal(struct {
+			Handle string `json:"handle"`
+		}{Handle: handle})
+		if err != nil {
+			return denyInitial(conn, ctx)
+		}
+		response := "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: " + strconv.Itoa(len(responseBody)) + "\r\nConnection: close\r\n\r\n" + string(responseBody)
+		if err := setDeadline(conn, ctx); err != nil || !writeFixed(conn, response) {
+			return ErrSession
+		}
+		return nil
+	}
+	if err := s.control.Revoke(ctx, request.handle); err != nil {
+		return denyInitial(conn, ctx)
+	}
+	if err := setDeadline(conn, ctx); err != nil || !writeFixed(conn, controlNoContent) {
+		return ErrSession
+	}
+	return nil
+}
+
+func hasControlExtraByte(conn net.Conn) bool {
+	if err := conn.SetReadDeadline(time.Now().Add(10 * time.Millisecond)); err != nil {
+		return true
+	}
+	var one [1]byte
+	n, err := conn.Read(one[:])
+	if n != 0 {
+		return true
+	}
+	if errors.Is(err, io.EOF) {
+		return false
+	}
+	if timeout, ok := err.(net.Error); ok && timeout.Timeout() {
+		return false
+	}
+	return err != nil
+}
 func newPhaseContext(ctx context.Context) (context.Context, context.CancelFunc) {
 	return context.WithDeadline(ctx, phaseDeadline(ctx))
 }
@@ -178,7 +277,7 @@ func setDeadline(conn net.Conn, ctx context.Context) error {
 	return conn.SetDeadline(deadline)
 }
 
-func readConnect(conn net.Conn) ([]byte, string, bool) {
+func readInitialHeader(conn net.Conn) ([]byte, bool) {
 	data := make([]byte, 0, maxConnectHeader)
 	var one [1]byte
 	for len(data) < maxConnectHeader {
@@ -186,32 +285,183 @@ func readConnect(conn net.Conn) ([]byte, string, bool) {
 		if n == 1 {
 			data = append(data, one[0])
 			if len(data) >= 4 && bytes.Equal(data[len(data)-4:], []byte("\r\n\r\n")) {
-				parts := bytes.Split(data, []byte("\r\n"))
-				if len(parts) < 2 || len(parts[len(parts)-1]) != 0 {
-					return nil, "", false
-				}
-				line := strings.Split(string(parts[0]), " ")
-				if len(line) != 3 || line[0] != "CONNECT" || line[2] != "HTTP/1.1" {
-					return data, "", true
-				}
-				target := line[1]
-				switch target {
-				case githubHost + ":443":
-					target = githubHost
-				case openAIHost + ":443":
-					target = openAIHost
-				}
-				return data, target, true
+				return data, true
 			}
 		}
 		if err != nil {
-			return nil, "", false
+			return nil, false
 		}
 		if n != 1 {
-			return nil, "", false
+			return nil, false
 		}
 	}
-	return nil, "", false
+	return nil, false
+}
+
+func isConnectHeader(header []byte) bool {
+	line := firstRequestLine(header)
+	return strings.HasPrefix(line, "CONNECT ")
+}
+
+func connectTarget(header []byte) string {
+	line := strings.Split(firstRequestLine(header), " ")
+	if len(line) != 3 || line[0] != "CONNECT" || line[2] != "HTTP/1.1" {
+		return ""
+	}
+	switch line[1] {
+	case githubHost + ":443":
+		return githubHost
+	case openAIHost + ":443":
+		return openAIHost
+	default:
+		return ""
+	}
+}
+
+func firstRequestLine(header []byte) string {
+	if index := bytes.Index(header, []byte("\r\n")); index >= 0 {
+		return string(header[:index])
+	}
+	return ""
+}
+
+func parseControlHeader(header []byte) (controlRequest, bool) {
+	lines := bytes.Split(header, []byte("\r\n"))
+	if len(lines) < 4 || len(lines[len(lines)-1]) != 0 || len(lines[len(lines)-2]) != 0 {
+		return controlRequest{}, false
+	}
+	request := controlRequest{}
+	line := string(lines[0])
+	switch {
+	case line == "POST /v1/capabilities HTTP/1.1":
+		request.issue = true
+	case strings.HasPrefix(line, "DELETE /v1/capabilities/") && strings.HasSuffix(line, " HTTP/1.1"):
+		path := strings.TrimSuffix(strings.TrimPrefix(line, "DELETE /v1/capabilities/"), " HTTP/1.1")
+		if strings.ContainsAny(path, "/?#") || !canonicalHandle(path) {
+			return controlRequest{}, false
+		}
+		request.handle = path
+	default:
+		return controlRequest{}, false
+	}
+	seenLength, seenType := false, false
+	for _, raw := range lines[1 : len(lines)-2] {
+		if len(raw) == 0 || !validHeaderBytes(raw) {
+			return controlRequest{}, false
+		}
+		colon := bytes.IndexByte(raw, ':')
+		if colon <= 0 || !headerToken(raw[:colon]) || colon+2 > len(raw) || raw[colon+1] != ' ' {
+			return controlRequest{}, false
+		}
+		value := string(raw[colon+2:])
+		if value == "" || value[0] == ' ' || value[0] == '\t' || value[len(value)-1] == ' ' || value[len(value)-1] == '\t' {
+			return controlRequest{}, false
+		}
+		switch {
+		case strings.EqualFold(string(raw[:colon]), "Content-Length"):
+			if seenLength {
+				return controlRequest{}, false
+			}
+			length, ok := canonicalContentLength(value)
+			if !ok {
+				return controlRequest{}, false
+			}
+			request.bodyLength, seenLength = length, true
+		case strings.EqualFold(string(raw[:colon]), "Content-Type"):
+			if seenType || !request.issue || value != "application/json" {
+				return controlRequest{}, false
+			}
+			seenType = true
+		default:
+			return controlRequest{}, false
+		}
+	}
+	if !seenLength {
+		return controlRequest{}, false
+	}
+	if request.issue {
+		return request, seenType && request.bodyLength >= 1 && request.bodyLength <= maxControlBody
+	}
+	return request, !seenType && request.bodyLength == 0
+}
+
+func headerToken(value []byte) bool {
+	if len(value) == 0 {
+		return false
+	}
+	for _, char := range value {
+		if (char >= 'a' && char <= 'z') || (char >= 'A' && char <= 'Z') || (char >= '0' && char <= '9') || strings.ContainsRune("!#$%&'*+-.^_`|~", rune(char)) {
+			continue
+		}
+		return false
+	}
+	return true
+}
+
+func canonicalContentLength(value string) (int, bool) {
+	if value == "" || len(value) > 3 || len(value) > 1 && value[0] == '0' {
+		return 0, false
+	}
+	for index := 0; index < len(value); index++ {
+		if value[index] < '0' || value[index] > '9' {
+			return 0, false
+		}
+	}
+	parsed, err := strconv.Atoi(value)
+	return parsed, err == nil
+}
+
+func decodeIssueBody(body []byte) (string, string, bool) {
+	if len(body) == 0 || len(body) > maxControlBody || !utf8.Valid(body) {
+		return "", "", false
+	}
+	decoder := json.NewDecoder(bytes.NewReader(body))
+	token, err := decoder.Token()
+	if err != nil || token != json.Delim('{') {
+		return "", "", false
+	}
+	values := make(map[string]string, 2)
+	for decoder.More() {
+		keyToken, err := decoder.Token()
+		key, ok := keyToken.(string)
+		if err != nil || !ok || key != "provider" && key != "repository" {
+			return "", "", false
+		}
+		if _, duplicate := values[key]; duplicate {
+			return "", "", false
+		}
+		var value string
+		if err := decoder.Decode(&value); err != nil || value == "" {
+			return "", "", false
+		}
+		values[key] = value
+	}
+	if token, err = decoder.Token(); err != nil || token != json.Delim('}') {
+		return "", "", false
+	}
+	if _, err := decoder.Token(); err != io.EOF {
+		return "", "", false
+	}
+	provider, present := values["provider"]
+	if !present {
+		return "", "", false
+	}
+	repository, hasRepository := values["repository"]
+	if provider == "github" {
+		return provider, repository, hasRepository && len(values) == 2
+	}
+	if provider == "openai" {
+		return provider, "", !hasRepository && len(values) == 1
+	}
+	return "", "", false
+}
+
+func canonicalHandle(handle string) bool {
+	if len(handle) != len("cap_")+43 || !strings.HasPrefix(handle, "cap_") {
+		return false
+	}
+	raw, err := base64.RawURLEncoding.DecodeString(strings.TrimPrefix(handle, "cap_"))
+	return err == nil && len(raw) == 32 && "cap_"+base64.RawURLEncoding.EncodeToString(raw) == handle
 }
 
 func validConnect(header []byte, target string) bool {
