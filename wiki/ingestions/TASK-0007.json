@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "task_id": "TASK-0007",
+  "handover_sha256": "5893e246e2df684e4b007908a44553bf802d72728fba7934b178723da7757c85",
+  "ingested_at": "2026-08-02T10:10:43Z",
+  "updated_pages": [],
+  "created_decisions": [],
+  "deferred": [
+    "TASK-0007 is cancelled and replaced by TASK-0027, TASK-0028, and TASK-0029.",
+    "The HANDOVER remains draft/TODO and contributes no new knowledge; the replacement tasks have already been ingested."
+  ]
+}
