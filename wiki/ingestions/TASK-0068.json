@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "task_id": "TASK-0068",
+  "handover_sha256": "b31f7e45902878b10f2125dbc1b0c679759a1836c0eceb69fe47c3ee636ae0f5",
+  "ingested_at": "2026-08-02T04:55:58Z",
+  "updated_pages": [
+    "wiki/semantic/schemas/development-agent-harness-api-capability-client.md",
+    "wiki/semantic/schemas/development-agent-harness-capability-registry.md"
+  ],
+  "created_decisions": [],
+  "deferred": [
+    "launcher、environment、GH_TOKEN/OPENAI_API_KEY設定、child process、CA trust file、Git config、loopback bridge、実providerは未実装である。実credential、実GitHub/OpenAI、実gh/SDK、DNS/TLS、Unix socket permission/別UID、systemd/VPSは未確認であり、hermetic testのPASSで代替しない。"
+  ]
+}

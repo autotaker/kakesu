@@ -141,6 +141,16 @@
       ]
     },
     {
+      "path": "wiki/semantic/schemas/development-agent-harness-api-capability-client.md",
+      "kind": "schema",
+      "title": "Development Agent Harness API Capability Client",
+      "links": [
+        "../../../tasks/TASK-0068-api-capability-control-client/HANDOVER.md",
+        "development-agent-harness-capability-registry.md",
+        "development-agent-harness-git-credential-helper.md"
+      ]
+    },
+    {
       "path": "wiki/semantic/schemas/development-agent-harness-broker-credentials.md",
       "kind": "schema",
       "title": "Development Agent Harness ブローカー認証情報",
@@ -159,8 +169,10 @@
         "../../../tasks/TASK-0040-dev-agent-capability-registry/HANDOVER.md",
         "../../../tasks/TASK-0063-dev-agent-git-smart-http-read/HANDOVER.md",
         "../../../tasks/TASK-0065-git-credential-helper/HANDOVER.md",
+        "../../../tasks/TASK-0068-api-capability-control-client/HANDOVER.md",
         "development-agent-harness-egress-policy.md",
-        "development-agent-harness-git-credential-helper.md"
+        "development-agent-harness-git-credential-helper.md",
+        "development-agent-harness-api-capability-client.md"
       ]
     },
     {

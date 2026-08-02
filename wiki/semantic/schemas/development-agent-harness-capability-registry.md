@@ -23,7 +23,7 @@ callerへ返したraw handleはレジストリへ保存しない。mapのキー�
 - Git Smart HTTP read: 完全一致するlowercase `owner/repo`、`github-git-read`、`github.com`
 - OpenAI: リポジトリなし、`openai-responses-text`、`api.openai.com`
 
-callerは宛先ホストを任意指定して発行できない。既存GitHub RESTとOpenAIはoperation省略時の固定defaultを維持する一方、Git Smart HTTP readは明示`github-git-read` selectorでだけ発行する。発行はpeer-derived subject、同一repository、固定5分TTL、1回使用へ束縛する。request利用時はhandleに加えてsubject、workspace、プロバイダー、リポジトリ、操作、宛先ホストを正規化せず完全一致させる。
+callerは宛先ホストを任意指定して発行できない。GitHub RESTとOpenAIはoperation省略時の固定defaultを維持し、固定5分TTL・16回使用のAPI scopeを発行する。一方、Git Smart HTTP readは明示`github-git-read` selectorでだけ発行し、固定5分TTL・1回使用に保つ。使用回数はcaller入力ではなくtrusted operationから選ぶ。request利用時はhandleに加えてsubject、workspace、プロバイダー、リポジトリ、操作、宛先ホストを正規化せず完全一致させる。
 
 ## 原子的な利用と失効
 
@@ -40,5 +40,7 @@ callerは宛先ホストを任意指定して発行できない。既存GitHub R
 - [TASK-0040 HANDOVER](../../../tasks/TASK-0040-dev-agent-capability-registry/HANDOVER.md)
 - [TASK-0063 HANDOVER](../../../tasks/TASK-0063-dev-agent-git-smart-http-read/HANDOVER.md)
 - [TASK-0065 HANDOVER](../../../tasks/TASK-0065-git-credential-helper/HANDOVER.md)
+- [TASK-0068 HANDOVER](../../../tasks/TASK-0068-api-capability-control-client/HANDOVER.md)
 - [Development Agent Harness Egress Policy](development-agent-harness-egress-policy.md)
 - [Development Agent Harness Git Credential Helper](development-agent-harness-git-credential-helper.md)
+- [Development Agent Harness API Capability Client](development-agent-harness-api-capability-client.md)
