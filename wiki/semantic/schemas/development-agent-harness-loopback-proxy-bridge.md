@@ -23,10 +23,11 @@ slotは`Accept`より先に取得するため、上限中は追加connectionのa
 
 ## 適用限界
 
-launcher、child process/signal/environment lifecycle、CA trust file、Git設定は未実装である。実OS network namespace/loopback isolation、Unix socket permission/peer UID、実Git/`gh`/OpenAI clientのproxy対応、CA trust、systemd/VPSは未確認であり、hermetic testのPASSで代替しない。
+launcherはbridgeを一つのagent sessionへ束縛し、child process/signal/environment lifecycle、CA trust file、Git設定を所有する。詳細は[Development Agent Harness Agent Session Launcher](development-agent-harness-agent-session-launcher.md)を参照する。実OS network namespace/loopback isolation、Unix socket permission/peer UID、実Git/`gh`/OpenAI clientのproxy対応、CA trust、systemd/VPSはlive E2Eで未確認かつblockedであり、hermetic testのPASSで代替しない。
 
 ## 関連
 
 - [TASK-0067 HANDOVER](../../../tasks/TASK-0067-agent-loopback-proxy-bridge/HANDOVER.md)
 - [Development Agent Harness Egress Transaction](development-agent-harness-egress-transaction.md)
 - [Development Agent Harness Proxy CA](development-agent-harness-proxy-ca.md)
+- [Development Agent Harness Agent Session Launcher](development-agent-harness-agent-session-launcher.md)

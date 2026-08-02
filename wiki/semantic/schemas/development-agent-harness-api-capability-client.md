@@ -25,10 +25,11 @@ error又はdiagnosticはsocket、repository、handle、wire、lower-level error�
 
 peer-bound controllerはGitHub REST readとOpenAI Responses textのAPI scopeへ固定16 usesを発行し、16回目の正規consume後のremainingは0、17回目は拒否する。Git Smart HTTP readは1 useのままである。subject、workspace、provider、repository、operation、destinationのmismatchは拒否され、budgetを消費しない。
 
-launcher、environment、`GH_TOKEN`/`OPENAI_API_KEY`設定、child process、CA trust file、Git config、loopback bridge、実providerは実装していない。実credential、実GitHub/OpenAI、実`gh`/SDK、DNS/TLS、Unix socket permission/別UID、systemd/VPSは未確認であり、hermetic testのPASSで代替しない。
+launcherはAPI handleをchild environmentの`GH_TOKEN`/`OPENAI_API_KEY`へ束縛し、CA trust file、Git config、loopback bridgeをsession lifecycleとして構成する。詳細は[Development Agent Harness Agent Session Launcher](development-agent-harness-agent-session-launcher.md)を参照する。実credential、実GitHub/OpenAI、実`gh`/SDK、DNS/TLS、Unix socket permission/別UID、systemd/VPSはlive E2Eで未確認かつblockedであり、hermetic testのPASSで代替しない。
 
 ## 関連
 
 - [TASK-0068 HANDOVER](../../../tasks/TASK-0068-api-capability-control-client/HANDOVER.md)
 - [Development Agent Harness Capability Registry](development-agent-harness-capability-registry.md)
 - [Development Agent Harness Git Credential Helper](development-agent-harness-git-credential-helper.md)
+- [Development Agent Harness Agent Session Launcher](development-agent-harness-agent-session-launcher.md)

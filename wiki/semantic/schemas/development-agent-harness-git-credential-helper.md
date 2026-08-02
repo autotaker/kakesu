@@ -29,7 +29,7 @@ clientはconfigure済み`runstatedir/dev-agent-harness/egress.sock`からlink時
 
 helperはGit config、`credential.useHttpPath`、proxy/CA environment、launcher、clone/fetch/pull、push、credentialのdisk/cache/state保存を変更しない。GitHub App tokenの取得・置換、Capability Registry/control server、Smart HTTP policyも所有しない。発行したhandleの利用時の実token置換とallowlist再検証は既存egress transactionの境界に残る。
 
-hermetic stream、fake dialer、`net.Pipe`の確認はwire、順序、上限、close/deadline、拒否、非漏洩を対象とする。実配置socket、実Git invocation、別UID、GitHub、DNS/TLS、systemd/VPS、launcher/trust-file lifecycle、restart/rollback/cleanupはlive E2Eとして未実装・未確認であり、hermetic PASSで代替しない。
+hermetic stream、fake dialer、`net.Pipe`の確認はwire、順序、上限、close/deadline、拒否、非漏洩を対象とする。launcherはfixed helperとtrust-file lifecycleをagent sessionへ構成する。詳細は[Development Agent Harness Agent Session Launcher](development-agent-harness-agent-session-launcher.md)を参照する。実配置socket、実Git invocation、別UID、GitHub、DNS/TLS、systemd/VPS、実clientでのtrust、restart/rollback/cleanupはlive E2Eで未確認かつblockedであり、hermetic PASSで代替しない。
 
 ## 関連
 
@@ -37,3 +37,4 @@ hermetic stream、fake dialer、`net.Pipe`の確認はwire、順序、上限、c
 - [TASK-0066 HANDOVER](../../../tasks/TASK-0066-proxy-ca-control-client/HANDOVER.md)
 - [Development Agent Harness Capability Registry](development-agent-harness-capability-registry.md)
 - [Development Agent Harness Egress Transaction](development-agent-harness-egress-transaction.md)
+- [Development Agent Harness Agent Session Launcher](development-agent-harness-agent-session-launcher.md)

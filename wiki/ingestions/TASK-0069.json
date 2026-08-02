@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "task_id": "TASK-0069",
+  "handover_sha256": "25fd07a7bcecdbaf1d97a6f935718fcfe28bf41706c59dfb732ccf2834ed1bbe",
+  "ingested_at": "2026-08-02T05:52:23Z",
+  "updated_pages": [
+    "wiki/semantic/schemas/development-agent-harness-agent-session-launcher.md",
+    "wiki/semantic/schemas/development-agent-harness-loopback-proxy-bridge.md",
+    "wiki/semantic/schemas/development-agent-harness-api-capability-client.md",
+    "wiki/semantic/schemas/development-agent-harness-git-credential-helper.md",
+    "wiki/semantic/schemas/development-agent-harness-proxy-ca.md"
+  ],
+  "created_decisions": [],
+  "deferred": [
+    "実credential、実Git/gh/Codex/OpenAI client、DNS/TLS、OS default-deny firewall/network namespace、loopback isolation、Unix socket ownership/peer UID、systemd/VPSの配置・restart・rollback・cleanupはlive E2Eで未実施かつblockedであり、hermetic testのPASSで代替しない。"
+  ]
+}

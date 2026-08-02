@@ -141,13 +141,27 @@
       ]
     },
     {
+      "path": "wiki/semantic/schemas/development-agent-harness-agent-session-launcher.md",
+      "kind": "schema",
+      "title": "Development Agent Harness Agent Session Launcher",
+      "links": [
+        "../../../tasks/TASK-0069-agent-session-launcher/HANDOVER.md",
+        "development-agent-harness-loopback-proxy-bridge.md",
+        "development-agent-harness-api-capability-client.md",
+        "development-agent-harness-git-credential-helper.md",
+        "development-agent-harness-proxy-ca.md"
+      ]
+    },
+    {
       "path": "wiki/semantic/schemas/development-agent-harness-api-capability-client.md",
       "kind": "schema",
       "title": "Development Agent Harness API Capability Client",
       "links": [
+        "development-agent-harness-agent-session-launcher.md",
         "../../../tasks/TASK-0068-api-capability-control-client/HANDOVER.md",
         "development-agent-harness-capability-registry.md",
-        "development-agent-harness-git-credential-helper.md"
+        "development-agent-harness-git-credential-helper.md",
+        "development-agent-harness-agent-session-launcher.md"
       ]
     },
     {
@@ -220,10 +234,12 @@
       "kind": "schema",
       "title": "Development Agent Harness Git Credential Helper",
       "links": [
+        "development-agent-harness-agent-session-launcher.md",
         "../../../tasks/TASK-0065-git-credential-helper/HANDOVER.md",
         "../../../tasks/TASK-0066-proxy-ca-control-client/HANDOVER.md",
         "development-agent-harness-capability-registry.md",
-        "development-agent-harness-egress-transaction.md"
+        "development-agent-harness-egress-transaction.md",
+        "development-agent-harness-agent-session-launcher.md"
       ]
     },
     {
@@ -231,9 +247,11 @@
       "kind": "schema",
       "title": "Development Agent Harness Loopback Proxy Bridge",
       "links": [
+        "development-agent-harness-agent-session-launcher.md",
         "../../../tasks/TASK-0067-agent-loopback-proxy-bridge/HANDOVER.md",
         "development-agent-harness-egress-transaction.md",
-        "development-agent-harness-proxy-ca.md"
+        "development-agent-harness-proxy-ca.md",
+        "development-agent-harness-agent-session-launcher.md"
       ]
     },
     {
@@ -260,11 +278,13 @@
       "kind": "schema",
       "title": "Development Agent Harness Proxy CA",
       "links": [
+        "development-agent-harness-agent-session-launcher.md",
         "../../../tasks/TASK-0050-dev-agent-proxy-ca/HANDOVER.md",
         "../../../tasks/TASK-0063-dev-agent-git-smart-http-read/HANDOVER.md",
         "../../../tasks/TASK-0066-proxy-ca-control-client/HANDOVER.md",
         "development-agent-harness-egress-transaction.md",
-        "development-agent-harness-egress-policy.md"
+        "development-agent-harness-egress-policy.md",
+        "development-agent-harness-agent-session-launcher.md"
       ]
     },
     {

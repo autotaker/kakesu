@@ -29,7 +29,7 @@ serverはresponse前に、clientはserver実装と別にresponse後に、単一c
 
 ## 適用限界
 
-この境界はCA file lifecycle、OS trust store、launcherによるtrust file、listener、CONNECT、SNI routing、実client、実VPS、実GitHub/OpenAIへの接続を実装又は確認しない。hermetic TLS/control testのPASSは、それらのlive E2E、実配置、restart、rollback又はcleanupの証拠にならない。
+launcherはpublic CA copyをsession専用の0600 trust fileへ置き、childへCA trust変数を設定する。詳細は[Development Agent Harness Agent Session Launcher](development-agent-harness-agent-session-launcher.md)を参照する。この境界はOS trust store、listener、CONNECT、SNI routing、実client、実VPS、実GitHub/OpenAIへの接続を実装又は確認しない。hermetic TLS/control testのPASSは、それらのlive E2E、実配置、restart、rollback又はcleanupの証拠にならない。
 
 ## 関連
 
@@ -38,3 +38,4 @@ serverはresponse前に、clientはserver実装と別にresponse後に、単一c
 - [TASK-0066 HANDOVER](../../../tasks/TASK-0066-proxy-ca-control-client/HANDOVER.md)
 - [Development Agent Harness Egress Transaction](development-agent-harness-egress-transaction.md)
 - [Development Agent Harness Egress Policy](development-agent-harness-egress-policy.md)
+- [Development Agent Harness Agent Session Launcher](development-agent-harness-agent-session-launcher.md)
