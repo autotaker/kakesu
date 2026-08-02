@@ -1280,11 +1280,11 @@ tasks:
       reviewer: reviewer-agent-terra-medium
       qa: qa-agent-terra-medium
   - id: TASK-0070
-    title: Push承認manifestのcanonical境界を実装する
+    title: Push承認manifestのcanonical境界を実装する（TASK-0074で廃止）
     type: feature
     change_class: product
     epic: EPIC-001
-    status: plan
+    status: cancelled
     priority: P1
     estimate_points: 1
     task_dir: tasks/TASK-0070-push-approval-manifest
@@ -1347,6 +1347,24 @@ tasks:
     depends_on: []
     branch: task/TASK-0073-verified-decision-coordinator
     worktree: worktrees/TASK-0073-verified-decision-coordinator
+    assignees:
+      main: main-agent-sol-high
+      planner: planner-agent-terra-medium
+      dev: dev-agent-sol-high
+      reviewer: reviewer-agent-terra-medium
+      qa: qa-agent-terra-medium
+  - id: TASK-0074
+    title: Push承認と薄いproxyへ安全契約を簡素化する
+    type: chore
+    change_class: safety_contract
+    epic: EPIC-001
+    status: plan
+    priority: P0
+    estimate_points: 1
+    task_dir: tasks/TASK-0074-simplify-push-approval-and-proxy-contract
+    depends_on: []
+    branch: task/TASK-0074-simplify-push-approval-and-proxy-contract
+    worktree: worktrees/TASK-0074-simplify-push-approval-and-proxy-contract
     assignees:
       main: main-agent-sol-high
       planner: planner-agent-terra-medium
