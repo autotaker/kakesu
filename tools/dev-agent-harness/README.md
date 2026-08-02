@@ -426,3 +426,23 @@ Git readはupload-pack discoveryとPOSTだけを許可し、receive-pack/push、
 固定で情報を漏らさない 拒否 とし、ロールバック/再試行 は行わない。認証情報
 ストア、ファイル、environment、プロセス、HTTP 転送方式、ネットワーク、DNS、TLS は
 この パッケージ の対象外である。
+
+## 承認リクエスト状態
+
+`internal/approvalstate`は、ブローカーオーナーが用意した`0700`の既存ディレクトリで
+正規承認manifestを永続管理する単一書込み主体のストアである。状態は`pending`、`approved`、`denied`、
+`cancelled`、`expired`、`stale`の6種だけで、期限到達は判断より優先される。manifestは保存前と
+再起動時に`approvalmanifest.Parse`で再検証され、ポリシーバージョン、失効世代、TTL、
+リクエストID、ダイジェストに束縛される。
+
+Linux/Darwinではプロセス間のnon-blocking exclusiveロックを保持する。スナップショットは
+リクエストID順の正規JSONとし、`0600`一時ファイルへの全書込み、ファイル同期、同一名への原子的置換、
+ディレクトリ同期が成功した後だけメモリー状態を更新する。置換結果が不確実な失敗、または置換後の
+ディレクトリ同期failureはストアをpoisonし、`Close`、再`Open`、上位照合まで成功を推測しない。
+getterはmanifestと記録一覧をコピーし、固定エラーclassはパス、ID、ダイジェスト、manifest、
+下位OSエラーを公開しない。
+
+`Approve`と`Deny`に渡す判断者IDは上位層で本人確認済みであることが前提であり、このパッケージは
+Passkey/WebAuthnを検証しない。`approved`は永続判断にすぎず、許可、push権限、実push、
+消費完了のいずれも意味しない。実配置の作成/chown、OS/プロセス境界、systemd restart/ロールバック、
+通知、スマートフォン承認、許可発行とpush照合は後続Taskで接続し、承認済み環境で確認する。
