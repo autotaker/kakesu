@@ -25,7 +25,7 @@ verifierにはimmutable bindingとcopyしたassertion bytesだけを渡す。成
 
 `Close`はpending challengeを破棄する。challengeはdisk、log、環境変数、外部DBへ保存しないため、restart相当の新managerは旧tokenを復元せず拒否する。このin-memory fail-closed特性はmulti-process/host共有、durable recovery、backupを提供しない。
 
-verified resultはWebAuthnのclientData/authenticatorData/signature、RP ID hash、origin、UV flag、counterを暗号学的に検証済みとは意味しない。また、[Approval Request Store](development-agent-harness-approval-request-store.md)の`approved`/`denied` mutation、Tailscale identity、verified-decision API、grant発行・消費、push authorization又は実pushを意味しない。これらは信頼されたverifierと別の上位境界が明示的に接続・検証する。
+verified resultはWebAuthnのclientData/authenticatorData/signature、RP ID hash、origin、UV flag、counterを暗号学的に検証済みとは意味しない。また、[Approval Request Store](development-agent-harness-approval-request-store.md)の`approved`/`denied` mutation、Tailscale identity、grant発行・消費、push authorization又は実pushを意味しない。[Verified Decision Coordinator](development-agent-harness-verified-decision-coordinator.md)がtrusted verifierの結果を一回の`Consume`後にexact durable transitionへ接続するが、これらの上位境界は明示的に別途接続・検証する。
 
 ## 適用限界
 
@@ -35,4 +35,5 @@ verified resultはWebAuthnのclientData/authenticatorData/signature、RP ID hash
 
 - [TASK-0072 HANDOVER](../../../tasks/TASK-0072-passkey-challenge-lifecycle/HANDOVER.md)
 - [Approval Request Store](development-agent-harness-approval-request-store.md)
+- [Verified Decision Coordinator](development-agent-harness-verified-decision-coordinator.md)
 - [Push Approval Manifest](development-agent-harness-push-approval-manifest.md)

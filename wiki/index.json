@@ -171,9 +171,11 @@
       "links": [
         "development-agent-harness-push-approval-manifest.md",
         "development-agent-harness-passkey-challenge-lifecycle.md",
+        "development-agent-harness-verified-decision-coordinator.md",
         "../../../tasks/TASK-0071-approval-request-store/HANDOVER.md",
         "development-agent-harness-push-approval-manifest.md",
-        "development-agent-harness-passkey-challenge-lifecycle.md"
+        "development-agent-harness-passkey-challenge-lifecycle.md",
+        "development-agent-harness-verified-decision-coordinator.md"
       ]
     },
     {
@@ -272,8 +274,10 @@
       "title": "Development Agent Harness Passkey Challenge Lifecycle",
       "links": [
         "development-agent-harness-approval-request-store.md",
+        "development-agent-harness-verified-decision-coordinator.md",
         "../../../tasks/TASK-0072-passkey-challenge-lifecycle/HANDOVER.md",
         "development-agent-harness-approval-request-store.md",
+        "development-agent-harness-verified-decision-coordinator.md",
         "development-agent-harness-push-approval-manifest.md"
       ]
     },
@@ -321,6 +325,16 @@
         "development-agent-harness-approval-request-store.md",
         "development-agent-harness-passkey-challenge-lifecycle.md",
         "development-agent-harness-egress-transaction.md"
+      ]
+    },
+    {
+      "path": "wiki/semantic/schemas/development-agent-harness-verified-decision-coordinator.md",
+      "kind": "schema",
+      "title": "Development Agent Harness Verified Decision Coordinator",
+      "links": [
+        "../../../tasks/TASK-0073-verified-decision-coordinator/HANDOVER.md",
+        "development-agent-harness-approval-request-store.md",
+        "development-agent-harness-passkey-challenge-lifecycle.md"
       ]
     },
     {

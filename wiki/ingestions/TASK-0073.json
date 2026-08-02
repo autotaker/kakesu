@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "task_id": "TASK-0073",
+  "handover_sha256": "93efd786a7d9fa1c6501bb92f2794391302425c923fb059081265ef33c9928a8",
+  "ingested_at": "2026-08-02T08:56:43Z",
+  "updated_pages": [
+    "wiki/semantic/schemas/development-agent-harness-verified-decision-coordinator.md",
+    "wiki/semantic/schemas/development-agent-harness-approval-request-store.md",
+    "wiki/semantic/schemas/development-agent-harness-passkey-challenge-lifecycle.md"
+  ],
+  "created_decisions": [],
+  "deferred": [
+    "trusted verifierはactual WebAuthnの暗号学的検証、credential lifecycle又はTailscale identityを実装済みとは意味せず、これらは後続の明示的なproduction wiringとlive E2Eで確認する。",
+    "durable approved/deniedはaudit、grant、push authorization又は実push成功へ昇格しない。HTTP/UI/session/CSRF、実WebAuthn authenticator、Tailscale、外部作用、deployment/restart/rollbackは未実装・未確認である。"
+  ]
+}
