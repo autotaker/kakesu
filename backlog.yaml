@@ -1139,3 +1139,21 @@ tasks:
       dev: dev-agent-sol-high
       reviewer: reviewer-agent-terra-medium
       qa: qa-agent-terra-medium
+  - id: TASK-0063
+    title: Git Smart HTTP readを限定許可する
+    type: feature
+    change_class: product
+    epic: EPIC-001
+    status: dev
+    priority: P1
+    estimate_points: 1
+    task_dir: tasks/TASK-0063-dev-agent-git-smart-http-read
+    depends_on: []
+    branch: task/TASK-0063-dev-agent-git-smart-http-read
+    worktree: worktrees/TASK-0063-dev-agent-git-smart-http-read
+    assignees:
+      main: main-agent-sol-high
+      planner: planner-agent-terra-medium
+      dev: dev-agent-sol-high
+      reviewer: reviewer-agent-terra-medium
+      qa: qa-agent-terra-medium
