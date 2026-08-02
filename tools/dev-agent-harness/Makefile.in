@@ -30,6 +30,7 @@ DIST_DIR = .dist
 PACKAGE_TARNAME = dev-agent-harness-$(PACKAGE_VERSION)
 MODULE = github.com/autotaker/kakesu/tools/dev-agent-harness
 LDFLAGS = -X $(MODULE)/internal/command.Version=$(PACKAGE_VERSION)
+GIT_CREDENTIAL_SOCKET = $(runstatedir)/dev-agent-harness/egress.sock
 
 LIBEXEC_PROGRAMS = dev-agent-approval dev-agent-broker dev-agent-egress dev-agent-launcher
 BIN_PROGRAMS = git-credential-dev-agent
@@ -49,6 +50,8 @@ all: $(PROGRAM_TARGETS)
 $(BUILD_DIR)/%: $(GO_SOURCES)
 	$(MKDIR_P) $(BUILD_DIR) $(GOCACHE)
 	GOCACHE=$(GOCACHE) CGO_ENABLED=0 $(GO) build $(GOFLAGS) -ldflags '$(LDFLAGS)' -o $@ ./cmd/$*
+
+$(BUILD_DIR)/git-credential-dev-agent: LDFLAGS += -X $(MODULE)/internal/gitcredential.socketPath=$(GIT_CREDENTIAL_SOCKET)
 
 check: check-unit check-binaries check-live
 
