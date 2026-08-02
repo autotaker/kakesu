@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "task_id": "TASK-0071",
+  "handover_sha256": "82f1f5299ed0383d9b3d4e2cdc35e931184c6000dd228833c461b162f8827314",
+  "ingested_at": "2026-08-02T07:41:06Z",
+  "updated_pages": [
+    "wiki/semantic/schemas/development-agent-harness-approval-request-store.md",
+    "wiki/semantic/schemas/development-agent-harness-push-approval-manifest.md"
+  ],
+  "created_decisions": [],
+  "deferred": [
+    "実UID・/var/lib permission、systemd provision/restart/rollback、actual power-loss durability、network filesystem、backup/rotationは未確認であり、hermetic store検査のPASSで代替しない。",
+    "Passkey/WebAuthn検証、verified decision APIへ到達できるOS/process境界、grantの署名・発行・consuming/consumed/indeterminate遷移、実pushとreconciliationは後続境界であり、このstoreはauthorizationを発行しない。"
+  ]
+}

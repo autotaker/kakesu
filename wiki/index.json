@@ -165,6 +165,16 @@
       ]
     },
     {
+      "path": "wiki/semantic/schemas/development-agent-harness-approval-request-store.md",
+      "kind": "schema",
+      "title": "Development Agent Harness Approval Request Store",
+      "links": [
+        "development-agent-harness-push-approval-manifest.md",
+        "../../../tasks/TASK-0071-approval-request-store/HANDOVER.md",
+        "development-agent-harness-push-approval-manifest.md"
+      ]
+    },
+    {
       "path": "wiki/semantic/schemas/development-agent-harness-broker-credentials.md",
       "kind": "schema",
       "title": "Development Agent Harness ブローカー認証情報",
@@ -292,7 +302,9 @@
       "kind": "schema",
       "title": "Development Agent Harness Push Approval Manifest",
       "links": [
+        "development-agent-harness-approval-request-store.md",
         "../../../tasks/TASK-0070-push-approval-manifest/HANDOVER.md",
+        "development-agent-harness-approval-request-store.md",
         "development-agent-harness-egress-transaction.md"
       ]
     },
