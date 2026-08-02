@@ -12,8 +12,85 @@ import {
   validateDevSelection,
 } from "./agent-routing.mjs";
 import { runWorkConfigSync } from "./run-work-config-sync.mjs";
+import { runDocLints } from "../run-doc-lints.mjs";
 
 const REPO_ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), "../..");
+
+function fakeDocLintSpawn(outcomes, calls) {
+  return (command, args, options) => {
+    calls.push({ command, args, options });
+    const outcome = outcomes[calls.length - 1];
+    if (outcome instanceof Error) throw outcome;
+    return outcome ?? { status: 0 };
+  };
+}
+
+function assertDocLintCalls(calls) {
+  assert.deepEqual(calls.map(({ command, args }) => [command, ...args]), [
+    ["fake-uv", "run", "--project", "memory", "python", "scripts/validate-terminology.py"],
+    ["fake-pnpm", "lint:docs"],
+    ["git", "diff", "--check"],
+  ]);
+  assert.equal(calls.length, 3);
+  assert.ok(calls.every(({ options }) => options.shell === false && options.stdio === "inherit"));
+  assert.equal(calls[0].options.env.UV_CACHE_DIR, "/tmp/fake-uv-cache");
+}
+
+test("doc lint runner aggregates failures without skipping fixed checks", async (t) => {
+  await t.test("first failure continues to later checks", () => {
+    const calls = [];
+    const status = runDocLints({
+      uv: "fake-uv",
+      pnpm: "fake-pnpm",
+      uvCacheDir: "/tmp/fake-uv-cache",
+      spawn: fakeDocLintSpawn([{ status: 4 }, { status: 0 }, { status: 0 }], calls),
+    });
+    assert.equal(status, 1);
+    assertDocLintCalls(calls);
+  });
+
+  await t.test("multiple failures remain one aggregated failure", () => {
+    const calls = [];
+    const status = runDocLints({
+      uv: "fake-uv",
+      pnpm: "fake-pnpm",
+      uvCacheDir: "/tmp/fake-uv-cache",
+      spawn: fakeDocLintSpawn([{ status: 1 }, { status: 2 }, { status: 0 }], calls),
+    });
+    assert.equal(status, 1);
+    assert.equal(calls.length, 3);
+  });
+
+  await t.test("all checks passing returns zero", () => {
+    const calls = [];
+    const status = runDocLints({
+      uv: "fake-uv",
+      pnpm: "fake-pnpm",
+      uvCacheDir: "/tmp/fake-uv-cache",
+      spawn: fakeDocLintSpawn([{ status: 0 }, { status: 0 }, { status: 0 }], calls),
+    });
+    assert.equal(status, 0);
+    assertDocLintCalls(calls);
+  });
+
+  await t.test("spawn error continues and returns non-zero", () => {
+    for (const failure of [{ error: new Error("missing fake uv") }, new Error("fake spawn throw")]) {
+      const calls = [];
+      const reports = [];
+      const status = runDocLints({
+        uv: "fake-uv",
+        pnpm: "fake-pnpm",
+        uvCacheDir: "/tmp/fake-uv-cache",
+        report: () => reports.push("doc lint command failed to start"),
+        spawn: fakeDocLintSpawn([failure, { status: 0 }, { status: 0 }], calls),
+      });
+      assert.equal(status, 1);
+      assertDocLintCalls(calls);
+      assert.deepEqual(reports, ["doc lint command failed to start"]);
+      assert.doesNotMatch(reports[0], /fake-uv|missing fake uv|fake spawn throw/);
+    }
+  });
+});
 
 test("resolveInside rejects absolute and traversing paths", () => {
   assert.equal(resolveInside("/tmp/work", "tasks/TASK-0001-a"), "/tmp/work/tasks/TASK-0001-a");
