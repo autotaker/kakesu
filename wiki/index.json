@@ -158,7 +158,9 @@
       "links": [
         "../../../tasks/TASK-0040-dev-agent-capability-registry/HANDOVER.md",
         "../../../tasks/TASK-0063-dev-agent-git-smart-http-read/HANDOVER.md",
-        "development-agent-harness-egress-policy.md"
+        "../../../tasks/TASK-0065-git-credential-helper/HANDOVER.md",
+        "development-agent-harness-egress-policy.md",
+        "development-agent-harness-git-credential-helper.md"
       ]
     },
     {
@@ -199,6 +201,16 @@
         "development-agent-harness-egress-policy.md",
         "development-agent-harness-capability-registry.md",
         "development-agent-harness-proxy-ca.md"
+      ]
+    },
+    {
+      "path": "wiki/semantic/schemas/development-agent-harness-git-credential-helper.md",
+      "kind": "schema",
+      "title": "Development Agent Harness Git Credential Helper",
+      "links": [
+        "../../../tasks/TASK-0065-git-credential-helper/HANDOVER.md",
+        "development-agent-harness-capability-registry.md",
+        "development-agent-harness-egress-transaction.md"
       ]
     },
     {

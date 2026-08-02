@@ -39,4 +39,6 @@ callerは宛先ホストを任意指定して発行できない。既存GitHub R
 
 - [TASK-0040 HANDOVER](../../../tasks/TASK-0040-dev-agent-capability-registry/HANDOVER.md)
 - [TASK-0063 HANDOVER](../../../tasks/TASK-0063-dev-agent-git-smart-http-read/HANDOVER.md)
+- [TASK-0065 HANDOVER](../../../tasks/TASK-0065-git-credential-helper/HANDOVER.md)
 - [Development Agent Harness Egress Policy](development-agent-harness-egress-policy.md)
+- [Development Agent Harness Git Credential Helper](development-agent-harness-git-credential-helper.md)

@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "task_id": "TASK-0065",
+  "handover_sha256": "44ed21e8e8fecc2ee87ddf67470216806bc1f4b457eae38de898b4ca2ec5c58b",
+  "ingested_at": "2026-08-02T03:04:04Z",
+  "updated_pages": [
+    "wiki/semantic/schemas/development-agent-harness-git-credential-helper.md",
+    "wiki/semantic/schemas/development-agent-harness-capability-registry.md"
+  ],
+  "created_decisions": [],
+  "deferred": [
+    "実配置socket、実Git helper invocation、別UID、GitHub、DNS/TLS、systemd/VPS、および実配置のrestart/rollback/cleanupはlive E2Eとして未確認であり、hermetic testのPASSで代替しない。"
+  ]
+}
