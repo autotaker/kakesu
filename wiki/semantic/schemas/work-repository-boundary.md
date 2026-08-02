@@ -21,7 +21,7 @@ title: Work Repository Boundary
 - 運用リポジトリは`main`一本で運用する。
 - 運用リポジトリへの公開はMainが共通lockで直列化する。
 - Wiki AgentはMain指定のWiki本文だけを編集する。標準起動は`agents.spawn_agent(agent_type="wiki")`であり、独立`codex exec` launcherは使わない。
-- Mainが許可path、差分scope、索引生成が必要な場合の実行、検証、stage、commit、pushを所有する。Wiki Agentはlock、検証、Git操作又は`.git`書込みを行わない。
+- Mainが許可path、dirty Wiki差分の入力scope、同一common lock内の索引生成、最終scopeと`work-check`、ステージング、単一commit、pushを所有する。standalone `wiki-index`は保守用generatorである。Wiki Agentはlock、検証、Git操作又は`.git`書込みを行わない。
 - Wiki receiptは明示的ingest時だけの任意成果物であり、Wiki依頼がないTaskの完了条件ではない。
 
 ## 関連

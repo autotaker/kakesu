@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "task_id": "TASK-0062",
+  "handover_sha256": "7cce159152b41fa2feb862b5036ea1f3fa09fb1f6f9cc03f8af9ae7c59ae5be9",
+  "ingested_at": "2026-08-02T10:18:32Z",
+  "updated_pages": [
+    "wiki/semantic/scripts/wiki-ingestion.md",
+    "wiki/semantic/schemas/work-repository-boundary.md"
+  ],
+  "created_decisions": [],
+  "deferred": []
+}

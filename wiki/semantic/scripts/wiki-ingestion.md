@@ -13,8 +13,8 @@ Mainが明示したWiki ingestだけを対象にする。Wiki依頼がないTask
 
 1. Mainが対象Taskと編集許可Wiki pathを固定し、標準`agents.spawn_agent(agent_type="wiki")`で編集専用Wiki Agentを一件ずつ直列に起動する。
 2. Wiki AgentがHANDOVERと関連証跡を読み、指定pathだけへ最小の知識更新を行う。独立`codex exec` launcherは使わない。
-3. Mainが差分scopeを確認し、必要な索引生成・検証を実行する。
-4. Mainだけが共通lock付きpublish transaction、stage、commit、pushを所有する。
+3. Mainがdirty Wiki差分の入力scopeを確認し、同じ共通lock内で索引を生成してから最終scopeと`work-check`を確認する。standalone `wiki-index`は保守用generatorであり、標準公開経路には使わない。
+4. Mainだけがこのpublish transactionでステージング、単一commit、pushを所有する。
 
 ## 典型的な失敗
 
