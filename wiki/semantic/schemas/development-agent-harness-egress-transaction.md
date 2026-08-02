@@ -13,17 +13,19 @@ HTTPの許可判断、Opaque ケイパビリティの一回消費、実認証情
 
 `egresspolicy.Policy.Evaluate`は、HTTP許可判断と同じ評価からプロバイダー、リポジトリ、操作、宛先ホストを返す。外向き通信トランザクションはURLを再解析せず、この正規スコープをそのままケイパビリティの完全一致検証へ渡す。
 
-GitHub REST readでは`github`、`owner/repo`、`github-rest-read`、`api.github.com`、OpenAI Responses textでは`openai`、リポジトリなし、`openai-responses-text`、`api.openai.com`となる。拒否時は空スコープと固定errorだけを返す。従来の`Authorize`は同じ評価へ委譲し、既存のdecision/error契約を維持する。
+GitHub REST readでは`github`、`owner/repo`、`github-rest-read`、`api.github.com`、Git Smart HTTP readでは`github`、`owner/repo`、`github-git-read`、`github.com`、OpenAI Responses textでは`openai`、リポジトリなし、`openai-responses-text`、`api.openai.com`となる。拒否時は空スコープと固定errorだけを返す。従来の`Authorize`は同じ評価へ委譲し、既存のdecision/error契約を維持する。
 
 ## 秘密処理へ到達する順序
 
 `egresstransaction.Transaction.Execute`は、次の順序を固定する。
 
 1. HTTP allowlistを評価する。
-2. プロバイダーごとに許したAuthorization値を一つだけ抽出する。
+2. scopeごとに許したAuthorization値を一つだけ抽出する。
 3. 正規スコープとAgent主体を完全一致させてケイパビリティを一回消費する。
 4. trusted resolverから実認証情報を一回だけ取得し、長さとvisible ASCIIを検証する。
-5. 上流用Bearerへ置換したリクエストをtrusted Forwarderへ同期的に一回だけ渡す。
+5. 上流用認証情報へ置換したリクエストをtrusted Forwarderへ同期的に一回だけ渡す。
+
+Git Smart HTTP readだけは、Agentが提示したcanonical HTTP Basicの`x-access-token:cap_...`からOpaque handleを抽出する。consume成功後にresolverを一回だけ呼び、upstreamには`x-access-token:<real token>`のHTTP Basicだけを一回送る。REST/OpenAIのBearer/token契約はこの分岐で変更しない。malformed又は重複Authorization、scope/subject不一致、reuse、resolver失敗ではhandle、実token、URL又は下位errorを応答・診断・Forwarderへ渡さない。
 
 policy又はAuthorizationの拒否ではケイパビリティ、resolver、Forwarderへ到達しない。ケイパビリティ拒否ではresolverとForwarderへ到達しない。resolver又はForwarderが失敗しても消費済みケイパビリティを戻さず、同じ試行を再実行しない。
 
@@ -35,13 +37,13 @@ Credential-bearingな`PreparedRequest`は、Transactionへ注入されたbroker�
 
 ForwarderがGitHub又はOpenAIへ送る最初の接続境界には、固定allowlistの`http.RoundTripper`を注入する。transportはoriginと`Request.Host`をDNS前に照合し、resolverの全answerを検査して、一件でもunsafeなaddressを含む集合を拒否する。安全なanswerだけの場合も、検査済みIP literalの443番だけへdialし、元hostnameをTLSのSNIと証明書検証に使う。
 
-このtransportは一request一接続で、環境proxy、keep-alive、自動compression、HTTP/2、redirect、retryを持たない。TCP接続失敗時だけ未使用の検査済みIPへ進めるが、TLS handshake又はHTTP送信開始後は再dialしない。TLS 1.2未満又はHTTP/1.1以外、失敗response、下位のDNS/TLS/socket detailは公開せず、失敗時のbodyはtransportがcloseする。
+このtransportは一request一接続で、環境proxy、keep-alive、自動compression、HTTP/2、redirect、retryを持たない。`github.com[:443]`を含む許可authorityはport-free hostnameへ正規化してからDNS、IP literal `:443` dial、TLS SNI、証明書検証に使う。TCP接続失敗時だけ未使用の検査済みIPへ進めるが、TLS handshake又はHTTP送信開始後は再dialしない。TLS 1.2未満又はHTTP/1.1以外、失敗response、下位のDNS/TLS/socket detailは公開せず、失敗時のbodyはtransportがcloseする。
 
 ## Forwarderで再検証して縮退する応答
 
 `internal/upstreamforwarder`は`PreparedRequest`を受けた後、transportへ渡す前に同じpolicyでrequestを再評価し、正規scopeの完全一致と上流Bearerを再検証する。GitHub GET/HEADは空Content-Typeかつ空本文だけに狭め、検証済みrequestを注入RoundTripperへ一回だけ送る。上流headerは実Authorization、固定AcceptとUser-Agent、およびOpenAIのContent-Typeだけに限定し、Agent由来headerやopaque capability handleを転記しない。本文はcaller所有sliceから独立copyする。
 
-成功responseはsize上限内で完全にread、検証、closeしてから、status、正規JSON media type、独立した本文だけをrequest単位sinkへ一回渡す。HEAD/204 responseは空本文だけを受理し、provider error本文と上流headerはAgent側へ返さない。2xx以外、想定外media type、上限超過、UTF-8/JSON不正、read/close/timeout、sinkの各失敗はfail closedにする。
+成功responseはsize上限内で完全にread、検証、closeしてから、status、許可media type、独立した本文だけをrequest単位sinkへ一回渡す。Git discoveryは`application/x-git-upload-pack-advertisement`、upload-packは`application/x-git-upload-pack-result`の非空200 responseだけを受理し、binary本文をJSONとして解釈しない。REST/OpenAIは従来どおり正規JSON media typeを要求する。HEAD/204 responseは空本文だけを受理し、provider error本文と上流headerはAgent側へ返さない。2xx以外、想定外media type、上限超過、UTF-8/JSON不正（JSON scopeのみ）、read/close/timeout、sinkの各失敗はfail closedにする。
 
 ## 呼出し単位のExchange合成
 
@@ -63,7 +65,7 @@ Exchangeへ到達する前に、origin-form、構造的に妥当なmethodとauth
 
 ## CONNECTからHTTP handoffまでの一接続境界
 
-`connectsession.Session`は受理済みの一connectionだけを所有し、strict CONNECT、host-bound TLS終端、`brokerhttp.Handler`への単一HTTP/1.1 request handoff、単一response、closeを有限state machineとして順に行う。CONNECT authorityとSNIは`api.github.com`又は`api.openai.com`への完全一致に限り、CAが発行するleafと同じallow surfaceを保つ。
+`connectsession.Session`は受理済みの一connectionだけを所有し、strict CONNECT、host-bound TLS終端、`brokerhttp.Handler`への単一HTTP/1.1 request handoff、単一response、closeを有限state machineとして順に行う。CONNECT authorityとSNIは`api.github.com`、`github.com`又は`api.openai.com`への完全一致に限り、CAが発行するleafと同じallow surfaceを保つ。`github.com:443`はGit read requestの正規authorityとしてのみ内側のpolicyまで到達できる。
 
 CONNECTでは限定headerだけを受理し、HTTP phaseへ入る前の余分なbyte、framing又は未許可headerを拒否する。TLSはTLS 1.2以上、SNI、HTTP/1.1 ALPNを要求する。TLS終端後は最大一requestをhandlerへ渡し、keep-aliveを許可しない。CONNECT、TLS、HTTPの各phaseには5秒とcallerのより早いdeadline/cancelのうち早い方を適用し、失敗は固定された非漏えい応答へ縮退してconnectionをcloseする。
 
@@ -118,6 +120,7 @@ root-owned config V1は`identity.workspace_id`を必須とし、1〜128 byteのA
 - [TASK-0056 HANDOVER](../../../tasks/TASK-0056-dev-agent-systemd-socket-activation/HANDOVER.md)
 - [TASK-0057 HANDOVER](../../../tasks/TASK-0057-dev-agent-runtime-identity/HANDOVER.md)
 - [TASK-0058 HANDOVER](../../../tasks/TASK-0058-dev-agent-egress-service/HANDOVER.md)
+- [TASK-0063 HANDOVER](../../../tasks/TASK-0063-dev-agent-git-smart-http-read/HANDOVER.md)
 - [Development Agent Harness Egress Policy](development-agent-harness-egress-policy.md)
 - [Development Agent Harness Capability Registry](development-agent-harness-capability-registry.md)
 - [Development Agent Harness Proxy CA](development-agent-harness-proxy-ca.md)

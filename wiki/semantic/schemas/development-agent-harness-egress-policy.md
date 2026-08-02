@@ -21,6 +21,13 @@ GitHubは、allowlistへ完全一致するlowercase `owner/repo`に対するcano
 
 OpenAIは、canonical `POST https://api.openai.com[:443]/v1/responses`だけを許可候補にする。bodyはparameterなし`application/json`のstrict objectとし、許可model、non-empty string input、明示的な`store:false`と`stream:false`、正かつ上限内の`max_output_tokens`を必須にする。追加できるfieldはstring `instructions`だけであり、tool、file、image、background、continuationを含む未知fieldは拒否する。
 
+Git Smart HTTP readはGitHub RESTとは別のsurfaceである。allowlistの完全一致lowercase `owner/repo`ごとに、`github.com[:443]`への次の正規requestだけを許可候補にする。
+
+- discovery: 空のContent-Type・空bodyによる`GET /{owner}/{repo}.git/info/refs?service=git-upload-pack`
+- pack取得: `application/x-git-upload-pack-request`かつ上限内の非空bodyによる`POST /{owner}/{repo}.git/git-upload-pack`
+
+queryはdiscoveryの単一のcanonical値だけであり、percent encoding、dot/empty segment、fragment、userinfo、別host/port、余分又は欠落したqueryは拒否する。`git-receive-pack`を含むpush surface、redirect、retryは許可しない。明示`:443`はHTTPS default authorityとして受理するが、後続のDNS、dial、SNIにはport-free canonical hostnameだけを渡す。
+
 denyは入力値やparser errorを文字列化せず、固定errorだけを返す。provider別allow decisionは、後続処理がGitHubとOpenAIのCredentialやupstreamを混同しないために分ける。
 
 ## 後続Taskの責務
@@ -32,4 +39,5 @@ TLS終端、client certificate trust、DNS/address検査、redirect、Credential
 ## 関連
 
 - [TASK-0039 HANDOVER](../../../tasks/TASK-0039-dev-agent-egress-policy/HANDOVER.md)
+- [TASK-0063 HANDOVER](../../../tasks/TASK-0063-dev-agent-git-smart-http-read/HANDOVER.md)
 - [Development Agent Harness Config Policy](development-agent-harness-config.md)

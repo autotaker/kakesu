@@ -17,12 +17,13 @@ callerへ返したraw handleはレジストリへ保存しない。mapのキー�
 
 ## 初期スコープ
 
-発行時にAgent インスタンスID、non-root UID、workspace ID、プロバイダー、リポジトリ、TTL、使用回数を検証する。初期プロバイダー面は次の二つだけである。
+発行時にAgent インスタンスID、non-root UID、workspace ID、プロバイダー、リポジトリ、TTL、使用回数を検証する。初期プロバイダー面は次の三つだけである。
 
 - GitHub: 完全一致するlowercase `owner/repo`、`github-rest-read`、`api.github.com`
+- Git Smart HTTP read: 完全一致するlowercase `owner/repo`、`github-git-read`、`github.com`
 - OpenAI: リポジトリなし、`openai-responses-text`、`api.openai.com`
 
-callerは操作や宛先ホストを任意指定して発行できない。request利用時はhandleに加えてsubject、workspace、プロバイダー、リポジトリ、操作、宛先ホストを正規化せず完全一致させる。
+callerは宛先ホストを任意指定して発行できない。既存GitHub RESTとOpenAIはoperation省略時の固定defaultを維持する一方、Git Smart HTTP readは明示`github-git-read` selectorでだけ発行する。発行はpeer-derived subject、同一repository、固定5分TTL、1回使用へ束縛する。request利用時はhandleに加えてsubject、workspace、プロバイダー、リポジトリ、操作、宛先ホストを正規化せず完全一致させる。
 
 ## 原子的な利用と失効
 
@@ -37,4 +38,5 @@ callerは操作や宛先ホストを任意指定して発行できない。reque
 ## 関連
 
 - [TASK-0040 HANDOVER](../../../tasks/TASK-0040-dev-agent-capability-registry/HANDOVER.md)
+- [TASK-0063 HANDOVER](../../../tasks/TASK-0063-dev-agent-git-smart-http-read/HANDOVER.md)
 - [Development Agent Harness Egress Policy](development-agent-harness-egress-policy.md)

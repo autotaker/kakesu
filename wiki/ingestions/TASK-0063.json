@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "task_id": "TASK-0063",
+  "handover_sha256": "fe3dbcf4a6b37f4eda758f9ea9c1de5f231f26d1e884de9e4c7e05fc09e5cb30",
+  "ingested_at": "2026-08-02T01:55:17Z",
+  "updated_pages": [
+    "wiki/semantic/schemas/development-agent-harness-egress-policy.md",
+    "wiki/semantic/schemas/development-agent-harness-capability-registry.md",
+    "wiki/semantic/schemas/development-agent-harness-egress-transaction.md",
+    "wiki/semantic/schemas/development-agent-harness-proxy-ca.md"
+  ],
+  "created_decisions": [],
+  "deferred": [
+    "実GitHub credential/DNS/TLS、実Git client、別UID/NSS、systemd/VPS、および実配置のrestart/rollback/cleanupは承認済みlive E2E環境と安全なcleanupが未指定のため未確認である。hermetic testのPASSで代替しない。"
+  ]
+}

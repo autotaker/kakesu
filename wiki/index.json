@@ -157,6 +157,7 @@
       "title": "Development Agent Harness Capability Registry",
       "links": [
         "../../../tasks/TASK-0040-dev-agent-capability-registry/HANDOVER.md",
+        "../../../tasks/TASK-0063-dev-agent-git-smart-http-read/HANDOVER.md",
         "development-agent-harness-egress-policy.md"
       ]
     },
@@ -174,6 +175,7 @@
       "title": "Development Agent Harness Egress Policy",
       "links": [
         "../../../tasks/TASK-0039-dev-agent-egress-policy/HANDOVER.md",
+        "../../../tasks/TASK-0063-dev-agent-git-smart-http-read/HANDOVER.md",
         "development-agent-harness-config.md"
       ]
     },
@@ -193,6 +195,7 @@
         "../../../tasks/TASK-0056-dev-agent-systemd-socket-activation/HANDOVER.md",
         "../../../tasks/TASK-0057-dev-agent-runtime-identity/HANDOVER.md",
         "../../../tasks/TASK-0058-dev-agent-egress-service/HANDOVER.md",
+        "../../../tasks/TASK-0063-dev-agent-git-smart-http-read/HANDOVER.md",
         "development-agent-harness-egress-policy.md",
         "development-agent-harness-capability-registry.md",
         "development-agent-harness-proxy-ca.md"
@@ -223,6 +226,7 @@
       "title": "Development Agent Harness Proxy CA",
       "links": [
         "../../../tasks/TASK-0050-dev-agent-proxy-ca/HANDOVER.md",
+        "../../../tasks/TASK-0063-dev-agent-git-smart-http-read/HANDOVER.md",
         "development-agent-harness-egress-transaction.md",
         "development-agent-harness-egress-policy.md"
       ]

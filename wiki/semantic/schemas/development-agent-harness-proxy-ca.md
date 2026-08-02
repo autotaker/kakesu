@@ -17,7 +17,7 @@ CA入力は単一の余剰dataのないPEMとして扱い、自己署名、CA用
 
 ## host限定のleaf発行
 
-Authorityは完全一致する`api.github.com`と`api.openai.com`だけを対象にする。各呼出しごとに独立したP-256 private key、serial、SANを持つ短命leaf certificateを発行し、呼出し間でkey又はcertificate stateを共有しない。その他のhostnameは発行前に固定errorで拒否する。
+Authorityは完全一致する`api.github.com`、`github.com`、`api.openai.com`だけを対象にする。`github.com`のleafはGit Smart HTTP readのCONNECT/SNI面をpolicyと同じく狭めるものであり、GitHub RESTやpushを許可するものではない。各呼出しごとに独立したP-256 private key、serial、SANを持つ短命leaf certificateを発行し、呼出し間でkey又はcertificate stateを共有しない。その他のhostnameは発行前に固定errorで拒否する。
 
 公開CA copy、TLS hostname検証、並行発行時のserial/key/SAN隔離はhermetic testで確認する。この証明書境界は、egress policyが導出したprovider hostを広げず、provider別の許可面をTLS interceptionにも保つ。
 
@@ -28,5 +28,6 @@ Authorityは完全一致する`api.github.com`と`api.openai.com`だけを対象
 ## 関連
 
 - [TASK-0050 HANDOVER](../../../tasks/TASK-0050-dev-agent-proxy-ca/HANDOVER.md)
+- [TASK-0063 HANDOVER](../../../tasks/TASK-0063-dev-agent-git-smart-http-read/HANDOVER.md)
 - [Development Agent Harness Egress Transaction](development-agent-harness-egress-transaction.md)
 - [Development Agent Harness Egress Policy](development-agent-harness-egress-policy.md)
