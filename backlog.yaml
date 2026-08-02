@@ -1234,3 +1234,23 @@ tasks:
       dev: dev-agent-sol-high
       reviewer: reviewer-agent-terra-medium
       qa: qa-agent-terra-medium
+  - id: TASK-0068
+    title: GitHub REST/OpenAI用capability clientを実装する
+    type: feature
+    change_class: product
+    epic: EPIC-001
+    status: plan
+    priority: P1
+    estimate_points: 1
+    task_dir: tasks/TASK-0068-api-capability-control-client
+    depends_on:
+      - TASK-0061
+      - TASK-0065
+    branch: task/TASK-0068-api-capability-control-client
+    worktree: worktrees/TASK-0068-api-capability-control-client
+    assignees:
+      main: main-agent-sol-high
+      planner: planner-agent-terra-medium
+      dev: dev-agent-sol-high
+      reviewer: reviewer-agent-terra-medium
+      qa: qa-agent-terra-medium
