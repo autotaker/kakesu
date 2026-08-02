@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "task_id": "TASK-0064",
+  "handover_sha256": "cdc07642d55c1970f4529b198219d6ad919e23bc6c47b37b9c7d6ce106331bc2",
+  "ingested_at": "2026-08-02T02:22:32Z",
+  "updated_pages": [
+    "wiki/semantic/scripts/task-delivery.md"
+  ],
+  "created_decisions": [],
+  "deferred": []
+}
