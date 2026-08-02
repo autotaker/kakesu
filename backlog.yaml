@@ -1254,3 +1254,25 @@ tasks:
       dev: dev-agent-sol-high
       reviewer: reviewer-agent-terra-medium
       qa: qa-agent-terra-medium
+  - id: TASK-0069
+    title: Agent session launcherを実装する
+    type: feature
+    change_class: product
+    epic: EPIC-001
+    status: plan
+    priority: P1
+    estimate_points: 1
+    task_dir: tasks/TASK-0069-agent-session-launcher
+    depends_on:
+      - TASK-0065
+      - TASK-0066
+      - TASK-0067
+      - TASK-0068
+    branch: task/TASK-0069-agent-session-launcher
+    worktree: worktrees/TASK-0069-agent-session-launcher
+    assignees:
+      main: main-agent-sol-high
+      planner: planner-agent-terra-medium
+      dev: dev-agent-sol-high
+      reviewer: reviewer-agent-terra-medium
+      qa: qa-agent-terra-medium
