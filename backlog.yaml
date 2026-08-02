@@ -1358,7 +1358,7 @@ tasks:
     type: chore
     change_class: safety_contract
     epic: EPIC-001
-    status: plan
+    status: done
     priority: P0
     estimate_points: 1
     task_dir: tasks/TASK-0074-simplify-push-approval-and-proxy-contract

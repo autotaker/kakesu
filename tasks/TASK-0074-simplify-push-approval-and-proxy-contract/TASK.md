@@ -1,7 +1,7 @@
 ---
 task_id: "TASK-0074"
 title: "Push承認と薄いproxyへ安全契約を簡素化する"
-status: draft
+status: done
 created_at: "2026-08-02"
 ---
 
@@ -39,11 +39,11 @@ Development Agent Harnessの認証転送とpush承認を、実VPSで必要な最
 
 <!-- AC-IDはTask内で一意かつ安定させ、観測可能な結果をここに一度だけ記載する。 -->
 
-- [ ] AC-1: 設計書はpush authorizationをexact repositoryへの次の`git-receive-pack`一回として定義し、agent/workspace/repository/短TTL/一回消費/revokeを必須にする一方、ref/SHA/manifest/body一致を要求しない。
-- [ ] AC-2: 設計書は同一repository内のpush内容差し替えリスクを受容し、別repository・別主体/workspace・複数回・期限後・REST転用を拒否し、GitHub Appのrepository限定write権限を上流安全境界にする。
-- [ ] AC-3: proxy契約は通常のGit read/GitHub REST/OpenAIを未解釈stream転送とし、維持する安全境界と削除対象を明示する。pushはrepository/receive-packだけ分類し、本文を解析しない。
-- [ ] AC-4: 承認UIの認可文言と参考情報を分離し、旧TASK-0070をsuperseded、TASK-0071〜0073をrepository単位へ移行対象として、次の一つの製品Taskを薄いproxy＋承認後pushの実VPS vertical E2Eへ優先する。
-- [ ] AC-5: 差分は設計書、backlog、TASK-0074計画証跡だけで、製品コード/test/config/dependency/Schema/生成物を変更せず、新規check・field・wrapperを追加しない。
+- [x] AC-1: 設計書はpush authorizationをexact repositoryへの次の`git-receive-pack`一回として定義し、agent/workspace/repository/短TTL/一回消費/revokeを必須にする一方、ref/SHA/manifest/body一致を要求しない。
+- [x] AC-2: 設計書は同一repository内のpush内容差し替えリスクを受容し、別repository・別主体/workspace・複数回・期限後・REST転用を拒否し、GitHub Appのrepository限定write権限を上流安全境界にする。
+- [x] AC-3: proxy契約は通常のGit read/GitHub REST/OpenAIを未解釈stream転送とし、維持する安全境界と削除対象を明示する。pushはrepository/receive-packだけ分類し、本文を解析しない。
+- [x] AC-4: 承認UIの認可文言と参考情報を分離し、旧TASK-0070をsuperseded、TASK-0071〜0073をrepository単位へ移行対象として、次の一つの製品Taskを薄いproxy＋承認後pushの実VPS vertical E2Eへ優先する。
+- [x] AC-5: 差分は設計書、backlog、TASK-0074計画証跡だけで、製品コード/test/config/dependency/Schema/生成物を変更せず、新規check・field・wrapperを追加しない。
 
 ### 安定した参照
 
@@ -104,10 +104,10 @@ Development Agent Harnessの認証転送とpush承認を、実VPSで必要な最
 
 ## 完成の定義
 
-- [ ] 受け入れ条件を満たしている。
-- [ ] 選択した`change_class`の完了経路と`make check`を満たしている。
+- [x] 受け入れ条件を満たしている。
+- [x] 選択した`change_class`の完了経路と`make check`を満たしている。
 - [ ] 製品変更の場合: 実装、テスト、文書、同一案の独立REVIEW/QA、完了後の環境依存ケース確認が完了している。
-- [ ] 安全契約変更の場合: Mainの意図・スコープ・受け入れ経路確認、契約検査、許可された統制文書差分の確認が完了している。
+- [x] 安全契約変更の場合: Mainの意図・スコープ・受け入れ経路確認、契約検査、許可された統制文書差分の確認が完了している。
 
 ## 関連コンテキスト
 

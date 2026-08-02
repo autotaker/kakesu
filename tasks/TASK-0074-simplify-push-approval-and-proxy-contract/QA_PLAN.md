@@ -6,7 +6,7 @@ qa_agent: "qa-agent-terra-medium"
 approved_by: "main-agent-sol-high"
 approved_at: "2026-08-02T09:05:23Z"
 revision: 1
-implementation_reviewed_at: ""
+implementation_reviewed_at: "2026-08-02T10:03:55Z"
 expectation_changed: false
 expectation_change_approved_by: ""
 ---
@@ -35,9 +35,9 @@ TASK.md の Planning input packet を唯一の期待値根拠とする。これ�
 
 ## 実装後の再確認
 
-- [ ] fixed candidate に対し QA-074-01〜003 の TASK-first diff/evidence audit を完了した。
-- [ ] 既存 safety contract 検査、`git diff --check`、許可path と既存公開証跡の不変性を確認した。
-- [ ] 実VPS E2E を本Taskの PASS に使わず、次の製品Taskへ残した。
+- [x] fixed candidate に対し QA-074-01〜003 の TASK-first diff/evidence audit を完了した。
+- [x] 既存 safety contract 検査、`git diff --check`、許可path と既存公開証跡の不変性を確認した。
+- [x] 実VPS E2E を本Taskの PASS に使わず、次の製品Taskへ残した。
 - [ ] 期待結果又は範囲を変更した場合、main Agent の承認を得た。
 
 ## 改訂履歴
