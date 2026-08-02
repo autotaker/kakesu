@@ -41,8 +41,8 @@ created_at: "2026-08-02"
 - [ ] AC-1: GitHub REST issueはabsolute clean fixed Unix socketとcanonical `owner/repo`だけを受け、exact `POST /v1/capabilities`へbody `{"provider":"github","repository":"owner/repo"}`を送り、OpenAI issueはsocketだけを受けてexact body `{"provider":"openai"}`を送る。各操作は一回dial、一回request、deadline、closeを使い、Agent入力のprovider/operation/body/model/pathを受けない。
 - [ ] AC-2: clientは唯一のbounded `200 application/json`、canonical Content-Length/header order、直後EOF、exact `{"handle":"cap_..."}`だけを成功とする。status/header/body/JSON/handle/framing/extra byte、dial/deadline/read/write/close failureはnil/emptyと固定errorになり、socket/repository/handle/wire/lower-errorを診断へ出さず、retry/fallbackしない。
 - [ ] AC-3: peer-bound controllerが発行するGitHub REST/OpenAI capabilityはTTL 5分、fixed 16 usesとし、各正規consumeで原子的に1減少して16回目だけremaining 0、17回目は拒否する。subject/workspace/provider/repository/operation/destination mismatchはbudgetを消費せず、revoke/expiry/epochの既存意味を維持する。
-- [ ] AC-4: `github-git-read` selectorのcapabilityは従来どおりsingle useで、既存`controlclient.Issue`、Git credential helper get/erase、CONNECT/control wireの意味を変えない。API handleはGit read/push/write/別provider/repository/hostへ使用できない。
-- [ ] AC-5: candidateは承認済み5パス・約750〜1,050 changed linesを目安とし、実token/key、launcher/env/config/Makefile/dependency/Schema/Kakesu runtime/generated file/live stateを含まない。focused race、harness `make check`/distcheck、candidate gate root `make check`、`git diff --check`がPASSする。
+- [ ] AC-4: `github-git-read` selectorのcapabilityは従来どおりsingle useで、既存`controlclient.Issue`、Git credential helper get/erase、CONNECT/control wireの意味を変えない。API handleはGit read/push/write/別provider/repository/hostへ使用できず、egress serviceの共有Registry integrationはAPI 16回・17回目拒否を確認する。
+- [ ] AC-5: candidateは承認済み6パス・約750〜1,050 changed linesを目安とし、実token/key、launcher/env/config/Makefile/dependency/Schema/Kakesu runtime/generated file/live stateを含まない。focused race、harness `make check`/distcheck、candidate gate root `make check`、`git diff --check`がPASSする。
 
 ### 安定した参照
 
@@ -64,6 +64,7 @@ created_at: "2026-08-02"
 - `tools/dev-agent-harness/internal/controlclient/client_test.go`
 - `tools/dev-agent-harness/internal/capabilitycontrol/control.go`
 - `tools/dev-agent-harness/internal/capabilitycontrol/control_test.go`
+- `tools/dev-agent-harness/internal/egressservice/service_test.go`
 - `tools/dev-agent-harness/README.md`
 
 ### 完了経路preflight
