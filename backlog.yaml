@@ -1389,3 +1389,21 @@ tasks:
       dev: dev-agent-sol-high
       reviewer: reviewer-agent-terra-medium
       qa: qa-agent-terra-medium
+  - id: TASK-0076
+    title: 薄いproxyとrepository one-shot pushをVPS縦断する
+    type: feature
+    change_class: product
+    epic: EPIC-001
+    status: plan
+    priority: P0
+    estimate_points: 1
+    task_dir: tasks/TASK-0076-thin-proxy-one-shot-vps
+    depends_on: []
+    branch: task/TASK-0076-thin-proxy-one-shot-vps
+    worktree: worktrees/TASK-0076-thin-proxy-one-shot-vps
+    assignees:
+      main: main-agent-sol-high
+      planner: planner-agent-terra-medium
+      dev: dev-agent-sol-high
+      reviewer: reviewer-agent-terra-medium
+      qa: qa-agent-terra-medium
