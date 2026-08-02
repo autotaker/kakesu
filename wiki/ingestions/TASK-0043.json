@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "task_id": "TASK-0043",
+  "handover_sha256": "8a5a294ce8791d4bbb53a3d1a3cba0bea9d7317098ca82ce5cff96119cf38929",
+  "ingested_at": "2026-08-02T01:11:21Z",
+  "updated_pages": [
+    "wiki/semantic/schemas/development-agent-harness-provider-credentials.md"
+  ],
+  "created_decisions": [],
+  "deferred": [
+    "Candidate identifiers, test counts, implementation paths, and task-specific lint remediation are evidence rather than Semantic rules.",
+    "Live GitHub App authorization, repository scope, token format changes, TLS/CA/DNS/proxy/IP transport, forwarding, HTTP serving, Git Smart HTTP, and push authorization remain separate boundaries."
+  ]
+}

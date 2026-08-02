@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "task_id": "TASK-0044",
+  "handover_sha256": "553c3467ea40e2df9f4cc67dd5b812eb29535189863fdcd19f27c9acd8023d24",
+  "ingested_at": "2026-08-02T01:11:52Z",
+  "updated_pages": [],
+  "created_decisions": [],
+  "deferred": [
+    "The prerequisite reorder, command ordering, command count, candidate identifier, and test observations are task-specific maintenance evidence rather than reusable Semantic rules.",
+    "The ordering guarantee applies only to the standard non-parallel make check invocation; no new rule, script, dependency edge, or permanent ordering test was introduced."
+  ]
+}

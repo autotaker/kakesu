@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "task_id": "TASK-0042",
+  "handover_sha256": "bfc2485dd185956484346ad7c791841b4424bd4b076a151402d7129c6cad6f7c",
+  "ingested_at": "2026-08-02T01:10:56Z",
+  "updated_pages": [
+    "wiki/semantic/schemas/development-agent-harness-broker-credentials.md"
+  ],
+  "created_decisions": [],
+  "deferred": [
+    "Candidate identifiers, test counts, implementation paths, and task-specific lint or review history are evidence rather than Semantic rules.",
+    "Credential rotation, live OS permission isolation, GitHub token exchange, resolver integration, network transport, and live end-to-end operation remain separate security boundaries."
+  ]
+}
