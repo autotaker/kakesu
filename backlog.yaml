@@ -1295,3 +1295,22 @@ tasks:
       dev: dev-agent-sol-high
       reviewer: reviewer-agent-terra-medium
       qa: qa-agent-terra-medium
+  - id: TASK-0071
+    title: Approval request永続state storeを実装する
+    type: feature
+    change_class: product
+    epic: EPIC-001
+    status: plan
+    priority: P1
+    estimate_points: 1
+    task_dir: tasks/TASK-0071-approval-request-store
+    depends_on:
+      - TASK-0070
+    branch: task/TASK-0071-approval-request-store
+    worktree: worktrees/TASK-0071-approval-request-store
+    assignees:
+      main: main-agent-sol-high
+      planner: planner-agent-terra-medium
+      dev: dev-agent-sol-high
+      reviewer: reviewer-agent-terra-medium
+      qa: qa-agent-terra-medium
