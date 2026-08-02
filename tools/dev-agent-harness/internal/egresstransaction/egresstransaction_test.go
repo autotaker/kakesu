@@ -1,6 +1,7 @@
 package egresstransaction
 
 import (
+	"encoding/base64"
 	"errors"
 	"strings"
 	"sync"
@@ -60,6 +61,117 @@ func openAIRequest(auth string) Request {
 	return Request{Method: "POST", URL: "https://api.openai.com/v1/responses", ContentType: "application/json",
 		Body:          []byte(`{"model":"gpt-5-mini","input":"hello","store":false,"stream":false,"max_output_tokens":32}`),
 		Authorization: []string{auth}}
+}
+
+func gitRequest(auth string) Request {
+	return Request{Method: "POST", URL: "https://github.com/acme/widget.git/git-upload-pack", ContentType: egresspolicy.GitUploadPackRequest,
+		Body: []byte("0009done\n"), Authorization: []string{auth}}
+}
+
+func testGitRegistry(t *testing.T, uses int) (*capability.Registry, string) {
+	t.Helper()
+	registry, err := capability.New(capability.Rules{PolicyVersion: "policy-v1", MaxTTL: time.Hour, MaxUses: 4})
+	if err != nil {
+		t.Fatal(err)
+	}
+	handle, err := registry.Issue(capability.IssueSpec{AgentInstanceID: testSubject.AgentInstanceID, UID: testSubject.UID,
+		WorkspaceID: testSubject.WorkspaceID, Provider: capability.ProviderGitHub, Repository: "acme/widget",
+		Operation: capability.OperationGitHubGitRead, TTL: time.Minute, Uses: uses})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return registry, handle
+}
+
+func gitBasic(handle string) string {
+	return "Basic " + base64.StdEncoding.EncodeToString([]byte("x-access-token:"+handle))
+}
+
+func TestGitBasicCapabilityConsumedThenReplacedOnce(t *testing.T) {
+	registry, handle := testGitRegistry(t, 1)
+	resolverCalls, forwarderCalls := 0, 0
+	var prepared PreparedRequest
+	txn := newTransaction(t, registry,
+		CredentialResolverFunc(func(provider, repository string) (string, error) {
+			resolverCalls++
+			if provider != capability.ProviderGitHub || repository != "acme/widget" {
+				t.Fatalf("resolver scope=(%q,%q)", provider, repository)
+			}
+			return "real-token", nil
+		}),
+		ForwarderFunc(func(request PreparedRequest) error { forwarderCalls++; prepared = request; return nil }),
+	)
+	if err := txn.Execute(testSubject, gitRequest(gitBasic(handle))); err != nil {
+		t.Fatal(err)
+	}
+	want := "Basic " + base64.StdEncoding.EncodeToString([]byte("x-access-token:real-token"))
+	if resolverCalls != 1 || forwarderCalls != 1 || prepared.Authorization != want || strings.Contains(prepared.Authorization, handle) ||
+		prepared.Scope.Operation != capability.OperationGitHubGitRead || prepared.Scope.DestinationHost != capability.HostGitHubGit {
+		t.Fatalf("prepared=%+v resolver=%d forwarder=%d", prepared, resolverCalls, forwarderCalls)
+	}
+	if err := txn.Execute(testSubject, gitRequest(gitBasic(handle))); !errors.Is(err, ErrDenied) || resolverCalls != 1 || forwarderCalls != 1 {
+		t.Fatalf("reuse=%v resolver=%d forwarder=%d", err, resolverCalls, forwarderCalls)
+	}
+}
+
+func TestGitBasicMalformedDoesNotSpendCapability(t *testing.T) {
+	registry, handle := testGitRegistry(t, 1)
+	resolverCalls, forwarderCalls := 0, 0
+	txn := newTransaction(t, registry,
+		CredentialResolverFunc(func(string, string) (string, error) { resolverCalls++; return "real-token", nil }),
+		ForwarderFunc(func(PreparedRequest) error { forwarderCalls++; return nil }),
+	)
+	encode := func(value string) string { return "Basic " + base64.StdEncoding.EncodeToString([]byte(value)) }
+	for _, value := range []string{
+		"Bearer " + handle,
+		"token " + handle,
+		"basic " + base64.StdEncoding.EncodeToString([]byte("x-access-token:"+handle)),
+		"Basic  " + base64.StdEncoding.EncodeToString([]byte("x-access-token:"+handle)),
+		"Basic !!!",
+		"Basic " + strings.TrimSuffix(base64.StdEncoding.EncodeToString([]byte("x-access-token:"+handle)), "="),
+		encode("other:" + handle),
+		encode("x-access-token:"),
+		encode("x-access-token:not-a-handle"),
+		encode("x-access-token:" + handle + ":extra"),
+		encode("x-access-token:\n" + handle),
+	} {
+		if err := txn.Execute(testSubject, gitRequest(value)); !errors.Is(err, ErrDenied) {
+			t.Fatalf("auth %q err=%v", value, err)
+		}
+	}
+	duplicate := gitRequest(gitBasic(handle))
+	duplicate.Authorization = []string{gitBasic(handle), gitBasic(handle)}
+	if err := txn.Execute(testSubject, duplicate); !errors.Is(err, ErrDenied) {
+		t.Fatalf("duplicate auth=%v", err)
+	}
+	if resolverCalls != 0 || forwarderCalls != 0 {
+		t.Fatalf("malformed reached resolver=%d forwarder=%d", resolverCalls, forwarderCalls)
+	}
+	if err := txn.Execute(testSubject, gitRequest(gitBasic(handle))); err != nil {
+		t.Fatalf("malformed Basic spent handle: %v", err)
+	}
+}
+
+func TestGitResolverFailureConsumesWithoutRetryOrLeak(t *testing.T) {
+	registry, handle := testGitRegistry(t, 1)
+	resolverCalls, forwarderCalls := 0, 0
+	txn := newTransaction(t, registry,
+		CredentialResolverFunc(func(string, string) (string, error) {
+			resolverCalls++
+			return "", errors.New("real-token-secret lower URL")
+		}),
+		ForwarderFunc(func(PreparedRequest) error { forwarderCalls++; return nil }),
+	)
+	authorization := gitBasic(handle)
+	for attempt := 0; attempt < 2; attempt++ {
+		err := txn.Execute(testSubject, gitRequest(authorization))
+		if !errors.Is(err, ErrDenied) || strings.Contains(err.Error(), handle) || strings.Contains(err.Error(), "real-token-secret") || strings.Contains(err.Error(), "URL") {
+			t.Fatalf("attempt=%d err=%v", attempt, err)
+		}
+	}
+	if resolverCalls != 1 || forwarderCalls != 0 {
+		t.Fatalf("resolver=%d forwarder=%d", resolverCalls, forwarderCalls)
+	}
 }
 
 func TestNewRulesAndZeroDependenciesFailClosed(t *testing.T) {

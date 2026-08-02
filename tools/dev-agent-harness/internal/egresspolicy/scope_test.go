@@ -17,6 +17,8 @@ func TestEvaluateReturnsCanonicalScopeAndAuthorizeCompatibility(t *testing.T) {
 		decision Decision
 	}{
 		{"github", Request{Method: "GET", URL: "https://api.github.com/repos/acme/widget"}, Scope{Provider: "github", Repository: "acme/widget", Operation: "github-rest-read", DestinationHost: "api.github.com"}, DecisionGitHubRESTRead},
+		{"github-git-discovery", Request{Method: "GET", URL: "https://github.com/acme/widget.git/info/refs?service=git-upload-pack"}, Scope{Provider: "github", Repository: "acme/widget", Operation: OperationGitHubGitRead, DestinationHost: GitHubGitHost}, DecisionGitHubGitRead},
+		{"github-git-upload", Request{Method: "POST", URL: "https://github.com/acme/widget.git/git-upload-pack", ContentType: GitUploadPackRequest, Body: []byte("0000")}, Scope{Provider: "github", Repository: "acme/widget", Operation: OperationGitHubGitRead, DestinationHost: GitHubGitHost}, DecisionGitHubGitRead},
 		{"openai", Request{Method: "POST", URL: "https://api.openai.com/v1/responses", ContentType: "application/json", Body: []byte(`{"model":"gpt-5-mini","input":"hi","store":false,"stream":false,"max_output_tokens":1}`)}, Scope{Provider: "openai", Operation: "openai-responses-text", DestinationHost: "api.openai.com"}, DecisionOpenAIResponsesText},
 	}
 	for _, tc := range cases {

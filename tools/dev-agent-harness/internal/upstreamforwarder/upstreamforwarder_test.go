@@ -2,6 +2,7 @@ package upstreamforwarder
 
 import (
 	"bytes"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"io"
@@ -134,6 +135,112 @@ func openAIPrepared(t *testing.T) egresstransaction.PreparedRequest {
 	}
 	req.Scope = scope
 	return req
+}
+
+func gitPrepared(t *testing.T, method string) egresstransaction.PreparedRequest {
+	t.Helper()
+	req := egresstransaction.PreparedRequest{Method: method, Authorization: "Basic " + base64.StdEncoding.EncodeToString([]byte("x-access-token:real-token"))}
+	if method == http.MethodGet {
+		req.URL = "https://github.com/acme/widget.git/info/refs?service=git-upload-pack"
+	} else {
+		req.URL = "https://github.com/acme/widget.git/git-upload-pack"
+		req.ContentType = egresspolicy.GitUploadPackRequest
+		req.Body = []byte("0009done\n")
+	}
+	scope, decision, err := testPolicy(t).Evaluate(egresspolicy.Request{Method: req.Method, URL: req.URL, ContentType: req.ContentType, Body: req.Body})
+	if err != nil || decision != egresspolicy.DecisionGitHubGitRead {
+		t.Fatalf("Git fixture policy=(%+v,%q,%v)", scope, decision, err)
+	}
+	req.Scope = scope
+	return req
+}
+
+func TestGitUploadPackHeadersAndBinaryResponses(t *testing.T) {
+	for _, tc := range []struct {
+		method       string
+		responseType string
+		requestType  string
+	}{
+		{http.MethodGet, egresspolicy.GitUploadPackAdvertise, ""},
+		{http.MethodPost, egresspolicy.GitUploadPackResult, egresspolicy.GitUploadPackRequest},
+	} {
+		t.Run(tc.method, func(t *testing.T) {
+			binary := []byte{0x00, 0xff, 'g', 'i', 't'}
+			body := &fakeBody{reader: bytes.NewReader(binary)}
+			transport := &fakeTransport{response: response(http.StatusOK, body, tc.responseType)}
+			sink := &fakeSink{}
+			forwarder := makeForwarder(t, transport, sink, 64)
+			prepared := gitPrepared(t, tc.method)
+			callerBody := append([]byte(nil), prepared.Body...)
+			if err := forwarder.Forward(prepared); err != nil {
+				t.Fatal(err)
+			}
+			upstream := transport.lastRequest()
+			if transport.count() != 1 || upstream.URL.String() != prepared.URL || upstream.Method != tc.method ||
+				upstream.Header.Get("Authorization") != prepared.Authorization || upstream.Header.Get("Accept") != tc.responseType ||
+				upstream.Header.Get("Content-Type") != tc.requestType || upstream.Header.Get("User-Agent") != userAgent {
+				t.Fatalf("upstream=%+v headers=%v calls=%d", upstream, upstream.Header, transport.count())
+			}
+			calls, got := sink.snapshot()
+			if calls != 1 || got.StatusCode != http.StatusOK || got.ContentType != tc.responseType || !bytes.Equal(got.Body, binary) || body.closeCount() != 1 {
+				t.Fatalf("sink=%d %+v closes=%d", calls, got, body.closeCount())
+			}
+			if !bytes.Equal(prepared.Body, callerBody) {
+				t.Fatal("caller body changed")
+			}
+		})
+	}
+}
+
+func TestGitResponseAndPreparedBoundariesFailBeforeDelivery(t *testing.T) {
+	cases := []struct {
+		name        string
+		status      int
+		media       []string
+		body        []byte
+		max         int
+		mutate      func(*egresstransaction.PreparedRequest)
+		wantNetwork bool
+	}{
+		{name: "status", status: http.StatusCreated, media: []string{egresspolicy.GitUploadPackResult}, body: []byte("git"), max: 64, wantNetwork: true},
+		{name: "empty", status: http.StatusOK, media: []string{egresspolicy.GitUploadPackResult}, max: 64, wantNetwork: true},
+		{name: "wrong media", status: http.StatusOK, media: []string{egresspolicy.GitUploadPackAdvertise}, body: []byte("git"), max: 64, wantNetwork: true},
+		{name: "media parameter", status: http.StatusOK, media: []string{egresspolicy.GitUploadPackResult + "; charset=binary"}, body: []byte("git"), max: 64, wantNetwork: true},
+		{name: "duplicate media", status: http.StatusOK, media: []string{egresspolicy.GitUploadPackResult, egresspolicy.GitUploadPackResult}, body: []byte("git"), max: 64, wantNetwork: true},
+		{name: "oversize", status: http.StatusOK, media: []string{egresspolicy.GitUploadPackResult}, body: []byte("toolong"), max: 3, wantNetwork: true},
+		{name: "bearer", mutate: func(request *egresstransaction.PreparedRequest) { request.Authorization = "Bearer secret" }},
+		{name: "handle basic", mutate: func(request *egresstransaction.PreparedRequest) {
+			request.Authorization = "Basic " + base64.StdEncoding.EncodeToString([]byte("x-access-token:cap_"+string(bytes.Repeat([]byte{'A'}, 43))))
+		}},
+		{name: "receive pack", mutate: func(request *egresstransaction.PreparedRequest) {
+			request.URL = "https://github.com/acme/widget.git/git-receive-pack"
+		}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			response := &http.Response{StatusCode: tc.status, Header: http.Header{"Content-Type": tc.media}, Body: io.NopCloser(bytes.NewReader(tc.body))}
+			transport := &fakeTransport{response: response}
+			sink := &fakeSink{}
+			max := tc.max
+			if max == 0 {
+				max = 64
+			}
+			forwarder := makeForwarder(t, transport, sink, max)
+			prepared := gitPrepared(t, http.MethodPost)
+			if tc.mutate != nil {
+				tc.mutate(&prepared)
+			}
+			if err := forwarder.Forward(prepared); !errors.Is(err, ErrForward) {
+				t.Fatalf("error=%v", err)
+			}
+			if (transport.count() == 1) != tc.wantNetwork {
+				t.Fatalf("transport=%d wantNetwork=%v", transport.count(), tc.wantNetwork)
+			}
+			if calls, _ := sink.snapshot(); calls != 0 {
+				t.Fatalf("sink calls=%d", calls)
+			}
+		})
+	}
 }
 
 func makeForwarder(t *testing.T, transport *fakeTransport, sink *fakeSink, max int) *Forwarder {

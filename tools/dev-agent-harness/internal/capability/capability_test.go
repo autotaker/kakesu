@@ -77,6 +77,51 @@ func openAIRequest(handle string) Request {
 	return Request{Handle: handle, AgentInstanceID: "agent-1", UID: 1000, WorkspaceID: "workspace-1", Provider: ProviderOpenAI, Operation: OperationOpenAIResponsesText, DestinationHost: HostOpenAI}
 }
 
+func githubGitRequest(handle string) Request {
+	return Request{Handle: handle, AgentInstanceID: "agent-1", UID: 1000, WorkspaceID: "workspace-1", Provider: ProviderGitHub, Repository: "acme/widget", Operation: OperationGitHubGitRead, DestinationHost: HostGitHubGit}
+}
+
+func TestGitReadScopeIsExplicitAndCrossScopeSafe(t *testing.T) {
+	clock := fixedTime
+	r := newTestRegistry(t, &repeatingReader{chunks: [][]byte{fixedChunk(41), fixedChunk(42), fixedChunk(43)}}, &clock)
+	spec := testSpec(ProviderGitHub)
+	spec.Operation = OperationGitHubGitRead
+	handle := mustIssue(t, r, spec)
+
+	if _, err := r.Consume(githubRequest(handle)); !errors.Is(err, ErrDenied) {
+		t.Fatalf("Git capability accepted by REST scope: %v", err)
+	}
+	grant, err := r.Consume(githubGitRequest(handle))
+	if err != nil || grant.Operation != OperationGitHubGitRead || grant.DestinationHost != HostGitHubGit || grant.RemainingUses != 1 {
+		t.Fatalf("git grant=(%+v,%v)", grant, err)
+	}
+	request := githubGitRequest(handle)
+	request.DestinationHost = HostGitHub
+	if _, err := r.Consume(request); !errors.Is(err, ErrDenied) {
+		t.Fatalf("host mismatch accepted: %v", err)
+	}
+	if _, err := r.Consume(githubGitRequest(handle)); err != nil {
+		t.Fatalf("mismatch spent Git capability: %v", err)
+	}
+	if _, err := r.Consume(githubGitRequest(handle)); !errors.Is(err, ErrDenied) {
+		t.Fatal("Git capability reusable after final use")
+	}
+
+	for _, operation := range []string{"git-read", "github-write", OperationOpenAIResponsesText} {
+		bad := testSpec(ProviderGitHub)
+		bad.Operation = operation
+		if issued, err := r.Issue(bad); issued != "" || !errors.Is(err, ErrIssue) {
+			t.Fatalf("Issue operation %q=(%q,%v)", operation, issued, err)
+		}
+	}
+	badOpenAI := testSpec(ProviderOpenAI)
+	badOpenAI.Repository = ""
+	badOpenAI.Operation = OperationGitHubGitRead
+	if issued, err := r.Issue(badOpenAI); issued != "" || !errors.Is(err, ErrIssue) {
+		t.Fatalf("OpenAI Git operation=(%q,%v)", issued, err)
+	}
+}
+
 func TestRulesAndIssueScope(t *testing.T) {
 	for _, rules := range []Rules{
 		{},

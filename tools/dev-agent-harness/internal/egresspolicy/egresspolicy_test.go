@@ -2,6 +2,7 @@ package egresspolicy
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 )
@@ -110,6 +111,44 @@ func TestAuthorizeGitHubCanonicalSurface(t *testing.T) {
 	authorizeDenied(t, p, Request{Method: "GET", URL: "https://api.github.com/repos/acme/widget/\\child"})
 	authorizeDenied(t, p, Request{Method: "GET", URL: "https://api.github.com/repos/acme/widget#"})
 	authorizeDenied(t, p, Request{Method: "GET", URL: "https://api.github.com/repos/acme/widget" + strings.Repeat("x", MaxURLBytes)})
+}
+
+func TestAuthorizeGitHubGitUploadPackOnly(t *testing.T) {
+	p := mustPolicy(t)
+	discovery := Request{Method: "GET", URL: "https://github.com/acme/widget.git/info/refs?service=git-upload-pack"}
+	upload := Request{Method: "POST", URL: "https://github.com:443/acme/widget.git/git-upload-pack", ContentType: GitUploadPackRequest, Body: []byte("0009done\n")}
+	for _, request := range []Request{discovery, upload} {
+		scope, decision, err := p.Evaluate(request)
+		if err != nil || decision != DecisionGitHubGitRead || scope != (Scope{Provider: "github", Repository: "acme/widget", Operation: OperationGitHubGitRead, DestinationHost: GitHubGitHost}) {
+			t.Fatalf("Evaluate(%+v)=(%+v,%q,%v)", request, scope, decision, err)
+		}
+	}
+
+	denied := []Request{
+		{Method: "HEAD", URL: discovery.URL},
+		{Method: "POST", URL: discovery.URL, ContentType: GitUploadPackRequest, Body: []byte("0000")},
+		{Method: "GET", URL: "https://github.com/acme/widget.git/info/refs"},
+		{Method: "GET", URL: "https://github.com/acme/widget.git/info/refs?"},
+		{Method: "GET", URL: "https://github.com/acme/widget.git/info/refs?service=git-receive-pack"},
+		{Method: "GET", URL: "https://github.com/acme/widget.git/info/refs?service=git-upload-pack&x=1"},
+		{Method: "GET", URL: "https://github.com/acme/widget.git/info/refs?service%3Dgit-upload-pack"},
+		{Method: "GET", URL: "https://github.com/acme/widget.git/git-upload-pack"},
+		{Method: "POST", URL: "https://github.com/acme/widget.git/git-receive-pack", ContentType: "application/x-git-receive-pack-request", Body: []byte("push")},
+		{Method: "POST", URL: "https://github.com/acme/widget.git/git-upload-pack", ContentType: "application/octet-stream", Body: []byte("0000")},
+		{Method: "POST", URL: "https://github.com/acme/widget.git/git-upload-pack", ContentType: GitUploadPackRequest},
+		{Method: "POST", URL: "https://github.com/acme/widget.git/git-upload-pack", ContentType: GitUploadPackRequest, Body: []byte(strings.Repeat("x", p.maxBodyBytes+1))},
+		{Method: "GET", URL: "https://github.com/acme/other.git/info/refs?service=git-upload-pack"},
+		{Method: "GET", URL: "https://api.github.com/acme/widget.git/info/refs?service=git-upload-pack"},
+		{Method: "GET", URL: "https://github.com/acme//widget.git/info/refs?service=git-upload-pack"},
+		{Method: "GET", URL: "https://github.com/acme/../widget.git/info/refs?service=git-upload-pack"},
+		{Method: "GET", URL: "https://github.com/acme/widget%2egit/info/refs?service=git-upload-pack"},
+		{Method: "GET", URL: "https://github.com/acme/widget.git/info/refs/?service=git-upload-pack"},
+		{Method: "GET", URL: "https://user@github.com/acme/widget.git/info/refs?service=git-upload-pack"},
+		{Method: "GET", URL: "http://github.com/acme/widget.git/info/refs?service=git-upload-pack"},
+	}
+	for index, request := range denied {
+		t.Run(fmt.Sprintf("deny-%02d", index), func(t *testing.T) { authorizeDenied(t, p, request) })
+	}
 }
 
 func TestAuthorizeOpenAIResponsesTextStrictBody(t *testing.T) {

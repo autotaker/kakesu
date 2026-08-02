@@ -3,6 +3,7 @@ package brokerhttp
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"io"
@@ -169,6 +170,44 @@ func TestSuccessMappingAndHeaderAllowlist(t *testing.T) {
 	captured.Body[0] = 'X'
 	if !bytes.Equal(body, beforeBody) {
 		t.Fatal("mapped body aliases caller")
+	}
+}
+
+func TestGitDiscoveryQueryAndBinaryResponseMapping(t *testing.T) {
+	resolver := &fakeResolver{subject: testSubject}
+	binary := []byte{0x00, 0xff, 'g', 'i', 't'}
+	exchange := &fakeExchange{response: brokerexchange.Response{StatusCode: http.StatusOK, ContentType: egresspolicy.GitUploadPackAdvertise, Body: binary}}
+	handler := newHandler(t, exchange, resolver)
+	req := request(http.MethodGet, "/acme/widget.git/info/refs?service=git-upload-pack", "github.com", nil)
+	req.Header.Set("Authorization", "Basic opaque")
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, req)
+	if recorder.Code != http.StatusOK || !bytes.Equal(recorder.Body.Bytes(), binary) || recorder.Header().Get("Content-Type") != egresspolicy.GitUploadPackAdvertise {
+		t.Fatalf("status=%d body=%v headers=%v", recorder.Code, recorder.Body.Bytes(), recorder.Header())
+	}
+	exchange.mu.Lock()
+	captured := exchange.request
+	exchange.mu.Unlock()
+	if captured.URL != "https://github.com/acme/widget.git/info/refs?service=git-upload-pack" || captured.Method != http.MethodGet || len(captured.Authorization) != 1 {
+		t.Fatalf("mapped=%+v", captured)
+	}
+
+	for _, target := range []string{
+		"/acme/widget.git/info/refs?service=git-receive-pack",
+		"/acme/widget.git/info/refs?service=git-upload-pack&x=1",
+		"/acme/widget.git/info/refs?service%3Dgit-upload-pack",
+		"/acme/widget.git/info/refs?",
+		"/repos/acme/widget?service=git-upload-pack",
+	} {
+		deniedResolver := &fakeResolver{subject: testSubject}
+		deniedExchange := &fakeExchange{}
+		denied := newHandler(t, deniedExchange, deniedResolver)
+		recorder := httptest.NewRecorder()
+		denied.ServeHTTP(recorder, request(http.MethodGet, target, "github.com", nil))
+		assertDenied(t, recorder)
+		if deniedResolver.count() != 0 || deniedExchange.count() != 0 {
+			t.Fatalf("target %q reached dependencies", target)
+		}
 	}
 }
 
@@ -354,9 +393,142 @@ func TestRealExchangeBothProviders(t *testing.T) {
 	}
 }
 
+func TestRealExchangeGitUploadPack(t *testing.T) {
+	policy, err := egresspolicy.New(egresspolicy.Rules{GitHubRepositories: []string{"acme/widget"}, OpenAIModels: []string{"gpt-5-mini"}, MaxBodyBytes: 4096, MaxOutputTokens: 32})
+	if err != nil {
+		t.Fatal(err)
+	}
+	registry, err := capability.New(capability.Rules{PolicyVersion: "v1", MaxTTL: time.Hour, MaxUses: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	handle, err := registry.Issue(capability.IssueSpec{AgentInstanceID: testSubject.AgentInstanceID, UID: testSubject.UID, WorkspaceID: testSubject.WorkspaceID, Provider: capability.ProviderGitHub, Repository: "acme/widget", Operation: capability.OperationGitHubGitRead, TTL: time.Minute, Uses: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	transport := &httpRoundTripper{}
+	exchange, err := brokerexchange.New(brokerexchange.Rules{
+		Policy: policy, Registry: registry,
+		Resolver: egresstransaction.CredentialResolverFunc(func(provider, repository string) (string, error) {
+			if provider != "github" || repository != "acme/widget" {
+				t.Fatalf("resolver scope=%s/%s", provider, repository)
+			}
+			return "real-token", nil
+		}),
+		Transport: transport, MaxCredentialBytes: 128, Timeout: time.Second, MaxResponseBytes: 1024,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	handler := newHandler(t, exchange, &fakeResolver{subject: testSubject})
+	body := []byte("0009done\n")
+	req := request(http.MethodPost, "/acme/widget.git/git-upload-pack", "github.com", bytes.NewReader(body))
+	req.Header.Set("Content-Type", egresspolicy.GitUploadPackRequest)
+	req.Header.Set("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte("x-access-token:"+handle)))
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, req)
+	if recorder.Code != http.StatusOK || !bytes.Equal(recorder.Body.Bytes(), []byte{0x00, 0xff, 'g', 'i', 't'}) || recorder.Header().Get("Content-Type") != egresspolicy.GitUploadPackResult {
+		t.Fatalf("status=%d body=%v headers=%v", recorder.Code, recorder.Body.Bytes(), recorder.Header())
+	}
+	wantBasic := "Basic " + base64.StdEncoding.EncodeToString([]byte("x-access-token:real-token"))
+	if transport.calls != 1 || transport.authorization != wantBasic || transport.url != "https://github.com/acme/widget.git/git-upload-pack" || transport.contentType != egresspolicy.GitUploadPackRequest {
+		t.Fatalf("transport=%+v", transport)
+	}
+}
+
+func TestRealExchangeGitPushDeniedBeforeResolverAndTransport(t *testing.T) {
+	policy, err := egresspolicy.New(egresspolicy.Rules{
+		GitHubRepositories: []string{"acme/widget"}, OpenAIModels: []string{"gpt-5-mini"},
+		MaxBodyBytes: 4096, MaxOutputTokens: 32,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	registry, err := capability.New(capability.Rules{PolicyVersion: "v1", MaxTTL: time.Hour, MaxUses: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	handle, err := registry.Issue(capability.IssueSpec{
+		AgentInstanceID: testSubject.AgentInstanceID, UID: testSubject.UID,
+		WorkspaceID: testSubject.WorkspaceID, Provider: capability.ProviderGitHub,
+		Repository: "acme/widget", Operation: capability.OperationGitHubGitRead,
+		TTL: time.Minute, Uses: 1,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	resolverCalls := 0
+	transport := &httpRoundTripper{}
+	exchange, err := brokerexchange.New(brokerexchange.Rules{
+		Policy: policy, Registry: registry,
+		Resolver: egresstransaction.CredentialResolverFunc(func(string, string) (string, error) {
+			resolverCalls++
+			return "real-token", nil
+		}),
+		Transport: transport, MaxCredentialBytes: 128, Timeout: time.Second, MaxResponseBytes: 1024,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	handler := newHandler(t, exchange, &fakeResolver{subject: testSubject})
+	authorization := "Basic " + base64.StdEncoding.EncodeToString([]byte("x-access-token:"+handle))
+
+	push := request(http.MethodPost, "/acme/widget.git/git-receive-pack", "github.com", strings.NewReader("push"))
+	push.Header.Set("Content-Type", "application/x-git-receive-pack-request")
+	push.Header.Set("Authorization", authorization)
+	denied := httptest.NewRecorder()
+	handler.ServeHTTP(denied, push)
+	assertDenied(t, denied)
+	if resolverCalls != 0 || transport.calls != 0 {
+		t.Fatalf("push reached resolver=%d transport=%d", resolverCalls, transport.calls)
+	}
+
+	upload := request(http.MethodPost, "/acme/widget.git/git-upload-pack", "github.com", strings.NewReader("0009done\n"))
+	upload.Header.Set("Content-Type", egresspolicy.GitUploadPackRequest)
+	upload.Header.Set("Authorization", authorization)
+	success := httptest.NewRecorder()
+	handler.ServeHTTP(success, upload)
+	if success.Code != http.StatusOK || resolverCalls != 1 || transport.calls != 1 {
+		t.Fatalf("valid upload status=%d resolver=%d transport=%d body=%v", success.Code, resolverCalls, transport.calls, success.Body.Bytes())
+	}
+}
+
+func TestRealExchangeGitDiscoveryUsesAdvertisementMedia(t *testing.T) {
+	policy, err := egresspolicy.New(egresspolicy.Rules{GitHubRepositories: []string{"acme/widget"}, OpenAIModels: []string{"gpt-5-mini"}, MaxBodyBytes: 4096, MaxOutputTokens: 32})
+	if err != nil {
+		t.Fatal(err)
+	}
+	registry, err := capability.New(capability.Rules{PolicyVersion: "v1", MaxTTL: time.Hour, MaxUses: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	handle, err := registry.Issue(capability.IssueSpec{AgentInstanceID: testSubject.AgentInstanceID, UID: testSubject.UID, WorkspaceID: testSubject.WorkspaceID, Provider: capability.ProviderGitHub, Repository: "acme/widget", Operation: capability.OperationGitHubGitRead, TTL: time.Minute, Uses: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	transport := &httpRoundTripper{}
+	exchange, err := brokerexchange.New(brokerexchange.Rules{Policy: policy, Registry: registry,
+		Resolver:  egresstransaction.CredentialResolverFunc(func(string, string) (string, error) { return "real-token", nil }),
+		Transport: transport, MaxCredentialBytes: 128, Timeout: time.Second, MaxResponseBytes: 1024})
+	if err != nil {
+		t.Fatal(err)
+	}
+	handler := newHandler(t, exchange, &fakeResolver{subject: testSubject})
+	discovery := request(http.MethodGet, "/acme/widget.git/info/refs?service=git-upload-pack", "github.com", nil)
+	discovery.Header.Set("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte("x-access-token:"+handle)))
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, discovery)
+	if recorder.Code != http.StatusOK || recorder.Header().Get("Content-Type") != egresspolicy.GitUploadPackAdvertise || transport.calls != 1 || transport.contentType != "" {
+		t.Fatalf("status=%d headers=%v transport=%+v", recorder.Code, recorder.Header(), transport)
+	}
+}
+
 type httpRoundTripper struct {
-	mu    sync.Mutex
-	calls int
+	mu            sync.Mutex
+	calls         int
+	authorization string
+	url           string
+	contentType   string
 }
 
 type errorBody struct{}
@@ -364,9 +536,18 @@ type errorBody struct{}
 func (errorBody) Read([]byte) (int, error) { return 0, errors.New("read secret") }
 func (errorBody) Close() error             { return nil }
 
-func (t *httpRoundTripper) RoundTrip(*http.Request) (*http.Response, error) {
+func (t *httpRoundTripper) RoundTrip(request *http.Request) (*http.Response, error) {
 	t.mu.Lock()
 	t.calls++
+	t.authorization = request.Header.Get("Authorization")
+	t.url = request.URL.String()
+	t.contentType = request.Header.Get("Content-Type")
 	t.mu.Unlock()
+	if request.Header.Get("Accept") == egresspolicy.GitUploadPackAdvertise {
+		return &http.Response{StatusCode: http.StatusOK, Header: http.Header{"Content-Type": []string{egresspolicy.GitUploadPackAdvertise}}, Body: io.NopCloser(bytes.NewReader([]byte{0x00, 0xff, 'g', 'i', 't'}))}, nil
+	}
+	if request.Header.Get("Accept") == egresspolicy.GitUploadPackResult {
+		return &http.Response{StatusCode: http.StatusOK, Header: http.Header{"Content-Type": []string{egresspolicy.GitUploadPackResult}}, Body: io.NopCloser(bytes.NewReader([]byte{0x00, 0xff, 'g', 'i', 't'}))}, nil
+	}
 	return &http.Response{StatusCode: http.StatusOK, Header: http.Header{"Content-Type": []string{"application/json"}}, Body: io.NopCloser(strings.NewReader(`{"ok":true}`))}, nil
 }

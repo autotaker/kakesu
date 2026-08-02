@@ -76,7 +76,7 @@ type testExchange struct {
 
 type allowControl struct{}
 
-func (allowControl) Issue(context.Context, string, string) (string, error) {
+func (allowControl) Issue(context.Context, string, string, ...string) (string, error) {
 	return "cap_" + strings.Repeat("A", 43), nil
 }
 func (allowControl) Revoke(context.Context, string) error { return nil }
@@ -121,7 +121,7 @@ func TestSessionConnectTLSAndRealHandler(t *testing.T) {
 	must(t, err)
 	session, err := New(Rules{Authority: authority, Handler: handler, Control: allowControl{}})
 	must(t, err)
-	for _, host := range []string{githubHost, openAIHost} {
+	for _, host := range []string{githubHost, githubGitHost, openAIHost} {
 		t.Run(host, func(t *testing.T) {
 			server, client := net.Pipe()
 			ctx := context.WithValue(context.Background(), "caller", "trusted")
@@ -156,7 +156,7 @@ func TestSessionConnectTLSAndRealHandler(t *testing.T) {
 			}
 		})
 	}
-	if authority.count() != 2 || exchange.calls != 2 || resolver.calls != 2 {
+	if authority.count() != 3 || exchange.calls != 3 || resolver.calls != 3 {
 		t.Fatalf("calls authority=%d exchange=%d resolver=%d", authority.count(), exchange.calls, resolver.calls)
 	}
 	resolver.mu.Lock()
@@ -492,19 +492,55 @@ type recordingControl struct {
 	revokes    int
 	provider   string
 	repository string
+	operation  string
 	handle     string
 	err        error
 }
 
-func (c *recordingControl) Issue(_ context.Context, provider, repository string) (string, error) {
+func (c *recordingControl) Issue(_ context.Context, provider, repository string, operations ...string) (string, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.issues++
 	c.provider, c.repository = provider, repository
+	if len(operations) == 1 {
+		c.operation = operations[0]
+	}
 	if c.err != nil {
 		return "", c.err
 	}
 	return "cap_" + strings.Repeat("A", 43), nil
+}
+
+func TestControlGitReadSelectorIsExplicit(t *testing.T) {
+	authority, _ := newTestAuthority(t)
+	control := &recordingControl{}
+	session, err := New(Rules{Authority: authority, Control: control, Handler: http.HandlerFunc(func(http.ResponseWriter, *http.Request) { t.Error("handler called") })})
+	must(t, err)
+	body := `{"provider":"github","repository":"octo/repo","operation":"github-git-read"}`
+	response, serveErr := runControl(session, issueWire(body))
+	if serveErr != nil || !strings.HasPrefix(response, "HTTP/1.1 200 OK\r\n") {
+		t.Fatalf("response=%q err=%v", response, serveErr)
+	}
+	control.mu.Lock()
+	if control.issues != 1 || control.provider != "github" || control.repository != "octo/repo" || control.operation != "github-git-read" {
+		t.Fatalf("control=%+v", control)
+	}
+	control.mu.Unlock()
+
+	for _, body := range []string{
+		`{"provider":"github","repository":"octo/repo","operation":"git-read"}`,
+		`{"provider":"github","repository":"octo/repo","operation":"github-rest-read"}`,
+		`{"provider":"openai","operation":"github-git-read"}`,
+		`{"provider":"github","repository":"octo/repo","operation":"github-git-read","host":"github.com"}`,
+	} {
+		bad := &recordingControl{}
+		badSession, err := New(Rules{Authority: authority, Control: bad, Handler: http.HandlerFunc(func(http.ResponseWriter, *http.Request) { t.Error("handler called") })})
+		must(t, err)
+		response, serveErr := runControl(badSession, issueWire(body))
+		if response != connectDenied || !errors.Is(serveErr, ErrDenied) || bad.issues != 0 {
+			t.Fatalf("body=%s response=%q err=%v issues=%d", body, response, serveErr, bad.issues)
+		}
+	}
 }
 
 func (c *recordingControl) Revoke(_ context.Context, handle string) error {
@@ -556,6 +592,7 @@ func TestControlStrictFramingJSONAndFixedDenial(t *testing.T) {
 		"upgrade":            "POST /v1/capabilities HTTP/1.1\r\nUpgrade: h2c\r\nContent-Length: 2\r\nContent-Type: application/json\r\n\r\n{}",
 		"duplicate json":     issueWire(`{"provider":"openai","provider":"github"}`),
 		"unknown json":       issueWire(`{"provider":"openai","model":"secret-model"}`),
+		"unknown operation":  issueWire(`{"provider":"github","repository":"octo/repo","operation":"receive-pack"}`),
 		"subject json":       issueWire(`{"provider":"openai","subject":"agent"}`),
 		"null":               issueWire(`{"provider":null}`),
 		"missing repository": issueWire(`{"provider":"github"}`),

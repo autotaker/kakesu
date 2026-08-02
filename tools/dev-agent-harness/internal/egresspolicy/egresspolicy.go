@@ -20,7 +20,14 @@ const (
 	// decision does not itself authorize a network connection.
 	DecisionDeny                Decision = "deny"
 	DecisionGitHubRESTRead      Decision = "allow/github-rest-read"
+	DecisionGitHubGitRead       Decision = "allow/github-git-read"
 	DecisionOpenAIResponsesText Decision = "allow/openai-responses-text"
+
+	OperationGitHubGitRead = "github-git-read"
+	GitHubGitHost          = "github.com"
+	GitUploadPackRequest   = "application/x-git-upload-pack-request"
+	GitUploadPackResult    = "application/x-git-upload-pack-result"
+	GitUploadPackAdvertise = "application/x-git-upload-pack-advertisement"
 )
 
 // Decision is the result of a policy check.
@@ -135,10 +142,46 @@ func (p *Policy) Evaluate(req Request) (Scope, Decision, error) {
 	if scope, decision, ok := p.authorizeGitHub(req.Method, req.URL); ok {
 		return scope, decision, nil
 	}
+	if scope, decision, ok := p.authorizeGitHubGit(req); ok {
+		return scope, decision, nil
+	}
 	if scope, decision, ok := p.authorizeOpenAI(req.Method, req.URL, req.ContentType, req.Body); ok {
 		return scope, decision, nil
 	}
 	return Scope{}, DecisionDeny, ErrDenied
+}
+
+func (p *Policy) authorizeGitHubGit(req Request) (Scope, Decision, bool) {
+	u, ok := parseGitHubGitURL(req.URL)
+	if !ok {
+		return Scope{}, DecisionDeny, false
+	}
+	segments, ok := canonicalPathSegments(u.Path)
+	if !ok || len(segments) < 2 || !validRepoSegment(segments[0]) {
+		return Scope{}, DecisionDeny, false
+	}
+	repositoryName := strings.TrimSuffix(segments[1], ".git")
+	if repositoryName == segments[1] || !validRepoSegment(repositoryName) {
+		return Scope{}, DecisionDeny, false
+	}
+	repository := segments[0] + "/" + repositoryName
+	if _, allowed := p.githubRepositories[repository]; !allowed {
+		return Scope{}, DecisionDeny, false
+	}
+
+	discovery := req.Method == "GET" && len(segments) == 4 &&
+		segments[2] == "info" && segments[3] == "refs" &&
+		u.RawQuery == "service=git-upload-pack" && req.ContentType == "" && len(req.Body) == 0
+	upload := req.Method == "POST" && len(segments) == 3 &&
+		segments[2] == "git-upload-pack" && u.RawQuery == "" &&
+		req.ContentType == GitUploadPackRequest && len(req.Body) > 0 && len(req.Body) <= p.maxBodyBytes
+	if !discovery && !upload {
+		return Scope{}, DecisionDeny, false
+	}
+	return Scope{
+		Provider: "github", Repository: repository,
+		Operation: OperationGitHubGitRead, DestinationHost: GitHubGitHost,
+	}, DecisionGitHubGitRead, true
 }
 
 func (p *Policy) authorizeGitHub(method, rawURL string) (Scope, Decision, bool) {
@@ -199,6 +242,27 @@ func parseCanonicalURL(raw, host, path string) (*url.URL, bool) {
 		return nil, false
 	}
 	if u.Path == "" || (path != "/" && u.Path != path) {
+		return nil, false
+	}
+	return u, true
+}
+
+func parseGitHubGitURL(raw string) (*url.URL, bool) {
+	if len(raw) == 0 || len(raw) > MaxURLBytes || strings.IndexByte(raw, '%') >= 0 ||
+		strings.IndexByte(raw, '#') >= 0 || !asciiURL(raw) {
+		return nil, false
+	}
+	u, err := url.Parse(raw)
+	if err != nil || u.String() != raw || u.Scheme != "https" ||
+		(u.Host != GitHubGitHost && u.Host != GitHubGitHost+":443") ||
+		u.User != nil || u.Opaque != "" || u.Fragment != "" || u.RawFragment != "" ||
+		u.RawPath != "" || u.ForceQuery {
+		return nil, false
+	}
+	if u.RawQuery != "" && u.RawQuery != "service=git-upload-pack" {
+		return nil, false
+	}
+	if u.Path == "" {
 		return nil, false
 	}
 	return u, true
