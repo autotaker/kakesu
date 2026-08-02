@@ -17,7 +17,8 @@ import (
 
 const (
 	issueTTL        = 5 * time.Minute
-	issueUses       = 1
+	gitReadUses     = 1
+	apiUses         = 16
 	maxRepositories = 32
 	maxModels       = 32
 )
@@ -137,12 +138,27 @@ func (c *Controller) Issue(ctx context.Context, provider, repository string, ope
 		Repository:      repository,
 		Operation:       operation,
 		TTL:             issueTTL,
-		Uses:            issueUses,
+		Uses:            usesForOperation(operation),
 	})
 	if err != nil || handle == "" {
 		return "", ErrDenied
 	}
 	return handle, nil
+}
+
+// usesForOperation is deliberately private and fail-closed. Provider-default
+// API scopes and their accepted explicit spellings receive the fixed API
+// budget, while Git Smart HTTP stays single-use. A future operation must be
+// added here explicitly or Registry issuance rejects its zero-use lease.
+func usesForOperation(operation string) int {
+	switch operation {
+	case "", capability.OperationGitHubRESTRead, capability.OperationOpenAIResponsesText:
+		return apiUses
+	case capability.OperationGitHubGitRead:
+		return gitReadUses
+	default:
+		return 0
+	}
 }
 
 // Revoke removes one canonical handle only for the subject resolved from the

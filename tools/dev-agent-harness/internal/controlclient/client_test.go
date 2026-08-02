@@ -24,22 +24,53 @@ const testSocket = "/run/dev-agent-harness/egress.sock"
 
 var testHandle = "cap_" + strings.Repeat("A", 43)
 
+type issueOperation struct {
+	name string
+	body string
+	call func() (string, error)
+}
+
+func issueOperations() []issueOperation {
+	return []issueOperation{
+		{
+			name: "Git Smart HTTP read",
+			body: `{"provider":"github","repository":"octo/repo","operation":"github-git-read"}`,
+			call: func() (string, error) { return Issue(testSocket, "octo/repo") },
+		},
+		{
+			name: "GitHub REST read",
+			body: `{"provider":"github","repository":"octo/repo"}`,
+			call: func() (string, error) { return IssueGitHubREST(testSocket, "octo/repo") },
+		},
+		{
+			name: "OpenAI Responses text",
+			body: `{"provider":"openai"}`,
+			call: func() (string, error) { return IssueOpenAI(testSocket) },
+		},
+	}
+}
+
 type observedConn struct {
 	net.Conn
-	mu             sync.Mutex
-	readDeadlines  int
-	writeDeadlines int
-	deadlines      int
-	closes         int
-	maxWrite       int
-	closeErr       error
-	deadlineErr    error
+	mu               sync.Mutex
+	readDeadlines    int
+	writeDeadlines   int
+	deadlines        int
+	closes           int
+	maxWrite         int
+	closeErr         error
+	deadlineErr      error
+	readDeadlineErr  error
+	writeDeadlineErr error
 }
 
 func (c *observedConn) SetReadDeadline(deadline time.Time) error {
 	c.mu.Lock()
 	c.readDeadlines++
-	err := c.deadlineErr
+	err := c.readDeadlineErr
+	if err == nil {
+		err = c.deadlineErr
+	}
 	c.mu.Unlock()
 	if err != nil {
 		return err
@@ -50,7 +81,10 @@ func (c *observedConn) SetReadDeadline(deadline time.Time) error {
 func (c *observedConn) SetWriteDeadline(deadline time.Time) error {
 	c.mu.Lock()
 	c.writeDeadlines++
-	err := c.deadlineErr
+	err := c.writeDeadlineErr
+	if err == nil {
+		err = c.deadlineErr
+	}
 	c.mu.Unlock()
 	if err != nil {
 		return err
@@ -94,23 +128,35 @@ func (c *observedConn) counts() (int, int, int, int) {
 	return c.readDeadlines, c.writeDeadlines, c.deadlines, c.closes
 }
 
-func TestIssueUsesExactSingleConnectionWire(t *testing.T) {
-	body := `{"provider":"github","repository":"octo/repo","operation":"github-git-read"}`
-	wantRequest := "POST /v1/capabilities HTTP/1.1\r\nContent-Length: " + strconv.Itoa(len(body)) + "\r\nContent-Type: application/json\r\n\r\n" + body
-	wantResponse := issueResponse(testHandle)
-	conn, request, calls, done := installPipe(t, wantResponse, 7, nil)
+type readErrorConn struct {
+	*observedConn
+	err error
+}
 
-	got, err := Issue(testSocket, "octo/repo")
-	if err != nil || got != testHandle {
-		t.Fatalf("handle shape mismatch: len=%d err=%v", len(got), err)
-	}
-	<-done
-	if *request != wantRequest || *calls != 1 {
-		t.Fatalf("request=%q calls=%d", *request, *calls)
-	}
-	reads, writes, deadlines, closes := conn.counts()
-	if reads != 1 || writes != 1 || deadlines != 0 || closes != 1 {
-		t.Fatalf("deadlines read=%d write=%d all=%d closes=%d", reads, writes, deadlines, closes)
+func (c *readErrorConn) Read([]byte) (int, error) {
+	return 0, c.err
+}
+
+func TestIssueOperationsUseExactSingleConnectionWire(t *testing.T) {
+	for _, operation := range issueOperations() {
+		t.Run(operation.name, func(t *testing.T) {
+			wantRequest := "POST /v1/capabilities HTTP/1.1\r\nContent-Length: " + strconv.Itoa(len(operation.body)) +
+				"\r\nContent-Type: application/json\r\n\r\n" + operation.body
+			conn, request, calls, done := installPipe(t, issueResponse(testHandle), 7, nil)
+
+			got, err := operation.call()
+			if err != nil || got != testHandle {
+				t.Fatalf("handle shape mismatch: len=%d err=%v", len(got), err)
+			}
+			<-done
+			if *request != wantRequest || *calls != 1 {
+				t.Fatalf("request=%q calls=%d", *request, *calls)
+			}
+			reads, writes, deadlines, closes := conn.counts()
+			if reads != 1 || writes != 1 || deadlines != 0 || closes != 1 {
+				t.Fatalf("deadlines read=%d write=%d all=%d closes=%d", reads, writes, deadlines, closes)
+			}
+		})
 	}
 }
 
@@ -172,6 +218,14 @@ func TestInputIsRejectedBeforeDial(t *testing.T) {
 	} {
 		if value, err := Issue(input.socket, input.repository); value != "" || err != ErrControl {
 			t.Fatalf("input accepted: value=%q err=%v", value, err)
+		}
+		if value, err := IssueGitHubREST(input.socket, input.repository); value != "" || err != ErrControl {
+			t.Fatalf("GitHub REST input accepted: value=%q err=%v", value, err)
+		}
+	}
+	for _, socket := range []string{"", "relative.sock", "/run/../tmp/egress.sock", "/run//egress.sock"} {
+		if value, err := IssueOpenAI(socket); value != "" || err != ErrControl {
+			t.Fatalf("OpenAI socket accepted: value=%q err=%v", value, err)
 		}
 	}
 	for _, handle := range []string{"", "cap_bad", "cap_" + strings.Repeat("+", 43), testHandle + "x"} {
@@ -311,31 +365,55 @@ func TestProxyCATransportFailuresCloseAndStayFixed(t *testing.T) {
 	}
 }
 
-func TestIssueStrictResponseMatrix(t *testing.T) {
+func TestIssueOperationsStrictResponseMatrix(t *testing.T) {
 	validBody := `{"handle":"` + testHandle + `"}`
 	cases := map[string]string{
-		"status":         strings.Replace(issueResponse(testHandle), "200 OK", "403 Forbidden", 1),
-		"header order":   "HTTP/1.1 200 OK\r\nContent-Length: 60\r\nContent-Type: application/json\r\nConnection: close\r\n\r\n" + validBody,
-		"extra header":   strings.Replace(issueResponse(testHandle), "Connection: close", "X-Extra: no\r\nConnection: close", 1),
-		"chunked":        strings.Replace(issueResponse(testHandle), "Content-Length: 60", "Transfer-Encoding: chunked", 1),
-		"leading zero":   strings.Replace(issueResponse(testHandle), "Content-Length: 60", "Content-Length: 060", 1),
-		"wrong type":     strings.Replace(issueResponse(testHandle), "application/json", "text/plain", 1),
-		"unknown json":   issueRawResponse(`{"handle":"` + testHandle + `","other":"x"}`),
-		"space json":     issueRawResponse(`{ "handle":"` + testHandle + `"}`),
-		"bad handle":     issueRawResponse(`{"handle":"cap_bad"}`),
-		"escaped handle": issueRawResponse(`{"handle":"cap_` + strings.Repeat(`\u0041`, 43) + `"}`),
-		"early eof":      "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 60\r\nConnection: close\r\n\r\n" + validBody[:20],
-		"extra bytes":    issueResponse(testHandle) + "x",
+		"informational": strings.Replace(issueResponse(testHandle), "200 OK", "100 Continue", 1),
+		"no content":    strings.Replace(issueResponse(testHandle), "200 OK", "204 No Content", 1),
+		"redirect":      strings.Replace(issueResponse(testHandle), "200 OK", "302 Found", 1),
+		"forbidden":     strings.Replace(issueResponse(testHandle), "200 OK", "403 Forbidden", 1),
+		"server error":  strings.Replace(issueResponse(testHandle), "200 OK", "500 Internal Server Error", 1),
+		"header order": "HTTP/1.1 200 OK\r\nContent-Length: 60\r\nContent-Type: application/json\r\n" +
+			"Connection: close\r\n\r\n" + validBody,
+		"status spacing":    strings.Replace(issueResponse(testHandle), "HTTP/1.1 200 OK", "HTTP/1.1  200 OK", 1),
+		"header case":       strings.Replace(issueResponse(testHandle), "Content-Type", "content-type", 1),
+		"header whitespace": strings.Replace(issueResponse(testHandle), "Content-Length: 60", "Content-Length:  60", 1),
+		"extra header":      strings.Replace(issueResponse(testHandle), "Connection: close", "X-Extra: no\r\nConnection: close", 1),
+		"duplicate type":    strings.Replace(issueResponse(testHandle), "Content-Length", "Content-Type: application/json\r\nContent-Length", 1),
+		"duplicate length":  strings.Replace(issueResponse(testHandle), "Connection: close", "Content-Length: 60\r\nConnection: close", 1),
+		"chunked":           strings.Replace(issueResponse(testHandle), "Content-Length: 60", "Transfer-Encoding: chunked", 1),
+		"leading zero":      strings.Replace(issueResponse(testHandle), "Content-Length: 60", "Content-Length: 060", 1),
+		"signed length":     strings.Replace(issueResponse(testHandle), "Content-Length: 60", "Content-Length: +60", 1),
+		"wrong length":      strings.Replace(issueResponse(testHandle), "Content-Length: 60", "Content-Length: 59", 1),
+		"wrong type":        strings.Replace(issueResponse(testHandle), "application/json", "text/plain", 1),
+		"missing type":      strings.Replace(issueResponse(testHandle), "Content-Type: application/json\r\n", "", 1),
+		"missing close":     strings.Replace(issueResponse(testHandle), "Connection: close\r\n", "", 1),
+		"unknown json":      issueRawResponse(`{"handle":"` + testHandle + `","other":"x"}`),
+		"reordered json":    issueRawResponse(`{"other":"x","handle":"` + testHandle + `"}`),
+		"space json":        issueRawResponse(`{ "handle":"` + testHandle + `"}`),
+		"newline json":      issueRawResponse("{\n\"handle\":\"" + testHandle + "\"}"),
+		"bad handle":        issueRawResponse(`{"handle":"cap_bad"}`),
+		"padded handle":     issueRawResponse(`{"handle":"` + testHandle + `="}`),
+		"escaped handle":    issueRawResponse(`{"handle":"cap_` + strings.Repeat(`\u0041`, 43) + `"}`),
+		"early eof": "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 60\r\n" +
+			"Connection: close\r\n\r\n" + validBody[:20],
+		"extra bytes": issueResponse(testHandle) + "x",
 		"second response": issueResponse(testHandle) +
 			"HTTP/1.1 204 No Content\r\nContent-Length: 0\r\nConnection: close\r\n\r\n",
+		"header overflow":  "HTTP/1.1 200 OK\r\nX: " + strings.Repeat("x", maxResponseHeader) + "\r\n\r\n",
+		"no header marker": "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 60",
 	}
-	for name, response := range cases {
-		t.Run(name, func(t *testing.T) {
-			_, _, calls, done := installPipe(t, response, 0, nil)
-			value, err := Issue(testSocket, "octo/repo")
-			<-done
-			if value != "" || err != ErrControl || *calls != 1 {
-				t.Fatalf("value=%q err=%v calls=%d", value, err, *calls)
+	for _, operation := range issueOperations() {
+		t.Run(operation.name, func(t *testing.T) {
+			for name, response := range cases {
+				t.Run(name, func(t *testing.T) {
+					_, _, calls, done := installPipe(t, response, 0, nil)
+					value, err := operation.call()
+					<-done
+					if value != "" || err != ErrControl || *calls != 1 {
+						t.Fatalf("value=%q err=%v calls=%d", value, err, *calls)
+					}
+				})
 			}
 		})
 	}
@@ -361,40 +439,124 @@ func TestRevokeStrictResponseMatrix(t *testing.T) {
 	}
 }
 
-func TestTransportFailuresAreFixedAndClose(t *testing.T) {
-	original := dialControl
-	defer func() { dialControl = original }()
+func TestIssueOperationDialFailuresAreFixedWithoutRetry(t *testing.T) {
 	sentinel := "secret.sock octo/repo " + testHandle + " lower-error"
-	dialControl = func(context.Context, string, string) (net.Conn, error) {
-		return nil, errors.New(sentinel)
-	}
-	if value, err := Issue(testSocket, "octo/repo"); value != "" || err != ErrControl || strings.Contains(err.Error(), sentinel) {
-		t.Fatalf("value=%q err=%v", value, err)
-	}
-
-	server, client := net.Pipe()
-	observed := &observedConn{Conn: client, deadlineErr: errors.New(sentinel)}
-	dialControl = func(context.Context, string, string) (net.Conn, error) { return observed, nil }
-	if value, err := Issue(testSocket, "octo/repo"); value != "" || err != ErrControl {
-		t.Fatalf("value=%q err=%v", value, err)
-	}
-	_ = server.Close()
-	_, _, _, closes := observed.counts()
-	if closes != 1 {
-		t.Fatalf("closes=%d", closes)
+	for _, operation := range issueOperations() {
+		t.Run(operation.name, func(t *testing.T) {
+			original := dialControl
+			t.Cleanup(func() { dialControl = original })
+			calls := 0
+			dialControl = func(context.Context, string, string) (net.Conn, error) {
+				calls++
+				return nil, errors.New(sentinel)
+			}
+			value, err := operation.call()
+			if value != "" || err != ErrControl || err.Error() != "capability-control-client-failed" ||
+				strings.Contains(err.Error(), sentinel) || calls != 1 {
+				t.Fatalf("value=%q err=%v calls=%d", value, err, calls)
+			}
+		})
 	}
 }
 
-func TestCloseFailureRejectsOtherwiseValidResponse(t *testing.T) {
-	conn, _, _, done := installPipe(t, issueResponse(testHandle), 0, errors.New("secret close error"))
-	value, err := Issue(testSocket, "octo/repo")
-	<-done
-	if value != "" || err != ErrControl {
-		t.Fatalf("value=%q err=%v", value, err)
+func TestIssueOperationDeadlineFailuresCloseAndStayFixed(t *testing.T) {
+	sentinel := errors.New("secret deadline lower-error")
+	for _, operation := range issueOperations() {
+		for _, phase := range []string{"write", "read"} {
+			t.Run(operation.name+" "+phase, func(t *testing.T) {
+				conn, _, calls, done := installPipe(t, issueResponse(testHandle), 0, nil)
+				if phase == "write" {
+					conn.writeDeadlineErr = sentinel
+				} else {
+					conn.readDeadlineErr = sentinel
+				}
+				value, err := operation.call()
+				<-done
+				if value != "" || err != ErrControl || strings.Contains(err.Error(), sentinel.Error()) || *calls != 1 {
+					t.Fatalf("value=%q err=%v calls=%d", value, err, *calls)
+				}
+				reads, writes, _, closes := conn.counts()
+				if closes != 1 || writes != 1 || phase == "write" && reads != 0 || phase == "read" && reads != 1 {
+					t.Fatalf("phase=%s read-deadlines=%d write-deadlines=%d closes=%d", phase, reads, writes, closes)
+				}
+			})
+		}
 	}
-	_, _, _, closes := conn.counts()
-	if closes != 1 {
-		t.Fatalf("closes=%d", closes)
+}
+
+func TestIssueOperationWriteAndReadFailuresCloseAndStayFixed(t *testing.T) {
+	sentinel := errors.New("secret transport lower-error")
+	for _, operation := range issueOperations() {
+		t.Run(operation.name+" write", func(t *testing.T) {
+			original := dialControl
+			t.Cleanup(func() { dialControl = original })
+			server, client := net.Pipe()
+			if err := server.Close(); err != nil {
+				t.Fatal(err)
+			}
+			conn := &observedConn{Conn: client}
+			calls := 0
+			dialControl = func(context.Context, string, string) (net.Conn, error) {
+				calls++
+				return conn, nil
+			}
+			value, err := operation.call()
+			if value != "" || err != ErrControl || strings.Contains(err.Error(), sentinel.Error()) || calls != 1 {
+				t.Fatalf("value=%q err=%v calls=%d", value, err, calls)
+			}
+			_, _, _, closes := conn.counts()
+			if closes != 1 {
+				t.Fatalf("closes=%d", closes)
+			}
+		})
+
+		t.Run(operation.name+" read", func(t *testing.T) {
+			original := dialControl
+			t.Cleanup(func() { dialControl = original })
+			server, client := net.Pipe()
+			observed := &observedConn{Conn: client}
+			conn := &readErrorConn{observedConn: observed, err: sentinel}
+			calls := 0
+			dialControl = func(context.Context, string, string) (net.Conn, error) {
+				calls++
+				return conn, nil
+			}
+			done := make(chan struct{})
+			go func() {
+				defer close(done)
+				defer server.Close()
+				_ = server.SetDeadline(time.Now().Add(2 * time.Second))
+				var data [256]byte
+				_, _ = server.Read(data[:])
+			}()
+			value, err := operation.call()
+			<-done
+			if value != "" || err != ErrControl || strings.Contains(err.Error(), sentinel.Error()) || calls != 1 {
+				t.Fatalf("value=%q err=%v calls=%d", value, err, calls)
+			}
+			_, _, _, closes := observed.counts()
+			if closes != 1 {
+				t.Fatalf("closes=%d", closes)
+			}
+		})
+	}
+}
+
+func TestIssueOperationCloseFailureRejectsOtherwiseValidResponse(t *testing.T) {
+	for _, operation := range issueOperations() {
+		t.Run(operation.name, func(t *testing.T) {
+			sentinel := "secret close error"
+			conn, _, calls, done := installPipe(t, issueResponse(testHandle), 0, errors.New(sentinel))
+			value, err := operation.call()
+			<-done
+			if value != "" || err != ErrControl || strings.Contains(err.Error(), sentinel) || *calls != 1 {
+				t.Fatalf("value=%q err=%v calls=%d", value, err, *calls)
+			}
+			_, _, _, closes := conn.counts()
+			if closes != 1 {
+				t.Fatalf("closes=%d", closes)
+			}
+		})
 	}
 }
 
