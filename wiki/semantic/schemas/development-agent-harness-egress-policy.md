@@ -7,37 +7,28 @@ title: Development Agent Harness Egress Policy
 
 ## 問い
 
-Development Agentから外向き通信を実行する前に、GitHubとOpenAIの最小request surfaceをどこでfail-closedに判定するか。
+Agentが実認証情報を得ずに、許可されたproviderへ接続する最小の認証情報差し替え境界をどう保つか。
 
-## Pure policyの境界
+## 薄いproxy契約
 
-`internal/egresspolicy`は、RulesとRequestだけを入力にする副作用のないallowlist判断コアである。file、environment、process、network、DNS、TLS、clock、randomを使用せず、Credentialも扱わない。allow decisionは実通信の許可ではなく、後続のproxyが別のsecurity boundaryを満たすための一条件にすぎない。
+外向きproxyはprovider protocolの意味を再実装するgatewayではない。各要求でUnix socket peer identity、Agent instance/UID、workspace、Opaque capabilityのsubject/provider/repository/TTL/use/revoke、完全一致destination hostを検証し、合格時だけbrokerの実credentialへ置換する。実credentialはAgentへ返さず、redirect先へ再利用しない。
 
-Rulesは許可repository、許可model、OpenAI body上限、output token上限を生成時に検証してcopyする。生成後にcallerが元sliceを変更してもpolicyの結果は変わらない。nilまたはzero policy、曖昧なURL、未知のfieldはdefault denyとなる。
+通常のGit read、GitHub REST、OpenAI APIは、HTTP framing、hop-by-hop header、credential秘匿に必要な最小処理を除き、method/path/query/bodyと上流status/headers/bodyを未解釈・非bufferのbackpressure付きstreamとして転送する。timeout、concurrency、request/response header個数・大きさ、接続単位resource budgetは維持する。
 
-## 初期allow surface
+pushだけは、完全一致repositoryと`git-receive-pack`を最小分類する。本文、Git wire/pkt-line、参照、SHA、force/deleteを解析又は照合しない。別途必要なrepository単位one-shot `push grant`を、上流接続・本文送信その他の上流試行開始前に原子的に消費する。
 
-GitHubは、allowlistへ完全一致するlowercase `owner/repo`に対するcanonical `GET`または`HEAD https://api.github.com[:443]/repos/{owner}/{repo}`と、そのcanonical child pathだけを許可候補にする。query、fragment、userinfo、percent encoding、dot segment、empty segment、別host、別port、write methodは拒否する。
+## 削除・移行対象
 
-OpenAIは、canonical `POST https://api.openai.com[:443]/v1/responses`だけを許可候補にする。bodyはparameterなし`application/json`のstrict objectとし、許可model、non-empty string input、明示的な`store:false`と`stream:false`、正かつ上限内の`max_output_tokens`を必須にする。追加できるfieldはstring `instructions`だけであり、tool、file、image、background、continuationを含む未知fieldは拒否する。
+次の旧policy/実装は将来用の互換契約として残さず、次の単一vertical-slice製品Taskで削除する。
 
-Git Smart HTTP readはGitHub RESTとは別のsurfaceである。allowlistの完全一致lowercase `owner/repo`ごとに、`github.com[:443]`への次の正規requestだけを許可候補にする。
+- `approvalmanifest`、old/new SHA、ref一覧、force/delete、remote old SHA、Git wire/pkt-line本文照合。
+- strict OpenAI JSON field/model/`store`/`stream`検査、GitHub `/repos/{owner}/{repo}` endpoint parser、Git upload-pack本文・response `Content-Type`の意味検査。
+- 上流JSON検証、`2xx`限定、`Content-Type`検査、response全量buffer、固定1 MiB response上限。
+- `Policy`→`Transaction`→`Exchange`→`Forwarder`の重複評価と不要な抽象層。
 
-- discovery: 空のContent-Type・空bodyによる`GET /{owner}/{repo}.git/info/refs?service=git-upload-pack`
-- pack取得: `application/x-git-upload-pack-request`かつ上限内の非空bodyによる`POST /{owner}/{repo}.git/git-upload-pack`
-
-queryはdiscoveryの単一のcanonical値だけであり、percent encoding、dot/empty segment、fragment、userinfo、別host/port、余分又は欠落したqueryは拒否する。`git-receive-pack`を含むpush surface、redirect、retryは許可しない。明示`:443`はHTTPS default authorityとして受理するが、後続のDNS、dial、SNIにはport-free canonical hostnameだけを渡す。
-
-denyは入力値やparser errorを文字列化せず、固定errorだけを返す。provider別allow decisionは、後続処理がGitHubとOpenAIのCredentialやupstreamを混同しないために分ける。
-
-## 後続Taskの責務
-
-TLS終端、client certificate trust、DNS/address検査、redirect、Credential取得と置換、Opaque capability、audit、rate limit、実upstream通信は本policyの外にある。proxyを実装するときは、本decisionだけで接続せず、それらを別途fail-closedに満たす。
-
-新しいAPI surfaceを許可する場合はgeneric URL例外を加えず、provider、method、path、body、Credential、redirectの境界を別Taskで明示する。
+GitHub App installationのrepository限定write権限が、実際のGitHub操作範囲の上流安全境界である。provider意味検査を再導入する場合は、実E2Eで繰り返し観測した具体的不具合への最小対策として別Taskで判断する。
 
 ## 関連
 
-- [TASK-0039 HANDOVER](../../../tasks/TASK-0039-dev-agent-egress-policy/HANDOVER.md)
-- [TASK-0063 HANDOVER](../../../tasks/TASK-0063-dev-agent-git-smart-http-read/HANDOVER.md)
-- [Development Agent Harness Config Policy](development-agent-harness-config.md)
+- [TASK-0074 HANDOVER](../../../tasks/TASK-0074-simplify-push-approval-and-proxy-contract/HANDOVER.md)
+- [Development Agent Harness Push Approval Manifest](development-agent-harness-push-approval-manifest.md)

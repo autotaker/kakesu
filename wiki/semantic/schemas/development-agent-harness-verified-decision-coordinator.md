@@ -5,28 +5,18 @@ title: Development Agent Harness Verified Decision Coordinator
 
 # Development Agent Harness Verified Decision Coordinator
 
-## 問い
+## 移行対象
 
-durable approval requestとone-shot verifier challengeを、呼出し側が認可対象又は信頼境界を差し替えられない順序で接続し、検証済み入力をdurable decisionへいつ昇格させるか。
+TASK-0073の`internal/approvaldecision`は、manifest digestで同一性を確認したchallenge結果をdurable approval stateへ接続する履歴的実装である。TASK-0074により、manifest/digest、ref、SHAをdecision又はpush認可に束縛する契約は廃止済みであり、既存実装を将来の認可根拠として維持しない。
 
-## 所有と順序
+## 移行先の順序
 
-`internal/approvaldecision`のproduction constructorはconcrete approval state store、challenge manager、trusted verifierを一度だけ固定する。`Begin`はcaller supplied digest、clock、state又はchallengeを受けず、store `Get`で確認したexact pending recordのrequest IDとderived digestだけを、callerのdecision、operator、RP ID、originとともに`Issue`へ渡す。
+後続の単一vertical sliceでは、verified Passkey結果をrepository単位requestのapprove/deny decisionへ一回だけ接続する。Passkeyは本人確認、TailscaleはUI到達と接続元識別であり、どちらもpush authorizationではない。
 
-`Complete`は固定verifierでchallengeを一回だけ`Consume`してから、verified bindingのexact request ID、digest、operator、decisionだけを使う。decisionが`approve`なら`Approve`、`deny`なら`Deny`を一回だけ選び、durable transitionが成功した場合だけdurable recordとstable credential IDを返す。verified resultだけ、又はcallerが失った応答は成功を意味しない。
-
-## 失敗・競合・再照合
-
-verification failure又はpanic、replay、expiry、terminal state、digest mismatch、transition/persistence/poison failureでは、resultを空にして固定の非漏えいerrorを返す。`Consume`済みchallengeを復活、再消費、自動再発行せず、別decisionへのfallback又は成功応答の再構成もしない。response loss後はcallerがstore `Get`でdurable stateを照合する。
-
-同一requestのapprove/deny challengeが競合しても、first-winsの唯一の正本はstoreのatomic pending transitionである。coordinatorは別のlock、rollback又は成功推測を持たない。新challengeは`Begin`がrequestがなおpendingであることを確認した時だけ発行できる。poisonからの復旧はstoreの`Close`、`Open`、上位reconciliationが所有する。
-
-## 認可境界と適用限界
-
-trusted verifierはこのcoordinatorがactual WebAuthn cryptographic verification、credential lifecycle、又はTailscale identityを実装済みであることを意味しない。durable `approved`/`denied`もaudit、grant、push authorization、実push成功を意味しない。HTTP/UI/session/CSRF、実WebAuthn authenticatorとcredential、Tailscale、外部作用、deployment/restart/rollbackはlive E2Eで別途確認する。
+approve decisionから発行するone-shot `push grant`だけが、完全一致repositoryへの次の`git-receive-pack`一回を認可する。grantはAgent instance/UID、workspace、repository、短TTL、未使用、revokeへ束縛し、上流試行前に消費する。同一repository内の別内容への一回利用は受容するが、別repository、別Agent/workspace、再使用、期限後、GitHub RESTその他操作への転用は拒否する。branch/commit/ref/SHAはUI参考情報であり、decision/grantの束縛には使わない。
 
 ## 関連
 
 - [TASK-0073 HANDOVER](../../../tasks/TASK-0073-verified-decision-coordinator/HANDOVER.md)
+- [TASK-0074 HANDOVER](../../../tasks/TASK-0074-simplify-push-approval-and-proxy-contract/HANDOVER.md)
 - [Approval Request Store](development-agent-harness-approval-request-store.md)
-- [Passkey Challenge Lifecycle](development-agent-harness-passkey-challenge-lifecycle.md)

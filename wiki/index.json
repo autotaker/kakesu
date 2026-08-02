@@ -169,13 +169,9 @@
       "kind": "schema",
       "title": "Development Agent Harness Approval Request Store",
       "links": [
-        "development-agent-harness-push-approval-manifest.md",
-        "development-agent-harness-passkey-challenge-lifecycle.md",
-        "development-agent-harness-verified-decision-coordinator.md",
         "../../../tasks/TASK-0071-approval-request-store/HANDOVER.md",
-        "development-agent-harness-push-approval-manifest.md",
-        "development-agent-harness-passkey-challenge-lifecycle.md",
-        "development-agent-harness-verified-decision-coordinator.md"
+        "../../../tasks/TASK-0074-simplify-push-approval-and-proxy-contract/HANDOVER.md",
+        "development-agent-harness-egress-policy.md"
       ]
     },
     {
@@ -216,9 +212,8 @@
       "kind": "schema",
       "title": "Development Agent Harness Egress Policy",
       "links": [
-        "../../../tasks/TASK-0039-dev-agent-egress-policy/HANDOVER.md",
-        "../../../tasks/TASK-0063-dev-agent-git-smart-http-read/HANDOVER.md",
-        "development-agent-harness-config.md"
+        "../../../tasks/TASK-0074-simplify-push-approval-and-proxy-contract/HANDOVER.md",
+        "development-agent-harness-push-approval-manifest.md"
       ]
     },
     {
@@ -273,12 +268,9 @@
       "kind": "schema",
       "title": "Development Agent Harness Passkey Challenge Lifecycle",
       "links": [
-        "development-agent-harness-approval-request-store.md",
-        "development-agent-harness-verified-decision-coordinator.md",
         "../../../tasks/TASK-0072-passkey-challenge-lifecycle/HANDOVER.md",
-        "development-agent-harness-approval-request-store.md",
-        "development-agent-harness-verified-decision-coordinator.md",
-        "development-agent-harness-push-approval-manifest.md"
+        "../../../tasks/TASK-0074-simplify-push-approval-and-proxy-contract/HANDOVER.md",
+        "development-agent-harness-approval-request-store.md"
       ]
     },
     {
@@ -319,12 +311,9 @@
       "kind": "schema",
       "title": "Development Agent Harness Push Approval Manifest",
       "links": [
-        "development-agent-harness-approval-request-store.md",
-        "development-agent-harness-passkey-challenge-lifecycle.md",
         "../../../tasks/TASK-0070-push-approval-manifest/HANDOVER.md",
-        "development-agent-harness-approval-request-store.md",
-        "development-agent-harness-passkey-challenge-lifecycle.md",
-        "development-agent-harness-egress-transaction.md"
+        "../../../tasks/TASK-0074-simplify-push-approval-and-proxy-contract/HANDOVER.md",
+        "development-agent-harness-egress-policy.md"
       ]
     },
     {
@@ -333,8 +322,8 @@
       "title": "Development Agent Harness Verified Decision Coordinator",
       "links": [
         "../../../tasks/TASK-0073-verified-decision-coordinator/HANDOVER.md",
-        "development-agent-harness-approval-request-store.md",
-        "development-agent-harness-passkey-challenge-lifecycle.md"
+        "../../../tasks/TASK-0074-simplify-push-approval-and-proxy-contract/HANDOVER.md",
+        "development-agent-harness-approval-request-store.md"
       ]
     },
     {

@@ -5,35 +5,20 @@ title: Development Agent Harness Push Approval Manifest
 
 # Development Agent Harness Push Approval Manifest
 
-## 問い
+## 履歴的実装
 
-後続の承認境界が、構造化された一件のpush proposalを曖昧なJSON表現や参照更新の取り違えなしに同じ内容として束縛するにはどうするか。
+`internal/approvalmanifest`は、TASK-0070で導入された、push proposalをcanonical JSON、ref 更新、old/new SHA、force/delete、digestへ束縛する履歴的な実装である。TASK-0074により、この契約は廃止済み（superseded）であり、将来の承認・grant・push認可の根拠として残さない。
 
-## 主体とV1の値境界
+そのため、canonicalization、manifest digest、ref/SHA一覧、remote old SHA、Git wire/pkt-line本文との照合は移行先契約に含めない。過去のTASK-0070証跡は実装履歴として保持するが、現在または将来の安全境界を表すものではない。
 
-`internal/approvalmanifest`は、callerが提示した`Proposal`を検査してimmutableな`Manifest`へ変換するpure value boundaryである。Proposalは`request_id`、`agent_id`、`workspace_id`、`repository`、`remote`、順序付き`ref_updates`、`policy_version`、`revocation_epoch`、`created_at`、`expires_at`を持つ。packageはrequest ID、identity、policy、時刻を生成せず、それらの信頼性、現在時刻、TTL又はpolicyの妥当性も判断しない。
+## 移行先
 
-V1はlowercase canonicalな`owner/repo`と、それから導くexact `https://github.com/<owner>/<repo>.git`だけを受理する。時刻はUTCのwhole-secondで`created_at < expires_at`、参照更新は1--32件で入力順を保持し、重複を拒否する。各更新は`ref`、`expected_old_sha`、`new_sha`、`force`、`delete`から成り、branch headの安全な部分集合、40桁lowercase SHA-1表記、create・通常update・明示force・deleteの整合した組合せだけを表せる。順序をsetへ正規化しないため、同じ更新でも配列順が違えば別のproposalである。
+push承認の安全単位は、完全一致repositoryへの次の`git-receive-pack`一回である。repository単位requestとverified decisionから発行する短命one-shot `push grant`は、Agent instance/UID、workspace、repository、TTL、未使用状態、revokeへ束縛する。上流試行前に原子的に消費し、失敗・結果不明でも再利用しない。
 
-## Canonical encoding とdigest
-
-payloadのfield順は、`format_version`、`request_id`、`agent_id`、`workspace_id`、`repository`、`remote`、`ref_updates`、`policy_version`、`revocation_epoch`、`created_at`、`expires_at`で固定する。各`ref_updates`要素の順も`ref`、`expected_old_sha`、`new_sha`、`force`、`delete`で固定する。public manifestはこのpayloadの直後に、derivedな`request_digest`を最後のfieldとして置くcompact JSON一文書である。
-
-`request_digest`自身を除くcanonical payload bytesへ、NUL終端のV1 domain prefix `dev-agent-harness/push-approval-manifest/v1\\x00`を先行させてSHA-256を計算する。公開値は実計算した`sha256:<64 lowercase hex>`だけであり、caller supplied digestを受け取らない。したがってidentity、repository/remote、policy/epoch、時刻、各参照更新のold/new SHA、force/delete、およびref配列順はすべてdigestの対象である。
-
-## Strict parse と不変性
-
-`Parse`は32 KiB以内のpackage自身のcanonical encodingだけを受理する。single-documentかつduplicate-awareな走査、unknown/欠落fieldの拒否、typed decode、Buildと共通のsemantic validation、constant-time digest照合、再encode bytesとの完全一致をすべて通過条件にする。空白、field順、escape、number、time、digest表記、trailing dataを「読めるJSON」として正規化して通す経路はない。
-
-BuildとParseはcallerのslice/raw bytesを保持せず、`RefUpdates()`と`Encoding()`はfresh copyを返す。公開errorは固定class、field、任意のref update indexだけを示し、identity、repository、ref、object ID、digest、raw/canonical bytes又は下位parser errorを診断へ含めない。
-
-## 認可との境界
-
-validなManifestは承認候補となるcontentを一意に表すだけであり、**approved、granted、pushableを意味しない**。[Approval Request Store](development-agent-harness-approval-request-store.md)が現在時刻、TTL、request ID一意性、policyの信頼性を所有し、[Passkey Challenge Lifecycle](development-agent-harness-passkey-challenge-lifecycle.md)がrequest digestとdecisionへ一回限りのverifier入力を束縛する。one-shot push grantはさらに後続の別境界である。Manifest自身はGit receive-pack/pkt-lineを解析せず、remoteのold SHAを観測せず、forceをwireから推定せず、credential、実push、audit、network又は永続stateを持たない。
+branch、commit、ref、SHA、force/deleteはUIの参考情報にだけ使用でき、認可条件ではない。同一repository内で参考情報と異なる内容が一回pushされうる残余リスクは受容する。一方、別repository、別Agent/UID、別workspace、再使用、期限後、GitHub RESTその他操作への転用はfail-closedに拒否する。
 
 ## 関連
 
 - [TASK-0070 HANDOVER](../../../tasks/TASK-0070-push-approval-manifest/HANDOVER.md)
-- [Approval Request Store](development-agent-harness-approval-request-store.md)
-- [Development Agent Harness Passkey Challenge Lifecycle](development-agent-harness-passkey-challenge-lifecycle.md)
-- [Development Agent Harness Egress Transaction](development-agent-harness-egress-transaction.md)
+- [TASK-0074 HANDOVER](../../../tasks/TASK-0074-simplify-push-approval-and-proxy-contract/HANDOVER.md)
+- [Development Agent Harness Egress Policy](development-agent-harness-egress-policy.md)

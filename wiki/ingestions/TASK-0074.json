@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "task_id": "TASK-0074",
+  "handover_sha256": "5ba452cc843126d12014618a284322712dff7c2393713492c21d923f5fd3c524",
+  "ingested_at": "2026-08-02T10:07:00Z",
+  "updated_pages": [
+    "wiki/semantic/schemas/development-agent-harness-push-approval-manifest.md",
+    "wiki/semantic/schemas/development-agent-harness-egress-policy.md",
+    "wiki/semantic/schemas/development-agent-harness-approval-request-store.md",
+    "wiki/semantic/schemas/development-agent-harness-passkey-challenge-lifecycle.md",
+    "wiki/semantic/schemas/development-agent-harness-verified-decision-coordinator.md"
+  ],
+  "created_decisions": [],
+  "deferred": [
+    "Push authorization is a repository-scoped one-shot grant for the next git-receive-pack attempt, bound to agent instance/UID, workspace, repository, TTL, use, and revocation; it is consumed before upstream attempt.",
+    "Normal Git read, GitHub REST, and OpenAI traffic are opaque streams after peer, capability, destination, and credential-substitution checks; only repository and git-receive-pack are minimally classified for push.",
+    "The next single product task must remove the legacy manifest/digest bindings and provider semantic checks, migrate request/decision/grant to repository scope, and verify Git pull, GitHub REST, OpenAI API, and approved push on the real VPS.",
+    "Same-repository substitution of the content shown as UI reference is an accepted residual risk for one grant use; repository/agent/workspace crossing, reuse, expiry, and GitHub REST or other-operation repurposing must be rejected."
+  ]
+}
