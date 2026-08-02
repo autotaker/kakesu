@@ -462,3 +462,24 @@ domain-separated hashへ変換して`challenge`、主張、署名、認証情報
 接続点自体は実WebAuthnの署名、origin/RP ID hash、UV、counter又は認証情報状態を検証せず、
 Tailscale識別情報とのAND条件、検証済み判断API、`approvalstate`の変異、許可又はpush認可も実装しない。
 実認証器、HTTPS/Tailscale/スマートフォンを使う環境依存確認は、後続Taskの承認済み環境とクリーンアップ手順を要する。
+
+## 検証済み承認判断の接続
+
+`internal/approvaldecision`は、永続`approvalstate.Store`、一回性`approvalchallenge.Manager`、
+信頼された検証関数を本番コンストラクターで一度だけ固定する。`Begin`は先にストアを読み、正本の
+`pending`記録からリクエストIDとダイジェストを導出してから、呼出元の判断、判断者ID、RP ID、originへ
+許可確認を束縛する。呼出元はダイジェスト、状態、clock、許可確認又は`Complete`ごとの検証関数を渡せない。
+
+`Complete`は固定検証関数による`Consume`を先に一度だけ実施し、検証済み割り当ての完全一致する判断に応じて
+`Approve`又は`Deny`の一方だけを呼ぶ。成功結果は永続状態遷移成功後のリクエストID、ダイジェスト、状態、判断者と
+安定認証情報IDだけであり、検証成功だけを承認と扱わない。同一リクエストの相反する複数の許可確認は
+ストアの原子的`pending`状態遷移が最初の勝者を決め、コーディネーターは別ロック、ロールバック又は代替判断を持たない。
+
+`Consume`後にリクエストが`expired`、`cancelled`又は終端になった場合、ダイジェスト不一致、永続化失敗又はストアの
+`poison`では、許可確認を消費済みのまま固定エラーと空の結果を返す。旧許可確認を再利用せず、リクエストがまだ
+`pending`なら新しい`Begin`からやり直す。永続成功後に応答を失った呼出元はストアの`Get`で照合し、再実行で成功応答を
+再構成しない。`poison`の復旧は既存ストアの`Close`、再`Open`と上位照合の責務である。
+
+信頼された検証関数の接続点は実Passkey主張、認証情報状態、Tailscale識別情報又はHTTP到達主体を検証しない。
+この判断記録は監査、許可、push認可又は実push成功ではない。実Passkey暗号検証、HTTPS/Tailscale、
+OS/プロセス配置、restart/ロールバックは、安全な環境とクリーンアップ手順を定める後続Taskまでblockedである。

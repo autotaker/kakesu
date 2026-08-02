@@ -1,7 +1,7 @@
 ---
 task_id: "TASK-0073"
 title: "検証済みPasskey判断coordinatorを実装する"
-status: draft
+status: done
 created_at: "2026-08-02"
 ---
 
