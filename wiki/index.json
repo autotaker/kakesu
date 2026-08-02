@@ -288,6 +288,15 @@
       ]
     },
     {
+      "path": "wiki/semantic/schemas/development-agent-harness-push-approval-manifest.md",
+      "kind": "schema",
+      "title": "Development Agent Harness Push Approval Manifest",
+      "links": [
+        "../../../tasks/TASK-0070-push-approval-manifest/HANDOVER.md",
+        "development-agent-harness-egress-transaction.md"
+      ]
+    },
+    {
       "path": "wiki/semantic/schemas/mvp-wire-contracts.md",
       "kind": "schema",
       "title": "MVP Wire Contracts",

@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "task_id": "TASK-0070",
+  "handover_sha256": "fffa051e0f093ab95ffa29e0db476c5994db3e09f34f04072c81189b74bfd4fd",
+  "ingested_at": "2026-08-02T06:42:46Z",
+  "updated_pages": [
+    "wiki/semantic/schemas/development-agent-harness-push-approval-manifest.md"
+  ],
+  "created_decisions": [],
+  "deferred": [
+    "raw Git receive-pack/pkt-line/side-band/capability negotiation、remote旧SHA観測、force推定、GitHub通信は未実装・未確認であり、canonical manifestのPASSで代替しない。",
+    "Approval state store、現在時刻・TTL・request ID一意性・policy信頼性の判断、Passkey/WebAuthn challenge、one-shot push grantの署名・発行・原子的消費・reconciliationは後続境界であり未実装・未確認である。",
+    "実credential、実push、audit、実環境のlive E2Eは未実施であり、pure value boundaryのhermetic検査PASSで代替しない。"
+  ]
+}
