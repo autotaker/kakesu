@@ -24,6 +24,7 @@ const (
 	issueBodyLength   = 60
 	maxProxyCAPEM     = 4096
 	proxyCARequest    = "GET /v1/proxy-ca HTTP/1.1\r\nContent-Length: 0\r\n\r\n"
+	openAIIssueBody   = `{"provider":"openai"}`
 )
 
 // Error is intentionally context-free. It never retains a socket path,
@@ -59,6 +60,29 @@ func Issue(socketPath, repository string) (string, error) {
 		return "", ErrControl
 	}
 	body := `{"provider":"github","repository":"` + repository + `","operation":"github-git-read"}`
+	return issue(socketPath, body)
+}
+
+// IssueGitHubREST obtains one GitHub REST-read capability for repository.
+// The provider, operation, request path, and JSON shape are not caller input.
+func IssueGitHubREST(socketPath, repository string) (string, error) {
+	if !validSocket(socketPath) || !canonicalRepository(repository) {
+		return "", ErrControl
+	}
+	body := `{"provider":"github","repository":"` + repository + `"}`
+	return issue(socketPath, body)
+}
+
+// IssueOpenAI obtains one OpenAI Responses-text capability. The provider,
+// operation, model, request path, and JSON shape are not caller input.
+func IssueOpenAI(socketPath string) (string, error) {
+	if !validSocket(socketPath) {
+		return "", ErrControl
+	}
+	return issue(socketPath, openAIIssueBody)
+}
+
+func issue(socketPath, body string) (string, error) {
 	request := "POST /v1/capabilities HTTP/1.1\r\nContent-Length: " + strconv.Itoa(len(body)) +
 		"\r\nContent-Type: application/json\r\n\r\n" + body
 	response, err := exchange(socketPath, request, true)

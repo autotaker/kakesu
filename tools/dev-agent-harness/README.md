@@ -176,19 +176,44 @@ systemd、または VPS の live 配置を検証しない。
 ## Agent向けケイパビリティ制御
 
 `internal/capabilitycontrol` は、`brokerlistener.Resolver`が接続コンテキストから解決したAgentインスタンス、UID 0以外、
-workspaceだけを主体として、本番トランザクションと同じメモリー内`capability.Registry`へ短命・一回限りのhandleを
+workspaceだけを主体として、本番トランザクションと同じメモリー内`capability.Registry`へ短命なhandleを
 発行する。リクエストから主体、TTL、使用回数、ホストを受け取らない。GitHubは設定allowlist内の正規
 `owner/repo`一件に固定し、既存のselector省略はREST read、明示`operation=github-git-read`だけは`github.com`のGit readを発行する。
-どちらもTTL 5分・一回使用である。OpenAIは設定のモデルallowlistが非空の場合だけプロバイダースコープを発行する。個別モデルは
-制御やケイパビリティスコープへ複製せず、既存の外向き通信ポリシーが実リクエスト本文から検査する。
+GitHub REST readとOpenAI ResponsesテキストはTTL 5分・16回使用、Git Smart HTTP readだけはTTL 5分・一回使用である。
+OpenAIは設定のモデルallowlistが非空の場合だけプロバイダースコープを発行する。個別モデルは制御やケイパビリティスコープへ
+複製せず、既存の外向き通信ポリシーが実リクエスト本文から検査する。
+
+16回の予算は同じ主体、workspace、プロバイダー、リポジトリ、操作、宛先ホストに束縛されたAPIリクエストだけを許可する。
+一致した消費だけが`capability.Registry`内で原子的に残数を一つ減らし、16回目の成功後は拒否する。不一致は残数を減らさず、
+API handleをGit read、push/書き込み、upload、別プロバイダー、別リポジトリ、別ホストへ転用できない。失効、期限切れ、
+失効世代の既存の拒否境界も変えない。
 
 失効は同じ接続元由来の主体のインスタンス/UID/workspaceが完全一致する正規handle一件だけを削除する。
 unknown、malformed、期限切れ、別主体は固定拒否となり、handle以外の秘密や許可内部値をAgentへ返さない。
-別レジストリ、永続化、cache、ロールバック、再試行、認証情報コピーは持たない。Unixソケットクライアント、認証情報helper、
-起動機構、環境変数注入は後続Taskの境界である。
+別レジストリ、永続化、cache、ロールバック、再試行、認証情報コピーは持たない。認証情報helper、起動機構、環境変数注入は
+別コンポーネント又は後続Taskの境界である。
 
 hermeticテストはこのメモリー内ライフサイクルと既存CONNECTの回帰を確認するが、実DNS/TLS、実GitHub/OpenAI、実NSS/別UID、
 systemdソケット、VPS配置の受理を保証しない。
+
+## Agent向けAPIケイパビリティクライアント
+
+`internal/controlclient`は既存の固定Unix制御ソケットへ一接続一操作で発行要求を送る。GitHub REST read用の明示関数は
+絶対かつ正規化済みのソケットパスと正規なallowlistリポジトリだけを受け、プロバイダーとリクエストJSONを固定する。
+OpenAI Responsesテキスト用の明示関数はソケットパスだけを受け、プロバイダーを固定する。どちらも操作、モデル、HTTPパス又は
+任意の本文をAgent入力として受けない。Git Smart HTTP用の既存`Issue`は明示`github-git-read`を含む従来の通信形式を保ち、
+一回使用のhandleを操作ごとに取得する。
+
+三つの発行操作は共有する非公開交換処理を使い、一回だけ接続し、書き込みと読み込みへ短い期限を設定して、一つのリクエストと
+一つのレスポンスの後に接続を閉じる。固定順序の`200 application/json`ヘッダー、正規なContent-Length、唯一の正規JSON handle、
+本文直後のEOFだけを成功とする。HTTP状態、ヘッダー、長さ、JSON、handle、EOF、接続、期限、読み込み、書き込み又は切断の不一致は、
+再試行や代替をせず空値と固定エラーへ畳む。エラーはソケット、リポジトリ、handle、通信内容又は下位エラーを保持しない。
+
+後続の起動機構は取得した不透明handleを`GH_TOKEN`又は`OPENAI_API_KEY`へ渡せるが、このクライアントは環境変数、子プロセス、
+CA信頼ファイル、Git設定、loopback bridge、認証情報置換、リポジトリ/モデルallowlist又はHTTPポリシーを構成しない。
+GitHub書き込み/GraphQL、OpenAI admin/files/upload、Git push、承認、cache、更新、永続化、別ソケット、TCPも追加しない。
+hermeticな偽接続で確認できるのは通信形式、応答構造、接続寿命と固定エラーの境界までであり、実認証情報、実GitHub/OpenAI、
+DNS/TLS、実ソケット権限、別UID、systemd又はVPS配置は、承認済み環境で別途live E2E確認する。
 
 ## Agent向け公開プロキシCAクライアント
 

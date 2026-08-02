@@ -325,11 +325,14 @@ func TestProductionGraphConstructorRulesAndIdentityWiring(t *testing.T) {
 		t.Fatal(err)
 	}
 	request := egresstransaction.Request{Method: "GET", URL: "https://api.github.com/repos/octo/repo", Authorization: []string{"token " + handle}}
-	if err := transaction.Execute(input.identity.subject, request); err != nil {
-		t.Fatalf("shared registry transaction: %v", err)
+	const apiBudget = 16
+	for use := 1; use <= apiBudget; use++ {
+		if err := transaction.Execute(input.identity.subject, request); err != nil {
+			t.Fatalf("shared registry transaction use %d: %v", use, err)
+		}
 	}
-	if err := transaction.Execute(input.identity.subject, request); err != egresstransaction.ErrDenied || resolved != 1 || forwarded != 1 {
-		t.Fatalf("reuse err=%v resolved=%d forwarded=%d", err, resolved, forwarded)
+	if err := transaction.Execute(input.identity.subject, request); err != egresstransaction.ErrDenied || resolved != apiBudget || forwarded != apiBudget {
+		t.Fatalf("seventeenth use err=%v resolved=%d forwarded=%d", err, resolved, forwarded)
 	}
 	revoked, err := controlPtr.Issue(context.Background(), capability.ProviderGitHub, "octo/repo")
 	revokeErr := controlPtr.Revoke(context.Background(), revoked)
@@ -337,7 +340,7 @@ func TestProductionGraphConstructorRulesAndIdentityWiring(t *testing.T) {
 		t.Fatalf("issue/revoke=(%v,%v)", err, revokeErr)
 	}
 	request.Authorization = []string{"token " + revoked}
-	if err := transaction.Execute(input.identity.subject, request); err != egresstransaction.ErrDenied || resolved != 1 || forwarded != 1 {
+	if err := transaction.Execute(input.identity.subject, request); err != egresstransaction.ErrDenied || resolved != apiBudget || forwarded != apiBudget {
 		t.Fatalf("revoked use err=%v resolved=%d forwarded=%d", err, resolved, forwarded)
 	}
 }
