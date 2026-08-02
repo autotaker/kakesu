@@ -10,7 +10,7 @@ approved_dev_profile_risk_signals:
   - "consume と Close、expiry、clock rollback、verifier panic の競合で once-only を失い得る"
   - "assertion、challenge、credential public key 又は入力値を error/result/長寿命 state に漏らしてはならない"
 approved_by: "main-agent-sol-high"
-approved_at: "2026-08-02T07:48:56Z"
+approved_at: "2026-08-02T08:10:04Z"
 classification_approved_by: ""
 classification_approved_at: ""
 classification_approval_reason: ""
@@ -27,13 +27,14 @@ classification_approval_reason: ""
 
 DEV は `dev-sol`/high（`sol-high`）を使用する。DEV は一度だけ製品差分だけの candidate を作り、REVIEW と QA は HANDOVER に固定した同じ candidate から、相互の PASS を待たず独立に開始する。candidate に修正が入れば Main が影響した focused test を再実行する。
 
-candidate は次の3許可パスだけを変更し、追加・削除合計を約700〜1,100行（production code は概ね250〜400行、残りは race/negative/panic/ownership test と README）に収める。
+candidate は次の4許可パスだけを変更し、Go package/test/READMEの追加を約700〜1,100行に収める。`go.mod`は既存API使用と一致する1行のtoolchain契約訂正だけとする。
 
 - `tools/dev-agent-harness/internal/approvalchallenge/challenge.go`
 - `tools/dev-agent-harness/internal/approvalchallenge/challenge_test.go`
 - `tools/dev-agent-harness/README.md`
+- `tools/dev-agent-harness/go.mod`
 
-stdlib と既存 Go module だけを使い、新規 dependency、config/build/deploy/generated artifact、Kakesu runtime/Schema は変更しない。`approvalstate` は読み書きも import もしない。HTTP/API/UI/session/cookie/CSRF、Tailscale Serve/identity header、通知、credential 登録・失効・recovery、WebAuthn の clientData/authenticatorData/signature/RP-ID-hash/origin/UV/counter 検証、disk/log/environment/DB persistence、multi-process/host 共有、push grant/consume/old-SHA/Git/audit は候補外である。
+stdlibと既存Go moduleだけを使い、新規dependencyは追加しない。TASK-0071が使用するGo 1.25 APIとmodule契約を一致させるため、`go.mod`の`go 1.24`を`go 1.25`へ訂正する。それ以外のconfig/build/deploy/generated artifact、Kakesu runtime/Schemaは変更しない。`approvalstate`は読み書きもimportもしない。HTTP/API/UI/session/cookie/CSRF、Tailscale Serve/identity header、通知、credential登録・失効・recovery、WebAuthnのclientData/authenticatorData/signature/RP-ID-hash/origin/UV/counter検証、disk/log/environment/DB persistence、multi-process/host共有、push grant/consume/old-SHA/Git/auditは候補外である。
 
 ## package contract・lifecycle・信頼境界
 
@@ -62,7 +63,7 @@ TASK の条件本文を再掲せず、`planning input packet` の AC-ID に設�
 | AC-3 | locked lookup→delete reservation を verifier 前に行い、callback は lock 外、post-callback usable gate を lock 内に置く。 | `challenge.go`、`challenge_test.go` | 3, 4 | failure/panic/replay/race/Close にかかわらず再挿入・retry・approvalstate mutation をしない。 |
 | AC-4 | due-first purge、`now >= expiry`、monotonic last-time guard、bounded capacity recovery、idempotent Close/new-manager restart rejectionを同一 state machineに置く。 | `challenge.go`、`challenge_test.go` | 1, 3, 4 | expiry/rollback/closed/unknown を fail closed とし、旧challengeを復元又は推測しない。 |
 | AC-5 | README は in-memory once-only lifecycle、trusted verifier seam、restart/failure 時の再発行、未実装の暗号 verification/Tailscale/state mutation/grantを明記する。 | `README.md` | 5 | 既存の approved/grant/push 意味を強めず、実環境の本人確認を hermetic PASS と混同しない。 |
-| AC-6 | 3 path、stdlib-only、約700〜1,100 additions を candidate 前に確認し、focused race と harness/dist/root/doc/scope checks を同一 candidate evidenceに結ぶ。 | 許可済み3パス | 1--5 | scope/budget/dependency/check failure は candidate を進めず Main へ再計画を戻す。 |
+| AC-6 | 4 path、stdlib-only、約700〜1,100 additionsと`go 1.25`への1行訂正をcandidate前に確認し、focused raceとharness/dist/root/doc/scope checksを同一candidate evidenceに結ぶ。 | 許可済み4パス | 1--5 | scope/budget/dependency/check failureはcandidateを進めずMainへ戻す。 |
 
 ## 状態機械と同時実行の不変条件
 
@@ -85,6 +86,7 @@ new manager --Consume(old token)--> not_found
 | `tools/dev-agent-harness/internal/approvalchallenge/challenge.go` | fixed public error/types、strict rules/binding parser、production constructor/private dependencies、opaque issuance、locked due-first purge/reservation、panic-normalized verifier call、credential stable-ID derivation、copy ownership と idempotent Close を追加する。 |
 | `tools/dev-agent-harness/internal/approvalchallenge/challenge_test.go` | deterministic clock/random/verifier fixtures と semantic、negative、ownership、panic、expiry/rollback/capacity/restart、focused race/Close test matrixを追加する。 |
 | `tools/dev-agent-harness/README.md` | Passkey challenge の信頼境界、一回限り reservation、failure/restart の再発行、未実装の real WebAuthn/Tailscale/approval transition/grant を追記する。 |
+| `tools/dev-agent-harness/go.mod` | TASK-0071の既存`os.Root.Rename`使用と整合するよう`go` directiveだけを1.25へ訂正する。require/moduleは変更しない。 |
 
 1. package constants、fixed errors、immutable public values、`Rules`/Binding grammar と private fake clock/random seam を定義する。
 2. Issue と due-first capacity purge を一つの locked path として実装し、token size/encoding、binding/origin/RP、expiry boundary、rollback を test で固定する。
@@ -103,7 +105,7 @@ new manager --Consume(old token)--> not_found
 | once-only/failure | first Consume だけ callback を実行し、success/error/panic の後に replay 不可 | verifier error/panic を token 再挿入又は detailed error にする mutation、unknown/replay を callback へ通す mutation を落とす。 |
 | expiry/capacity/clock | exact expiry が consume より先、purge が capacity を安全に回収、rollback が Issue/Consume を拒否 | `expiry-1ns`/`expiry`/`expiry+1ns`、last-now より前の clock、due token を callback へ渡す、rollbackで purge/issueする実装を落とす。 |
 | close/restart/race | Close は pending discard/new issuance reject、new manager は old token reject、並行 consume は callback count=1 | channel barrierで Consume を reservation後に停止し、second Consume、Close、callback release を競合させる。result resurrect、deadlock、callback count>1、data race を検出する。 |
-| documentation/scope | README が lifecycle と未実装境界を正しく記載し、candidate は3 path/stdlib-only/budget内 | docs lint、`git diff --check`、name-status と dependency diff を candidate に対して確認する。 |
+| documentation/scope | READMEがlifecycleと未実装境界を正しく記載し、candidateは4 path/stdlib-only/budget内、go directiveだけが1.25へ変わる | docs lint、`git diff --check`、name-statusとdependency diffをcandidateに対して確認する。 |
 
 DEV はcandidate固定前に次を実行し、HANDOVERへコマンドと結果を簡潔に記録する。
 
@@ -122,9 +124,9 @@ QA_PLAN は AC-1〜AC-4 の random/once-only/panic/expiry/rollback/Close/race ca
 
 不採用案は、(1) challenge に binding 情報を encode する方式（opaque random でなく改変・漏洩面を増やす）、(2) callback 成功時まで map entry を残す方式（同時 consume/reentrant callback で二重使用を生む）、(3) verifier failure/panic で token を戻す方式（retry が capability replay になる）、(4) timer goroutine 又は durable store（Close/restart/cleanup と範囲を広げる）、(5) manager が WebAuthn cryptographic semantics を判定する方式、(6) Consume が approvalstate を mutate 又は grant を発行する方式である。
 
-復旧は candidate の3許可パスだけを戻し、新 package を除去して既存 approval request の振舞いを保つ。in-memory package は migration、state cleanup、grant revoke、network rollback を持たない。失敗/expiry/panic/restart 時の運用上の回復は、まだ pending であることを別境界が確認した後に新 challenge を発行することであり、同じ token の再利用ではない。復旧後は focused race suite、harness check、distcheck、task-check、root make check、docs/scope diff check を再実行する。
+復旧はcandidateの4許可パスだけを戻し、新packageを除去する。ただし`go 1.24`へ戻すと既存TASK-0071 codeが契約上build不能へ戻るため、challenge rollbackとtoolchain回帰の復旧判断は分け、後者はGo 1.24互換のdescriptor-relative renameが別途実装されない限り1.25を維持する。in-memory packageはmigration、state cleanup、grant revoke、network rollbackを持たない。失敗/expiry/panic/restart時はpendingを別境界が確認して新challengeを発行し、同じtokenを再利用しない。
 
-次が起きたら DEV は candidate を広げず停止して Main へ PLAN 改訂を求める: approvalstate read/mutation、manifest parse/HTTP/Tailscale/WebAuthn library、external dependency、disk/log/config/generated file、multi-process coordination、actual browser/device test、4本目の製品 path、1,100 additions 超過、又は RP/origin compatibility に public-suffix/port/IDNA policy が必要になる場合。受付条件を緩める、errorへ入力を出す、token を再投入する、race test を削ることで収めない。
+次が起きたらDEVはcandidateを広げず停止してMainへPLAN改訂を求める: approvalstate read/mutation、manifest parse/HTTP/Tailscale/WebAuthn library、external dependency、disk/log/generated file、multi-process coordination、actual browser/device test、5本目の製品path、1,100 additions超過（`go.mod`の1行訂正を除く）、又はRP/origin compatibilityにpublic-suffix/port/IDNA policyが必要になる場合。受付条件を緩める、errorへ入力を出す、tokenを再投入する、race testを削ることで収めない。
 
 ## 未解決事項
 
@@ -133,7 +135,7 @@ QA_PLAN は AC-1〜AC-4 の random/once-only/panic/expiry/rollback/Close/race ca
 ## main Agentレビュー
 
 - [x] TASK の全 AC-ID を、条件本文を複製せず、設計判断・パス・順序・fail-closed 処理へ対応させた。
-- [x] 3許可パス、約700〜1,100 additions、stdlib-only、単一 candidate、`dev-sol`/high と独立 REVIEW/QA を明記した。
+- [x] 4許可パス、約700〜1,100 additionsとGo directiveの最小訂正、stdlib-only、単一candidate、`dev-sol`/highと独立REVIEW/QAを明記した。
 - [x] random、binding、reservation、expiry、rollback、Close、panic、race、copy/non-leak と focused QA evidence を具体化した。
 - [x] WebAuthn 暗号検証、HTTP/Tailscale、approvalstate mutation、push grant へ scope を広げないことを固定した。
 - [x] QA_PLAN が TASK-first で独立作成されている。

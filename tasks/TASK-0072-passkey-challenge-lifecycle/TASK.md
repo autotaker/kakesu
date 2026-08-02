@@ -26,6 +26,7 @@ TASK-0071のpending承認requestに対し、後続WebAuthn verifierが使うrand
 - expiryをconsumeより優先し、期限到達、clock rollback、unknown/replayed challenge、closed managerをfail closedにする。Closeはpending challengeを破棄し、restartで復元しない。
 - verified結果はrequest ID、digest、decision、operator ID、credentialの非可逆stable ID、verified timeだけをcopy ownershipで返し、challenge/assertion/signature/credential public keyを保持・公開しない。
 - READMEへlifecycle、信頼境界、restart/失敗時の再発行、実WebAuthn verifierとapproval state mutationが後続であることを記載する。
+- TASK-0071で使用した`os.Root.Rename`がGo 1.25 APIである一方、moduleの`go` directiveが1.24のまま残った回帰を解消し、harnessの最小Go言語/API契約を1.25へ一致させる。dependencyは追加しない。
 
 #### 対象外
 
@@ -33,7 +34,7 @@ TASK-0071のpending承認requestに対し、後続WebAuthn verifierが使うrand
 - verifier callbackの結果だけでTASK-0071 storeを`approved/denied`へ変更せず、HTTP/API/UI/session/cookie/CSRF、Tailscale Serve/Grant/identity header、通知を追加しない。
 - challengeをdisk、log、環境変数、外部DBへ保存せず、複数process/host共有、backup/recoveryを追加しない。
 - push grant、`consuming/consumed/indeterminate`、Git wire解析、remote old SHA照合、credential、実push、auditを追加しない。
-- 新規外部dependency、config/build/deploy/generated artifact、Kakesu本体runtime/Schemaを変更しない。
+- `go.mod`の`go` directive以外のdependency、config/build/deploy/generated artifact、Kakesu本体runtime/Schemaを変更しない。
 <!-- safety_contractの場合: 製品コード、test、runtime/build設定、Schema、製品依存、生成製品入力/成果物、外部観測可能な挙動を変更しない。 -->
 
 ### 受け入れ条件
@@ -45,7 +46,7 @@ TASK-0071のpending承認requestに対し、後続WebAuthn verifierが使うrand
 - [ ] AC-3: 最初のconsume試行だけが予約され、成功、verification failure、panic、同時試行、replayの後に同じchallengeを再使用できない。verifier failure/panicを内部情報なしの固定errorへ正規化する。
 - [ ] AC-4: expiryはconsumeより優先され、期限ちょうど、purge、capacity回収、clock rollback、Close競合、restart相当の新managerで旧challenge拒否をbounded race testが検出する。
 - [ ] AC-5: packageとREADMEはchallenge lifecycleをWebAuthn verification、Tailscale identity、verified decision API、approval state mutation、push authorizationへ昇格させず、実環境依存条件を未確認のまま明示する。
-- [ ] AC-6: 変更は許可3パス、約700〜1,100 additions、新規dependencyなしに収まり、focused `go test -race`、harness check/distcheck、root `make check`、docs lint、diff checkがPASSする。
+- [ ] AC-6: 変更は許可4パス、約700〜1,100 additionsと`go 1.25`への最小toolchain契約訂正、新規dependencyなしに収まり、focused `go test -race`、harness check/distcheck、root `make check`、docs lint、diff checkがPASSする。
 
 ### 安定した参照
 
@@ -66,6 +67,7 @@ TASK-0071のpending承認requestに対し、後続WebAuthn verifierが使うrand
 - `tools/dev-agent-harness/internal/approvalchallenge/challenge.go`
 - `tools/dev-agent-harness/internal/approvalchallenge/challenge_test.go`
 - `tools/dev-agent-harness/README.md`
+- `tools/dev-agent-harness/go.mod`
 
 ### 完了経路preflight
 
@@ -91,6 +93,8 @@ TASK-0071のpending承認requestに対し、後続WebAuthn verifierが使うrand
 ## 背景
 
 TASK-0071で承認requestを安全に永続化できたが、現在はスマートフォンで行う本人操作をrequest digestと判断へ一回限りに束縛する境界がない。先にHTTPやWebAuthn libraryを接続すると、challenge再使用、別request/判断への差し替え、同時検証、期限切れ、restart後の復元推測をservice各所で個別実装する危険がある。このTaskで暗号検証器の前後を明確にし、実WebAuthn verifierとTailscale/HTTP接続を後続Taskとして独立QAできるようにする。
+
+DEV focused race後のharness checkで、TASK-0071のdescriptor-relative atomic renameがGo 1.25で追加された`os.Root.Rename`を使う一方、moduleの`go` directiveが1.24のままのため`go vet`が停止する回帰を検出した。安全なroot束縛を弱める置換ではなく、実際に必要な最小Go API契約へdirectiveを合わせる。
 
 ## 検討すべき設計観点
 

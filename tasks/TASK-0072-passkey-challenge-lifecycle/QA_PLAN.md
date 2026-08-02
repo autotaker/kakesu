@@ -4,18 +4,18 @@ change_class: "product"
 status: approved
 qa_agent: "qa-agent-terra-medium"
 approved_by: "main-agent-sol-high"
-approved_at: "2026-08-02T07:48:56Z"
-revision: 1
+approved_at: "2026-08-02T08:10:04Z"
+revision: 2
 implementation_reviewed_at: ""
-expectation_changed: false
-expectation_change_approved_by: ""
+expectation_changed: true
+expectation_change_approved_by: "main-agent-sol-high"
 ---
 
 # TASK-0072 QA PLAN
 
 ## 方針
 
-このQA_PLANはTASK.mdの`Planning input packet`だけを期待値の正本として、DEV開始前に独立作成した。候補案のQAでは、同一`candidate_commit`を対象に、下表のfocused rerunを一回だけ独立実行し、そのテストが各失敗を検出できること、テストの弱体化がないこと、候補差分が許可3パス・新規dependencyなしであることを証跡レビューする。QAはcallbackを実WebAuthn検証済みとは扱わず、verified resultをapproval state mutation又はpush authorizationの証拠にはしない。
+このQA_PLANはTASK.mdの`Planning input packet`だけを期待値の正本として、DEV開始前に独立作成した。候補案のQAでは、同一`candidate_commit`を対象に、下表のfocused rerunを一回だけ独立実行し、そのテストが各失敗を検出できること、テストの弱体化がないこと、候補差分が許可4パス・新規dependencyなしであることを証跡レビューする。QAはcallbackを実WebAuthn検証済みとは扱わず、verified resultをapproval state mutation又はpush authorizationの証拠にはしない。
 
 実WebAuthn authenticator/署名、Tailscale identity/Serve/Grant、HTTP/API/UI/session/cookie/CSRF、実スマートフォン操作は、この候補に含まれず安全な隔離環境も未指定である。これらは`live-e2e`としてblockedのまま記録し、focused-rerun又はevidence-reviewのPASSで代替しない。
 
@@ -28,7 +28,7 @@ expectation_change_approved_by: ""
 | QA-003 | AC-3 | consume開始のmutex下予約を、成功、verification failure、panic、並行first attempt、unknown/replayの各経路で確認する。各経路の後で再consumeが拒否され、failure/panicが入力・callback詳細を含まない固定error classへ正規化されることを確認する。 | `focused-rerun` / race detector付きのbounded parallel fixtureが予約の原子性、failure/panic/replayとfixed non-leak errorを検出できる。 |
 | QA-004 | AC-4 | expiryをconsumeより優先し、期限ちょうど、purge後、capacity回収、clock rollback、Close競合、Close後、new manager（restart相当）で旧challengeがfail closedとなることを確認する。pending challengeがCloseで破棄され、永続化・復元を行わないことを候補diffとテストで確認する。 | `focused-rerun` / injected test clockとbounded fixtureでexpiry priority、clock rollback、capacity/purge、Close/restartを再現できる。 |
 | QA-005 | AC-5 | package API、README、候補差分をレビューし、lifecycleの責務とrestart/失敗時の新challenge発行を明示しつつ、実WebAuthn verification、Tailscale identity、verified decision API、approval state mutation、push authorizationへ昇格していないことを確認する。実WebAuthn/Tailscale/HTTP/実スマートフォンのlive確認は未実施理由とともにblockedを維持する。 | `evidence-review` / スコープ非昇格と文書上の信頼境界はcandidate-bound diff/READMEの独立監査が適切であり、未指定の実環境依存検証を代替できない。 |
-| QA-006 | AC-6 | `git diff --check`、候補の名前付きdependency/config/build/generated artifact追加なし、許可3パスだけ、additionsがおよそ700〜1,100であることを確認する。DEVのharness check/distcheck、root `make check`、docs lintの実行証跡と終了状態を監査する。 | `evidence-review` / リポジトリ全体検査はDEV実行証跡をcandidateに束縛して独立監査し、QAは下記の高価値かつdeterministicなpackage rerunを一回だけ実施する。 |
+| QA-006 | AC-6 | `git diff --check`、候補の新規dependency/build/generated artifact追加なし、許可4パスだけ、Go package/test/READMEのadditionsがおよそ700〜1,100であることを確認する。`go.mod`は`go 1.25`への1行訂正だけで、module/require不変か監査する。DEVのharness check/distcheck、root `make check`、docs lintの結果を監査する。 | `evidence-review` / リポジトリ全体検査はDEV実行証跡をcandidateに束縛して独立監査し、QAは下記の高価値かつdeterministicなpackage rerunを一回だけ実施する。 |
 
 ## focused-rerun（候補固定後に一回だけ）
 
@@ -75,3 +75,4 @@ race報告、panicの逸脱、timeout、又は上記のnegative pathを実行し
 | 改訂 | 日付 | 変更者 | 変更内容 | main承認 |
 |---:|---|---|---|---|
 | 1 | 2026-08-02 | qa-agent-terra-medium | TASK.mdのPlanning input packetだけから独立QA計画を作成 | `main-agent-sol-high` |
+| 2 | 2026-08-02 | main-agent-sol-high | harness checkで検出した既存Go API/toolchain契約不一致をAC-6とscopeへ最小追加 | `main-agent-sol-high` |
