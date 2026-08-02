@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "task_id": "TASK-0040",
+  "handover_sha256": "a56e55a1c600fb879f964816d46f4f17c766be676f496579ff39c66e2f2da678",
+  "ingested_at": "2026-08-02T01:08:43Z",
+  "updated_pages": [
+    "wiki/semantic/schemas/development-agent-harness-capability-registry.md"
+  ],
+  "created_decisions": [],
+  "deferred": [
+    "Candidate identifiers, test counts, implementation paths, and task-specific lint or review history are evidence rather than Semantic rules.",
+    "Credential resolution, proxying, TLS/DNS, live egress, persistence, multi-process sharing, audit, and cost limits remain separate security boundaries."
+  ]
+}

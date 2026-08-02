@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "task_id": "TASK-0038",
+  "handover_sha256": "664620699192f3154dd938b1505904eb11fd706958a07c9b592c68d748f13b89",
+  "ingested_at": "2026-08-02T01:07:30Z",
+  "updated_pages": [
+    "wiki/semantic/schemas/development-agent-harness-provision-manifest.md"
+  ],
+  "created_decisions": [],
+  "deferred": [
+    "The CLI's fixed success text, size limit, implementation paths, candidate identifier, test inventory, and documentation wording are task-specific evidence rather than Semantic rules.",
+    "Manifest application, root privileges, live OS integration, systemd, network, IPC, rollback, and cleanup remain separate executor-boundary work."
+  ]
+}

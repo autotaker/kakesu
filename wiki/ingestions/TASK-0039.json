@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "task_id": "TASK-0039",
+  "handover_sha256": "be49dbdba1856f0feff8d2f50241c761cd1c881f22c87e33c365fc16a006d633",
+  "ingested_at": "2026-08-02T01:08:14Z",
+  "updated_pages": [
+    "wiki/semantic/schemas/development-agent-harness-egress-policy.md"
+  ],
+  "created_decisions": [],
+  "deferred": [
+    "Test counts, candidate identifier, implementation paths, and the task-specific documentation lint correction are evidence rather than Semantic rules.",
+    "Live network, TLS, DNS, redirects, credentials, proxying, and upstream API communication remain separate security boundaries; a policy allow decision alone does not authorize a connection."
+  ]
+}

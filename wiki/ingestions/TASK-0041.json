@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "task_id": "TASK-0041",
+  "handover_sha256": "5a13e8f0f246623d0313125f7344e30c2244e926e96ca4c1545ec5b3dd990b89",
+  "ingested_at": "2026-08-02T01:09:10Z",
+  "updated_pages": [
+    "wiki/semantic/schemas/development-agent-harness-egress-transaction.md"
+  ],
+  "created_decisions": [],
+  "deferred": [
+    "Candidate identifiers, test counts, implementation paths, and task-specific planning or review history are evidence rather than Semantic rules.",
+    "Production credential sources, HTTP forwarding, network, TLS, DNS, listeners, upstream responses, and live end-to-end operation remain separate security boundaries."
+  ]
+}
