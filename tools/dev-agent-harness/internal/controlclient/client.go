@@ -5,7 +5,11 @@ package controlclient
 import (
 	"bytes"
 	"context"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/x509"
 	"encoding/base64"
+	"encoding/pem"
 	"io"
 	"net"
 	"path/filepath"
@@ -18,6 +22,8 @@ const (
 	phaseTimeout      = 5 * time.Second
 	maxResponseHeader = 1024
 	issueBodyLength   = 60
+	maxProxyCAPEM     = 4096
+	proxyCARequest    = "GET /v1/proxy-ca HTTP/1.1\r\nContent-Length: 0\r\n\r\n"
 )
 
 // Error is intentionally context-free. It never retains a socket path,
@@ -31,6 +37,20 @@ const ErrControl Error = "capability-control-client-failed"
 var dialControl = func(ctx context.Context, network, address string) (net.Conn, error) {
 	var dialer net.Dialer
 	return dialer.DialContext(ctx, network, address)
+}
+
+var proxyCAClock = func() time.Time { return time.Now().UTC() }
+
+// ProxyCA obtains one caller-owned copy of the proxy's public CA certificate.
+func ProxyCA(socketPath string) ([]byte, error) {
+	if !validSocket(socketPath) {
+		return nil, ErrControl
+	}
+	body, err := exchangeProxyCA(socketPath)
+	if err != nil {
+		return nil, ErrControl
+	}
+	return append([]byte(nil), body...), nil
 }
 
 // Issue obtains one GitHub Git-read capability for repository.
@@ -83,7 +103,7 @@ func exchange(socketPath, request string, issue bool) (result string, err error)
 	if conn.SetReadDeadline(time.Now().Add(phaseTimeout)) != nil {
 		return "", ErrControl
 	}
-	header, body, ok := readResponse(conn)
+	header, body, ok := readResponse(conn, issueBodyLength)
 	if !ok {
 		return "", ErrControl
 	}
@@ -111,6 +131,48 @@ func exchange(socketPath, request string, issue bool) (result string, err error)
 	return result, nil
 }
 
+func exchangeProxyCA(socketPath string) (result []byte, err error) {
+	ctx, cancel := context.WithTimeout(context.Background(), phaseTimeout)
+	conn, dialErr := dialControl(ctx, "unix", socketPath)
+	cancel()
+	if dialErr != nil || conn == nil {
+		if conn != nil {
+			_ = conn.Close()
+		}
+		return nil, ErrControl
+	}
+	closed := false
+	defer func() {
+		if !closed {
+			_ = conn.Close()
+		}
+	}()
+	if conn.SetWriteDeadline(time.Now().Add(phaseTimeout)) != nil || !writeAll(conn, []byte(proxyCARequest)) {
+		return nil, ErrControl
+	}
+	if conn.SetReadDeadline(time.Now().Add(phaseTimeout)) != nil {
+		return nil, ErrControl
+	}
+	header, body, ok := readResponse(conn, maxProxyCAPEM)
+	if !ok {
+		return nil, ErrControl
+	}
+	length, ok := proxyCAHeaderLength(header)
+	if !ok || len(body) != length {
+		return nil, ErrControl
+	}
+	validated := validateProxyCAPEM(body, proxyCAClock())
+	if validated == nil {
+		return nil, ErrControl
+	}
+	closeErr := conn.Close()
+	closed = true
+	if closeErr != nil {
+		return nil, ErrControl
+	}
+	return validated, nil
+}
+
 func writeAll(writer io.Writer, data []byte) bool {
 	for len(data) > 0 {
 		n, err := writer.Write(data)
@@ -124,9 +186,9 @@ func writeAll(writer io.Writer, data []byte) bool {
 	return true
 }
 
-func readResponse(reader io.Reader) ([]byte, []byte, bool) {
-	data, err := io.ReadAll(io.LimitReader(reader, maxResponseHeader+issueBodyLength+1))
-	if err != nil || len(data) > maxResponseHeader+issueBodyLength {
+func readResponse(reader io.Reader, maxBody int) ([]byte, []byte, bool) {
+	data, err := io.ReadAll(io.LimitReader(reader, int64(maxResponseHeader+maxBody+1)))
+	if err != nil || len(data) > maxResponseHeader+maxBody {
 		return nil, nil, false
 	}
 	marker := []byte("\r\n\r\n")
@@ -136,6 +198,47 @@ func readResponse(reader io.Reader) ([]byte, []byte, bool) {
 	}
 	headerEnd := index + len(marker)
 	return data[:headerEnd], data[headerEnd:], true
+}
+
+func proxyCAHeaderLength(header []byte) (int, bool) {
+	prefix := "HTTP/1.1 200 OK\r\nContent-Type: application/x-pem-file\r\nContent-Length: "
+	suffix := "\r\nConnection: close\r\n\r\n"
+	text := string(header)
+	if !strings.HasPrefix(text, prefix) || !strings.HasSuffix(text, suffix) {
+		return 0, false
+	}
+	value := strings.TrimSuffix(strings.TrimPrefix(text, prefix), suffix)
+	if value == "" || len(value) > 4 || len(value) > 1 && value[0] == '0' {
+		return 0, false
+	}
+	for i := range value {
+		if value[i] < '0' || value[i] > '9' {
+			return 0, false
+		}
+	}
+	length, err := strconv.Atoi(value)
+	return length, err == nil && length >= 1 && length <= maxProxyCAPEM
+}
+
+func validateProxyCAPEM(input []byte, now time.Time) []byte {
+	if len(input) == 0 || len(input) > maxProxyCAPEM {
+		return nil
+	}
+	block, rest := pem.Decode(input)
+	if block == nil || block.Type != "CERTIFICATE" || len(block.Headers) != 0 || len(rest) != 0 ||
+		!bytes.Equal(input, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: block.Bytes})) {
+		return nil
+	}
+	certificate, err := x509.ParseCertificate(block.Bytes)
+	if err != nil || !bytes.Equal(certificate.RawSubject, certificate.RawIssuer) || certificate.CheckSignatureFrom(certificate) != nil {
+		return nil
+	}
+	publicKey, ok := certificate.PublicKey.(*ecdsa.PublicKey)
+	if !ok || publicKey.Curve != elliptic.P256() || !certificate.BasicConstraintsValid || !certificate.IsCA ||
+		certificate.KeyUsage&x509.KeyUsageCertSign == 0 || now.Before(certificate.NotBefore) || !now.Before(certificate.NotAfter) {
+		return nil
+	}
+	return append([]byte(nil), input...)
 }
 
 func issueHeaderLength(header []byte) (int, bool) {

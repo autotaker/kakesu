@@ -4,9 +4,13 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"crypto/ecdsa"
+	"crypto/elliptic"
 	"crypto/tls"
+	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"io"
@@ -34,7 +38,11 @@ const (
 	connectEstablished = "HTTP/1.1 200 Connection Established\r\nContent-Length: 0\r\n\r\n"
 	controlNoContent   = "HTTP/1.1 204 No Content\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
 	maxControlBody     = 512
+	maxProxyCAPEM      = 4096
+	proxyCARequest     = "GET /v1/proxy-ca HTTP/1.1\r\nContent-Length: 0\r\n\r\n"
 )
+
+var proxyCAClock = func() time.Time { return time.Now().UTC() }
 
 type Error string
 
@@ -49,6 +57,7 @@ const (
 
 type Authority interface {
 	Issue(string) (tls.Certificate, error)
+	PublicCertificatePEM() []byte
 }
 
 // CapabilityController applies peer-bound issuance and revocation policy.
@@ -191,12 +200,20 @@ func denyInitial(conn net.Conn, ctx context.Context) error {
 }
 
 type controlRequest struct {
-	issue      bool
+	kind       controlKind
 	provider   string
 	repository string
 	handle     string
 	bodyLength int
 }
+
+type controlKind uint8
+
+const (
+	controlIssue controlKind = iota + 1
+	controlRevoke
+	controlProxyCA
+)
 
 func (s *Session) serveControl(ctx context.Context, conn net.Conn, header []byte) error {
 	request, ok := parseControlHeader(header)
@@ -212,7 +229,22 @@ func (s *Session) serveControl(ctx context.Context, conn net.Conn, header []byte
 	if hasControlExtraByte(conn) {
 		return denyInitial(conn, ctx)
 	}
-	if request.issue {
+	if request.kind == controlProxyCA {
+		certificate := validateProxyCAPEM(s.authority.PublicCertificatePEM(), proxyCAClock())
+		if certificate == nil {
+			return denyInitial(conn, ctx)
+		}
+		response := make([]byte, 0, 128+len(certificate))
+		response = append(response, "HTTP/1.1 200 OK\r\nContent-Type: application/x-pem-file\r\nContent-Length: "...)
+		response = strconv.AppendInt(response, int64(len(certificate)), 10)
+		response = append(response, "\r\nConnection: close\r\n\r\n"...)
+		response = append(response, certificate...)
+		if err := setDeadline(conn, ctx); err != nil || writeAll(conn, response) != nil {
+			return ErrSession
+		}
+		return nil
+	}
+	if request.kind == controlIssue {
 		provider, repository, operation, ok := decodeIssueBody(body)
 		if !ok {
 			return denyInitial(conn, ctx)
@@ -239,7 +271,7 @@ func (s *Session) serveControl(ctx context.Context, conn net.Conn, header []byte
 		}
 		return nil
 	}
-	if err := s.control.Revoke(ctx, request.handle); err != nil {
+	if request.kind != controlRevoke || s.control.Revoke(ctx, request.handle) != nil {
 		return denyInitial(conn, ctx)
 	}
 	if err := setDeadline(conn, ctx); err != nil || !writeFixed(conn, controlNoContent) {
@@ -335,6 +367,9 @@ func firstRequestLine(header []byte) string {
 }
 
 func parseControlHeader(header []byte) (controlRequest, bool) {
+	if bytes.Equal(header, []byte(proxyCARequest)) {
+		return controlRequest{kind: controlProxyCA}, true
+	}
 	lines := bytes.Split(header, []byte("\r\n"))
 	if len(lines) < 4 || len(lines[len(lines)-1]) != 0 || len(lines[len(lines)-2]) != 0 {
 		return controlRequest{}, false
@@ -343,8 +378,9 @@ func parseControlHeader(header []byte) (controlRequest, bool) {
 	line := string(lines[0])
 	switch {
 	case line == "POST /v1/capabilities HTTP/1.1":
-		request.issue = true
+		request.kind = controlIssue
 	case strings.HasPrefix(line, "DELETE /v1/capabilities/") && strings.HasSuffix(line, " HTTP/1.1"):
+		request.kind = controlRevoke
 		path := strings.TrimSuffix(strings.TrimPrefix(line, "DELETE /v1/capabilities/"), " HTTP/1.1")
 		if strings.ContainsAny(path, "/?#") || !canonicalHandle(path) {
 			return controlRequest{}, false
@@ -377,7 +413,7 @@ func parseControlHeader(header []byte) (controlRequest, bool) {
 			}
 			request.bodyLength, seenLength = length, true
 		case strings.EqualFold(string(raw[:colon]), "Content-Type"):
-			if seenType || !request.issue || value != "application/json" {
+			if seenType || request.kind != controlIssue || value != "application/json" {
 				return controlRequest{}, false
 			}
 			seenType = true
@@ -388,10 +424,31 @@ func parseControlHeader(header []byte) (controlRequest, bool) {
 	if !seenLength {
 		return controlRequest{}, false
 	}
-	if request.issue {
+	if request.kind == controlIssue {
 		return request, seenType && request.bodyLength >= 1 && request.bodyLength <= maxControlBody
 	}
-	return request, !seenType && request.bodyLength == 0
+	return request, request.kind == controlRevoke && !seenType && request.bodyLength == 0
+}
+
+func validateProxyCAPEM(input []byte, now time.Time) []byte {
+	if len(input) == 0 || len(input) > maxProxyCAPEM {
+		return nil
+	}
+	block, rest := pem.Decode(input)
+	if block == nil || block.Type != "CERTIFICATE" || len(block.Headers) != 0 || len(rest) != 0 ||
+		!bytes.Equal(input, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: block.Bytes})) {
+		return nil
+	}
+	certificate, err := x509.ParseCertificate(block.Bytes)
+	if err != nil || !bytes.Equal(certificate.RawSubject, certificate.RawIssuer) || certificate.CheckSignatureFrom(certificate) != nil {
+		return nil
+	}
+	publicKey, ok := certificate.PublicKey.(*ecdsa.PublicKey)
+	if !ok || publicKey.Curve != elliptic.P256() || !certificate.BasicConstraintsValid || !certificate.IsCA ||
+		certificate.KeyUsage&x509.KeyUsageCertSign == 0 || now.Before(certificate.NotBefore) || !now.Before(certificate.NotAfter) {
+		return nil
+	}
+	return append([]byte(nil), input...)
 }
 
 func headerToken(value []byte) bool {

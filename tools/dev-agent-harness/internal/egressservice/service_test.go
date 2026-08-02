@@ -33,6 +33,7 @@ type fakeAuthority struct{}
 func (fakeAuthority) Issue(string) (tls.Certificate, error) {
 	return tls.Certificate{}, errors.New("not used")
 }
+func (fakeAuthority) PublicCertificatePEM() []byte { return []byte("not-used") }
 
 func (*testListener) Accept() (net.Conn, error) { return nil, errors.New("not used") }
 func (*testListener) Close() error              { return nil }

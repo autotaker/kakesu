@@ -1,9 +1,17 @@
 package controlclient
 
 import (
+	"bytes"
 	"context"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
+	"crypto/x509"
+	"crypto/x509/pkix"
+	"encoding/pem"
 	"errors"
 	"io"
+	"math/big"
 	"net"
 	"strconv"
 	"strings"
@@ -118,6 +126,33 @@ func TestRevokeUsesExactSingleConnectionWire(t *testing.T) {
 	}
 }
 
+func TestProxyCAUsesExactSingleConnectionWireAndReturnsCopy(t *testing.T) {
+	now := time.Date(2030, 1, 2, 3, 4, 5, 0, time.UTC)
+	originalClock := proxyCAClock
+	proxyCAClock = func() time.Time { return now }
+	t.Cleanup(func() { proxyCAClock = originalClock })
+	public := makeClientProxyCAPEM(t, now, clientCATestOptions{})
+	response := proxyCAResponse(public)
+	conn, request, calls, done := installPipe(t, response, 3, nil)
+
+	got, err := ProxyCA(testSocket)
+	if err != nil || !bytes.Equal(got, public) {
+		t.Fatalf("public CA mismatch: len=%d err=%v", len(got), err)
+	}
+	<-done
+	if *request != proxyCARequest || *calls != 1 {
+		t.Fatalf("request=%q calls=%d", *request, *calls)
+	}
+	reads, writes, deadlines, closes := conn.counts()
+	if reads != 1 || writes != 1 || deadlines != 0 || closes != 1 {
+		t.Fatalf("deadlines read=%d write=%d all=%d closes=%d", reads, writes, deadlines, closes)
+	}
+	got[0] ^= 1
+	if bytes.Equal(got, public) || !bytes.Equal([]byte(response[len(response)-len(public):]), public) {
+		t.Fatal("returned CA aliases response state")
+	}
+}
+
 func TestInputIsRejectedBeforeDial(t *testing.T) {
 	original := dialControl
 	defer func() { dialControl = original }()
@@ -144,8 +179,135 @@ func TestInputIsRejectedBeforeDial(t *testing.T) {
 			t.Fatalf("handle accepted: %q", handle)
 		}
 	}
+	for _, socket := range []string{"", "relative.sock", "/run/../tmp/egress.sock", "/run//egress.sock"} {
+		if value, err := ProxyCA(socket); value != nil || err != ErrControl {
+			t.Fatalf("proxy CA socket accepted: value-len=%d err=%v", len(value), err)
+		}
+	}
 	if calls != 0 {
 		t.Fatalf("dial calls=%d", calls)
+	}
+}
+
+func TestProxyCAStrictResponseMatrix(t *testing.T) {
+	now := time.Date(2030, 1, 2, 3, 4, 5, 0, time.UTC)
+	originalClock := proxyCAClock
+	proxyCAClock = func() time.Time { return now }
+	t.Cleanup(func() { proxyCAClock = originalClock })
+	public := makeClientProxyCAPEM(t, now, clientCATestOptions{})
+	valid := proxyCAResponse(public)
+	length := strconv.Itoa(len(public))
+	cases := map[string]string{
+		"informational":  strings.Replace(valid, "200 OK", "100 Continue", 1),
+		"no content":     strings.Replace(valid, "200 OK", "204 No Content", 1),
+		"redirect":       strings.Replace(valid, "200 OK", "302 Found", 1),
+		"forbidden":      strings.Replace(valid, "200 OK", "403 Forbidden", 1),
+		"server error":   strings.Replace(valid, "200 OK", "500 Internal Server Error", 1),
+		"header order":   "HTTP/1.1 200 OK\r\nContent-Length: " + length + "\r\nContent-Type: application/x-pem-file\r\nConnection: close\r\n\r\n" + string(public),
+		"header case":    strings.Replace(valid, "Content-Type", "content-type", 1),
+		"header space":   strings.Replace(valid, "Content-Length: ", "Content-Length:  ", 1),
+		"extra header":   strings.Replace(valid, "Connection: close", "X-Extra: no\r\nConnection: close", 1),
+		"duplicate type": strings.Replace(valid, "Content-Length", "Content-Type: application/x-pem-file\r\nContent-Length", 1),
+		"wrong type":     strings.Replace(valid, "application/x-pem-file", "text/plain", 1),
+		"chunked":        strings.Replace(valid, "Content-Length: "+length, "Transfer-Encoding: chunked", 1),
+		"leading zero":   strings.Replace(valid, "Content-Length: "+length, "Content-Length: 0"+length, 1),
+		"missing close":  strings.Replace(valid, "Connection: close\r\n", "", 1),
+		"wrong length":   strings.Replace(valid, "Content-Length: "+length, "Content-Length: 1", 1),
+		"early eof":      valid[:len(valid)-20],
+		"extra byte":     valid + "x",
+		"second response": valid +
+			"HTTP/1.1 200 OK\r\nContent-Type: application/x-pem-file\r\nContent-Length: 1\r\nConnection: close\r\n\r\nx",
+		"header overflow": "HTTP/1.1 200 OK\r\nX: " + strings.Repeat("x", maxResponseHeader) + "\r\n\r\n",
+	}
+	for name, response := range cases {
+		t.Run(name, func(t *testing.T) {
+			_, _, calls, done := installPipe(t, response, 0, nil)
+			value, err := ProxyCA(testSocket)
+			<-done
+			if value != nil || err != ErrControl || *calls != 1 {
+				t.Fatalf("invalid response accepted: value-len=%d err=%v calls=%d", len(value), err, *calls)
+			}
+		})
+	}
+}
+
+func TestProxyCACertificateValidationAndNonLeak(t *testing.T) {
+	now := time.Date(2030, 1, 2, 3, 4, 5, 0, time.UTC)
+	originalClock := proxyCAClock
+	proxyCAClock = func() time.Time { return now }
+	t.Cleanup(func() { proxyCAClock = originalClock })
+	valid := makeClientProxyCAPEM(t, now, clientCATestOptions{})
+	private := pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: []byte("PRIVATE-SENTINEL")})
+	cases := map[string][]byte{
+		"empty":           {},
+		"malformed":       []byte("LOWER-ERROR SECRET-SUBJECT"),
+		"private":         private,
+		"wrong block":     pem.EncodeToMemory(&pem.Block{Type: "PUBLIC KEY", Bytes: []byte{1}}),
+		"multiple":        append(append([]byte(nil), valid...), valid...),
+		"trailing":        append(append([]byte(nil), valid...), 'x'),
+		"over limit":      bytes.Repeat([]byte("x"), maxProxyCAPEM+1),
+		"not yet valid":   makeClientProxyCAPEM(t, now, clientCATestOptions{notBefore: now.Add(time.Second), notAfter: now.Add(time.Hour)}),
+		"expired":         makeClientProxyCAPEM(t, now, clientCATestOptions{notBefore: now.Add(-time.Hour), notAfter: now}),
+		"non ca":          makeClientProxyCAPEM(t, now, clientCATestOptions{nonCA: true}),
+		"no constraints":  makeClientProxyCAPEM(t, now, clientCATestOptions{noConstraints: true}),
+		"no cert sign":    makeClientProxyCAPEM(t, now, clientCATestOptions{noCertSign: true}),
+		"p384":            makeClientProxyCAPEM(t, now, clientCATestOptions{p384: true}),
+		"not self signed": makeClientProxyCAPEM(t, now, clientCATestOptions{notSelfSigned: true}),
+	}
+	for name, body := range cases {
+		t.Run(name, func(t *testing.T) {
+			_, _, calls, done := installPipe(t, proxyCAResponse(body), 0, nil)
+			value, err := ProxyCA(testSocket)
+			<-done
+			if value != nil || err != ErrControl || *calls != 1 {
+				t.Fatalf("invalid certificate accepted: value-len=%d err=%v calls=%d", len(value), err, *calls)
+			}
+			for _, sentinel := range []string{"PRIVATE-SENTINEL", "LOWER-ERROR", "SECRET-SUBJECT", testSocket, "/v1/proxy-ca"} {
+				if strings.Contains(err.Error(), sentinel) {
+					t.Fatal("fixed error leaked certificate, socket, route, or lower error")
+				}
+			}
+		})
+	}
+}
+
+func TestProxyCATransportFailuresCloseAndStayFixed(t *testing.T) {
+	original := dialControl
+	t.Cleanup(func() { dialControl = original })
+	sentinel := "PRIVATE-SENTINEL /secret/socket lower-error"
+	dialControl = func(context.Context, string, string) (net.Conn, error) {
+		return nil, errors.New(sentinel)
+	}
+	if value, err := ProxyCA(testSocket); value != nil || err != ErrControl || strings.Contains(err.Error(), sentinel) {
+		t.Fatalf("dial failure value-len=%d err=%v", len(value), err)
+	}
+
+	server, client := net.Pipe()
+	observed := &observedConn{Conn: client, deadlineErr: errors.New(sentinel)}
+	dialControl = func(context.Context, string, string) (net.Conn, error) { return observed, nil }
+	if value, err := ProxyCA(testSocket); value != nil || err != ErrControl {
+		t.Fatalf("deadline failure value-len=%d err=%v", len(value), err)
+	}
+	_ = server.Close()
+	_, _, _, closes := observed.counts()
+	if closes != 1 {
+		t.Fatalf("deadline failure closes=%d", closes)
+	}
+
+	now := time.Date(2030, 1, 2, 3, 4, 5, 0, time.UTC)
+	clock := proxyCAClock
+	proxyCAClock = func() time.Time { return now }
+	t.Cleanup(func() { proxyCAClock = clock })
+	public := makeClientProxyCAPEM(t, now, clientCATestOptions{})
+	conn, _, _, done := installPipe(t, proxyCAResponse(public), 0, errors.New(sentinel))
+	value, err := ProxyCA(testSocket)
+	<-done
+	if value != nil || err != ErrControl || strings.Contains(err.Error(), sentinel) {
+		t.Fatalf("close failure value-len=%d err=%v", len(value), err)
+	}
+	_, _, _, closes = conn.counts()
+	if closes != 1 {
+		t.Fatalf("close failure closes=%d", closes)
 	}
 }
 
@@ -282,7 +444,7 @@ func installPipe(t *testing.T, response string, maxWrite int, closeErr error) (*
 
 func bytesCompleteRequest(data []byte) bool {
 	text := string(data)
-	if strings.HasPrefix(text, "DELETE ") {
+	if strings.HasPrefix(text, "DELETE ") || strings.HasPrefix(text, "GET ") {
 		return strings.HasSuffix(text, "\r\n\r\n")
 	}
 	marker := "\r\n\r\n"
@@ -302,6 +464,65 @@ func bytesCompleteRequest(data []byte) bool {
 	}
 	length, err := strconv.Atoi(text[lengthStart : lengthStart+lengthEnd])
 	return err == nil && len(text[index+len(marker):]) == length
+}
+
+func proxyCAResponse(body []byte) string {
+	return "HTTP/1.1 200 OK\r\nContent-Type: application/x-pem-file\r\nContent-Length: " +
+		strconv.Itoa(len(body)) + "\r\nConnection: close\r\n\r\n" + string(body)
+}
+
+type clientCATestOptions struct {
+	notBefore, notAfter                                   time.Time
+	nonCA, noConstraints, noCertSign, p384, notSelfSigned bool
+}
+
+func makeClientProxyCAPEM(t *testing.T, now time.Time, options clientCATestOptions) []byte {
+	t.Helper()
+	curve := elliptic.P256()
+	if options.p384 {
+		curve = elliptic.P384()
+	}
+	key, err := ecdsa.GenerateKey(curve, rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	notBefore, notAfter := options.notBefore, options.notAfter
+	if notBefore.IsZero() {
+		notBefore = now.Add(-time.Hour)
+	}
+	if notAfter.IsZero() {
+		notAfter = now.Add(time.Hour)
+	}
+	template := &x509.Certificate{
+		SerialNumber:          big.NewInt(52),
+		Subject:               pkix.Name{CommonName: "SECRET-SUBJECT"},
+		NotBefore:             notBefore,
+		NotAfter:              notAfter,
+		IsCA:                  !options.nonCA,
+		BasicConstraintsValid: !options.noConstraints,
+		KeyUsage:              x509.KeyUsageCertSign,
+	}
+	if options.noCertSign {
+		template.KeyUsage = x509.KeyUsageDigitalSignature
+	}
+	parent, signer := template, any(key)
+	if options.notSelfSigned {
+		parentKey, generateErr := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+		if generateErr != nil {
+			t.Fatal(generateErr)
+		}
+		parent = &x509.Certificate{
+			SerialNumber: big.NewInt(53), Subject: pkix.Name{CommonName: "other"},
+			NotBefore: now.Add(-time.Hour), NotAfter: now.Add(time.Hour), IsCA: true,
+			BasicConstraintsValid: true, KeyUsage: x509.KeyUsageCertSign,
+		}
+		signer = parentKey
+	}
+	der, err := x509.CreateCertificate(rand.Reader, template, parent, &key.PublicKey, signer)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der})
 }
 
 func issueResponse(handle string) string {
