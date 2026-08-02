@@ -446,3 +446,19 @@ getterはmanifestと記録一覧をコピーし、固定エラーclassはパス�
 Passkey/WebAuthnを検証しない。`approved`は永続判断にすぎず、許可、push権限、実push、
 消費完了のいずれも意味しない。実配置の作成/chown、OS/プロセス境界、systemd restart/ロールバック、
 通知、スマートフォン承認、許可発行とpush照合は後続Taskで接続し、承認済み環境で確認する。
+
+## Passkey許可確認のライフサイクル
+
+`internal/approvalchallenge`は、承認リクエストのIDと正規manifestダイジェスト、`approve`/`deny`判断、
+operator ID、RP ID、完全一致するHTTPS origin、期限を、プロセス内の不透明なランダム`challenge`へ束縛する。
+最初の`Consume`試行はtrusted verifierを呼ぶ前に`challenge`を予約し、成功、検証失敗、`panic`、
+同時試行、`Close`のいずれでも再利用しない。期限到達は消費より優先され、時刻の巻き戻りは
+フェイルクローズとなる。呼出し関数へ渡す割り当てと主張はコピーし、成功結果は未加工の認証情報IDを
+domain-separated hashへ変換して`challenge`、主張、署名、認証情報publicキーを残さない。
+
+マネージャーは永続化、timer、background purgeを持たず、`Close`又はプロセス再起動で`pending`の
+`challenge`を全て失う。失敗、期限切れ、再起動後の回復は、承認リクエストがまだ`pending`であることを
+別境界で確認して新しい`challenge`を発行することであり、旧`token`の再試行ではない。この呼出し関数の
+接続点自体は実WebAuthnの署名、origin/RP ID hash、UV、counter又は認証情報状態を検証せず、
+Tailscale識別情報とのAND条件、検証済み判断API、`approvalstate`の変異、許可又はpush認可も実装しない。
+実認証器、HTTPS/Tailscale/スマートフォンを使う環境依存確認は、後続Taskの承認済み環境とクリーンアップ手順を要する。

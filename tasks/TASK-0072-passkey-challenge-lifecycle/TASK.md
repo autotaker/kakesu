@@ -1,7 +1,7 @@
 ---
 task_id: "TASK-0072"
 title: "Passkey challengeの一回限りlifecycleを実装する"
-status: draft
+status: done
 created_at: "2026-08-02"
 ---
 
