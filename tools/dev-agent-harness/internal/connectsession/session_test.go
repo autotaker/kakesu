@@ -30,10 +30,13 @@ import (
 )
 
 type countingAuthority struct {
-	mu    sync.Mutex
-	cert  *proxyca.Authority
-	calls int
-	err   error
+	mu          sync.Mutex
+	cert        *proxyca.Authority
+	public      []byte
+	publicSet   bool
+	calls       int
+	publicCalls int
+	err         error
 }
 
 func (a *countingAuthority) Issue(host string) (tls.Certificate, error) {
@@ -47,10 +50,24 @@ func (a *countingAuthority) Issue(host string) (tls.Certificate, error) {
 	}
 	return ca.Issue(host)
 }
+func (a *countingAuthority) PublicCertificatePEM() []byte {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.publicCalls++
+	if a.publicSet {
+		return a.public
+	}
+	return a.cert.PublicCertificatePEM()
+}
 func (a *countingAuthority) count() int {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	return a.calls
+}
+func (a *countingAuthority) publicCount() int {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return a.publicCalls
 }
 
 type testResolver struct {
@@ -633,6 +650,183 @@ func TestControlDependencyFailureIsFixedAndCloses(t *testing.T) {
 	if response != connectDenied || !errors.Is(serveErr, ErrDenied) || strings.Contains(response, "secret") {
 		t.Fatalf("response=%q err=%v", response, serveErr)
 	}
+}
+
+func TestProxyCAExactResponseCopyAndRouteIsolation(t *testing.T) {
+	now := time.Date(2030, 1, 2, 3, 4, 5, 0, time.UTC)
+	originalClock := proxyCAClock
+	proxyCAClock = func() time.Time { return now }
+	t.Cleanup(func() { proxyCAClock = originalClock })
+	public := makeProxyCAPEM(t, now, proxyCATestOptions{})
+	authority := &countingAuthority{public: public, publicSet: true}
+	control := &recordingControl{}
+	handlerCalls := 0
+	session, err := New(Rules{
+		Authority: authority,
+		Control:   control,
+		Handler: http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+			handlerCalls++
+		}),
+	})
+	must(t, err)
+
+	want := "HTTP/1.1 200 OK\r\nContent-Type: application/x-pem-file\r\nContent-Length: " +
+		strconv.Itoa(len(public)) + "\r\nConnection: close\r\n\r\n" + string(public)
+	first, serveErr := runControl(session, proxyCARequest)
+	if serveErr != nil || first != want {
+		t.Fatalf("proxy CA response mismatch: len=%d err=%v", len(first), serveErr)
+	}
+	mutated := []byte(first)
+	mutated[len(mutated)-2] ^= 1
+	second, serveErr := runControl(session, proxyCARequest)
+	if serveErr != nil || second != want || first != want {
+		t.Fatalf("response did not remain isolated: len=%d err=%v", len(second), serveErr)
+	}
+	control.mu.Lock()
+	issues, revokes := control.issues, control.revokes
+	control.mu.Unlock()
+	if authority.count() != 0 || authority.publicCount() != 2 || issues != 0 || revokes != 0 || handlerCalls != 0 {
+		t.Fatalf("route calls issueCert=%d public=%d control=%d/%d handler=%d", authority.count(), authority.publicCount(), issues, revokes, handlerCalls)
+	}
+	block, rest := pem.Decode(public)
+	certificate, parseErr := x509.ParseCertificate(block.Bytes)
+	if parseErr != nil || len(rest) != 0 || !certificate.IsCA || certificate.KeyUsage&x509.KeyUsageCertSign == 0 {
+		t.Fatal("success body was not a certificate-only CA")
+	}
+}
+
+func TestProxyCARequestIsExactZeroBody(t *testing.T) {
+	now := time.Date(2030, 1, 2, 3, 4, 5, 0, time.UTC)
+	originalClock := proxyCAClock
+	proxyCAClock = func() time.Time { return now }
+	t.Cleanup(func() { proxyCAClock = originalClock })
+	public := makeProxyCAPEM(t, now, proxyCATestOptions{})
+	for name, input := range map[string]string{
+		"method":            "POST /v1/proxy-ca HTTP/1.1\r\nContent-Length: 0\r\n\r\n",
+		"path":              "GET /v1/proxy-cas HTTP/1.1\r\nContent-Length: 0\r\n\r\n",
+		"query":             "GET /v1/proxy-ca?x=1 HTTP/1.1\r\nContent-Length: 0\r\n\r\n",
+		"fragment":          "GET /v1/proxy-ca#x HTTP/1.1\r\nContent-Length: 0\r\n\r\n",
+		"version":           "GET /v1/proxy-ca HTTP/1.0\r\nContent-Length: 0\r\n\r\n",
+		"missing length":    "GET /v1/proxy-ca HTTP/1.1\r\n\r\n",
+		"header case":       "GET /v1/proxy-ca HTTP/1.1\r\ncontent-length: 0\r\n\r\n",
+		"leading zero":      "GET /v1/proxy-ca HTTP/1.1\r\nContent-Length: 00\r\n\r\n",
+		"space":             "GET /v1/proxy-ca HTTP/1.1\r\nContent-Length:  0\r\n\r\n",
+		"duplicate":         "GET /v1/proxy-ca HTTP/1.1\r\nContent-Length: 0\r\nContent-Length: 0\r\n\r\n",
+		"host":              "GET /v1/proxy-ca HTTP/1.1\r\nHost: local\r\nContent-Length: 0\r\n\r\n",
+		"connection":        "GET /v1/proxy-ca HTTP/1.1\r\nContent-Length: 0\r\nConnection: close\r\n\r\n",
+		"content type":      "GET /v1/proxy-ca HTTP/1.1\r\nContent-Length: 0\r\nContent-Type: application/x-pem-file\r\n\r\n",
+		"chunked":           "GET /v1/proxy-ca HTTP/1.1\r\nTransfer-Encoding: chunked\r\nContent-Length: 0\r\n\r\n",
+		"body":              "GET /v1/proxy-ca HTTP/1.1\r\nContent-Length: 1\r\n\r\nx",
+		"early byte":        proxyCARequest + "x",
+		"second request":    proxyCARequest + proxyCARequest,
+		"noncanonical line": "GET  /v1/proxy-ca HTTP/1.1\r\nContent-Length: 0\r\n\r\n",
+	} {
+		t.Run(name, func(t *testing.T) {
+			authority := &countingAuthority{public: public, publicSet: true}
+			control := &recordingControl{}
+			session, err := New(Rules{Authority: authority, Control: control, Handler: http.HandlerFunc(func(http.ResponseWriter, *http.Request) { t.Error("handler called") })})
+			must(t, err)
+			response, serveErr := runControl(session, input)
+			if response != connectDenied || !errors.Is(serveErr, ErrDenied) || authority.publicCount() != 0 || authority.count() != 0 {
+				t.Fatalf("malformed GET accepted: response-len=%d err=%v public=%d issue=%d", len(response), serveErr, authority.publicCount(), authority.count())
+			}
+			control.mu.Lock()
+			defer control.mu.Unlock()
+			if control.issues != 0 || control.revokes != 0 {
+				t.Fatal("malformed GET reached capability controller")
+			}
+		})
+	}
+}
+
+func TestProxyCAAuthorityOutputValidationIsFixedAndNonLeaking(t *testing.T) {
+	now := time.Date(2030, 1, 2, 3, 4, 5, 0, time.UTC)
+	originalClock := proxyCAClock
+	proxyCAClock = func() time.Time { return now }
+	t.Cleanup(func() { proxyCAClock = originalClock })
+	valid := makeProxyCAPEM(t, now, proxyCATestOptions{})
+	private := pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: []byte("PRIVATE-SENTINEL")})
+	cases := map[string][]byte{
+		"nil":              nil,
+		"empty":            {},
+		"malformed":        []byte("SECRET-SUBJECT malformed"),
+		"private":          private,
+		"wrong block":      pem.EncodeToMemory(&pem.Block{Type: "PUBLIC KEY", Bytes: []byte{1}}),
+		"multiple":         append(append([]byte(nil), valid...), valid...),
+		"trailing newline": append(append([]byte(nil), valid...), '\n'),
+		"over limit":       bytes.Repeat([]byte("x"), maxProxyCAPEM+1),
+		"not yet valid":    makeProxyCAPEM(t, now, proxyCATestOptions{notBefore: now.Add(time.Minute), notAfter: now.Add(time.Hour)}),
+		"expired":          makeProxyCAPEM(t, now, proxyCATestOptions{notBefore: now.Add(-time.Hour), notAfter: now}),
+		"non ca":           makeProxyCAPEM(t, now, proxyCATestOptions{nonCA: true}),
+		"no constraints":   makeProxyCAPEM(t, now, proxyCATestOptions{noConstraints: true}),
+		"no cert sign":     makeProxyCAPEM(t, now, proxyCATestOptions{noCertSign: true}),
+		"p384":             makeProxyCAPEM(t, now, proxyCATestOptions{p384: true}),
+		"not self signed":  makeProxyCAPEM(t, now, proxyCATestOptions{notSelfSigned: true}),
+	}
+	for name, output := range cases {
+		t.Run(name, func(t *testing.T) {
+			authority := &countingAuthority{public: output, publicSet: true}
+			session, err := New(Rules{Authority: authority, Control: allowControl{}, Handler: http.HandlerFunc(func(http.ResponseWriter, *http.Request) { t.Error("handler called") })})
+			must(t, err)
+			response, serveErr := runControl(session, proxyCARequest)
+			if response != connectDenied || !errors.Is(serveErr, ErrDenied) || authority.publicCount() != 1 || authority.count() != 0 {
+				t.Fatalf("invalid authority output accepted: response-len=%d err=%v calls=%d", len(response), serveErr, authority.publicCount())
+			}
+			for _, sentinel := range []string{"PRIVATE-SENTINEL", "SECRET-SUBJECT", "BEGIN CERTIFICATE"} {
+				if strings.Contains(response, sentinel) || strings.Contains(serveErr.Error(), sentinel) {
+					t.Fatal("authority material leaked")
+				}
+			}
+		})
+	}
+}
+
+type proxyCATestOptions struct {
+	notBefore, notAfter                                   time.Time
+	nonCA, noConstraints, noCertSign, p384, notSelfSigned bool
+}
+
+func makeProxyCAPEM(t *testing.T, now time.Time, options proxyCATestOptions) []byte {
+	t.Helper()
+	curve := elliptic.P256()
+	if options.p384 {
+		curve = elliptic.P384()
+	}
+	key, err := ecdsa.GenerateKey(curve, rand.Reader)
+	must(t, err)
+	notBefore, notAfter := options.notBefore, options.notAfter
+	if notBefore.IsZero() {
+		notBefore = now.Add(-time.Hour)
+	}
+	if notAfter.IsZero() {
+		notAfter = now.Add(time.Hour)
+	}
+	template := &x509.Certificate{
+		SerialNumber:          big.NewInt(42),
+		Subject:               pkix.Name{CommonName: "SECRET-SUBJECT"},
+		NotBefore:             notBefore,
+		NotAfter:              notAfter,
+		IsCA:                  !options.nonCA,
+		BasicConstraintsValid: !options.noConstraints,
+		KeyUsage:              x509.KeyUsageCertSign,
+	}
+	if options.noCertSign {
+		template.KeyUsage = x509.KeyUsageDigitalSignature
+	}
+	parent, signer := template, any(key)
+	if options.notSelfSigned {
+		parentKey, generateErr := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+		must(t, generateErr)
+		parent = &x509.Certificate{
+			SerialNumber: big.NewInt(43), Subject: pkix.Name{CommonName: "other"},
+			NotBefore: now.Add(-time.Hour), NotAfter: now.Add(time.Hour), IsCA: true,
+			BasicConstraintsValid: true, KeyUsage: x509.KeyUsageCertSign,
+		}
+		signer = parentKey
+	}
+	der, err := x509.CreateCertificate(rand.Reader, template, parent, &key.PublicKey, signer)
+	must(t, err)
+	return pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der})
 }
 
 func issueWire(body string) string {

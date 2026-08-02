@@ -139,16 +139,19 @@ P-256 leaf鍵と短命のサーバー証明書を発行する。CA秘密鍵、�
 同じソケット上の一操作制御を明確に分岐する。CONNECTでは発行済み証明書でTLS 1.2以上・SNI一致・
 ALPN `http/1.1`を終端し、呼び出し元コンテキストを引き継いだHTTP/1.1リクエスト一件だけを注入済み
 `brokerhttp.Handler`へ同期的に渡す。制御では`POST /v1/capabilities`によるGitHub/OpenAIケイパビリティ発行と、
-`DELETE /v1/capabilities/cap_...`による失効だけを扱い、TLS・CA・inner HTTP handlerへ進まない。
+`DELETE /v1/capabilities/cap_...`による失効、および完全一致する`GET /v1/proxy-ca`による公開CA取得だけを扱い、
+TLS・リーフ発行・内側のHTTP処理へ進まない。
 
 制御リクエストは16,384バイト以下のリクエスト行とヘッダー、正規`Content-Length`、発行時だけ1〜512バイトの厳格な
 JSONと`Content-Type: application/json`を要求する。chunked、upgrade、keep-alive、追加ヘッダー、earlyバイト、
-複数リクエストを拒否し、成功・失敗とも一操作後にcloseする。発行成功時は不透明handleだけ、失効時は空本文を返し、
+複数リクエストを拒否し、成功・失敗とも一操作後にcloseする。公開CA取得は正規な本文なしGETだけを受理し、
+ECDSA P-256の自己署名CA、基本制約、CertSign用途、現在の有効期間を再検査した単一の証明書だけのPEMについて、
+新しいコピーだけを返す。発行成功時は不透明handleだけ、失効時は空本文を返し、
 拒否は入力値やhandle、URL、allowlist、主体、認証情報、下位エラーを含まない空本文403へ畳む。
 
 CONNECTヘッダーの上限と各フェーズは5秒（呼び出し元の期限またはキャンセルが早ければそちら）に固定し、
 TLS後の失敗は追加HTTP応答なしでcloseする。HTTP/2、汎用CONNECT、再試行、接続受付、呼び出し元識別情報生成、
-CAファイルの信頼設定、制御クライアントや認証情報helperはこの境界に含めない。
+CAファイルの信頼設定、認証情報helperはこのサーバー境界に含めない。
 
 `net.Pipe`とメモリ内CA、fake依存でのテスト成功は、実接続受付、OS識別情報、実クライアントの証明書信頼、外部ネットワーク、
 GitHub/OpenAIのlive E2Eを保証しない。これらの配置・認証・環境依存の確認は後続のlive E2E境界で行う。
@@ -186,6 +189,19 @@ unknown、malformed、期限切れ、別主体は固定拒否となり、handle�
 
 hermeticテストはこのメモリー内ライフサイクルと既存CONNECTの回帰を確認するが、実DNS/TLS、実GitHub/OpenAI、実NSS/別UID、
 systemdソケット、VPS配置の受理を保証しない。
+
+## Agent向け公開プロキシCAクライアント
+
+`internal/controlclient.ProxyCA`は、絶対かつ正規化済みの既存の外向き通信用Unixソケットへ一回だけ接続し、上記の固定GETを
+一回送る。固定順序の200応答ヘッダー、1〜4,096バイトの正規な単一`CERTIFICATE` PEM、宣言長との一致、
+本文直後のEOFを上限付きで読み、サーバーとは別のX.509検査でP-256自己署名CA、基本制約、CertSign用途、
+現在の有効期間を確認する。成功値は呼出元所有の公開証明書のコピーであり、CA秘密鍵、認証情報ディレクトリ、
+主体、リポジトリ、不透明参照を取得または返さない。失敗はソケット、パス、PEM、主体、下位エラーを保持しない固定エラーとなる。
+
+このクライアントは再試行、キャッシュ、TCPや別ソケットへの代替接続、証明書チェーン、CA更新・再読込み、信頼ストア登録、
+一時ファイル、環境変数、Git設定、起動機構、プロセスのライフサイクルを実装しない。後続の起動機構が必要な期間だけ信頼ファイルを
+作る直前の取得境界に限られ、本コンポーネントはディスクへ書かない。`net.Pipe`による成功は実OS権限、別UID、実Git/libcurlの
+信頼、GitHub/OpenAI/DNS/TLS、systemd/VPS配置を保証せず、それらは承認済み環境で別途live E2E確認する。
 
 ## Git read用認証情報helper
 
