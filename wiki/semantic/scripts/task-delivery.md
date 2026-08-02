@@ -13,7 +13,7 @@ title: Task Delivery
 
 1. Mainが目的、非対象、安定参照、依存状態、許可パス、preflight、未決事項を含むplanning input packetを固定する。
 2. Planner AgentとQA Agentは同じpacketだけを入力に、AC-IDで対応するPLANと実装前QA計画を独立に作る。PLANは設計、QA_PLANは観測を所有する。
-3. main AgentがPLANとQA_PLANを承認する。依存がreadyになる前後で設計、scope、期待結果が変わる場合はreconciliationと再承認を行う。
+3. main AgentがPLANとQA_PLANの意図、scope、受け入れ経路を軽く確認して承認する。独立PLAN Reviewerは要求せず、既存Taskの`planning_review_*`は互換入力としてのみ許容する。依存がreadyになる前後で設計、scope、期待結果が変わる場合はreconciliationと再承認を行う。
 4. main AgentがDEV、Reviewer、QA、ブランチ、worktreeを割り当てる。
 5. QA_PLANはDEV開始前に各caseへ`evidence-review`、`focused-rerun`、`live-e2e`のいずれかと理由を割り当てる。
 6. DEV Agentが実装、テスト、文書、candidate-boundの`make check`を一度完了し、HANDOVERへcandidateと実行したcommand/結果を残す。
