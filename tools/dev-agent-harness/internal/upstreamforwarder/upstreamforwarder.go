@@ -6,6 +6,7 @@ package upstreamforwarder
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -110,9 +111,19 @@ func (f *Forwarder) Forward(prepared egresstransaction.PreparedRequest) error {
 		ContentType: prepared.ContentType, Body: prepared.Body,
 	})
 	if err != nil || decision == egresspolicy.DecisionDeny || scope != prepared.Scope ||
-		!validBearer(prepared.Authorization) ||
-		(scope.Provider == "github" && (prepared.ContentType != "" || len(prepared.Body) != 0)) {
+		!validUpstreamAuthorization(scope, prepared.Authorization) ||
+		(scope.Operation == "github-rest-read" && (prepared.ContentType != "" || len(prepared.Body) != 0)) {
 		return ErrForward
+	}
+	gitResponseType := ""
+	if scope.Operation == egresspolicy.OperationGitHubGitRead {
+		if prepared.Method == http.MethodGet {
+			gitResponseType = egresspolicy.GitUploadPackAdvertise
+		} else if prepared.Method == http.MethodPost {
+			gitResponseType = egresspolicy.GitUploadPackResult
+		} else {
+			return ErrForward
+		}
 	}
 
 	// Keep no caller-owned bytes in the request handed to the transport.
@@ -124,10 +135,16 @@ func (f *Forwarder) Forward(prepared egresstransaction.PreparedRequest) error {
 		return ErrForward
 	}
 	request.Header.Set("Authorization", prepared.Authorization)
-	request.Header.Set("Accept", "application/json")
+	if gitResponseType == "" {
+		request.Header.Set("Accept", "application/json")
+	} else {
+		request.Header.Set("Accept", gitResponseType)
+	}
 	request.Header.Set("User-Agent", userAgent)
 	if scope.Provider == "openai" {
 		request.Header.Set("Content-Type", "application/json")
+	} else if scope.Operation == egresspolicy.OperationGitHubGitRead && prepared.Method == http.MethodPost {
+		request.Header.Set("Content-Type", egresspolicy.GitUploadPackRequest)
 	}
 
 	response, roundTripErr := f.transport.RoundTrip(request)
@@ -150,7 +167,13 @@ func (f *Forwarder) Forward(prepared egresstransaction.PreparedRequest) error {
 	}
 
 	contentType := ""
-	if len(data) > 0 {
+	if gitResponseType != "" {
+		if response.StatusCode != http.StatusOK || len(data) == 0 ||
+			len(response.Header.Values("Content-Type")) != 1 || response.Header.Values("Content-Type")[0] != gitResponseType {
+			return ErrForward
+		}
+		contentType = gitResponseType
+	} else if len(data) > 0 {
 		if !utf8.Valid(data) || !json.Valid(data) {
 			return ErrForward
 		}
@@ -167,6 +190,44 @@ func (f *Forwarder) Forward(prepared egresstransaction.PreparedRequest) error {
 		return ErrForward
 	}
 	return nil
+}
+
+func validUpstreamAuthorization(scope egresspolicy.Scope, value string) bool {
+	if scope.Operation == egresspolicy.OperationGitHubGitRead {
+		return validGitBasic(value)
+	}
+	return validBearer(value)
+}
+
+func validGitBasic(value string) bool {
+	const prefix = "Basic "
+	if !strings.HasPrefix(value, prefix) || strings.Count(value, " ") != 1 {
+		return false
+	}
+	encoded := strings.TrimPrefix(value, prefix)
+	decoded, err := base64.StdEncoding.DecodeString(encoded)
+	if err != nil || base64.StdEncoding.EncodeToString(decoded) != encoded ||
+		!bytes.HasPrefix(decoded, []byte("x-access-token:")) {
+		return false
+	}
+	credential := decoded[len("x-access-token:"):]
+	if len(credential) == 0 || len(credential) > maxCredentialBytes || looksLikeCapability(credential) {
+		return false
+	}
+	for _, value := range credential {
+		if value < 0x21 || value > 0x7e {
+			return false
+		}
+	}
+	return true
+}
+
+func looksLikeCapability(value []byte) bool {
+	if len(value) != len("cap_")+43 || !bytes.HasPrefix(value, []byte("cap_")) {
+		return false
+	}
+	raw, err := base64.RawURLEncoding.DecodeString(string(value[len("cap_"):]))
+	return err == nil && len(raw) == 32 && "cap_"+base64.RawURLEncoding.EncodeToString(raw) == string(value)
 }
 
 func closeBody(response *http.Response) {

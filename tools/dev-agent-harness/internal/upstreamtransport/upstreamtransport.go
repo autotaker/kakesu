@@ -1,5 +1,5 @@
 // Package upstreamtransport provides the broker's deliberately small HTTPS
-// boundary for the two provider APIs.  It resolves an allowlisted hostname
+// boundary for the fixed provider hosts.  It resolves an allowlisted hostname
 // once, validates every answer, and then connects to an address literal while
 // retaining the original hostname for TLS verification.
 package upstreamtransport
@@ -19,8 +19,9 @@ import (
 )
 
 const (
-	githubHost = "api.github.com"
-	openAIHost = "api.openai.com"
+	githubHost    = "api.github.com"
+	githubGitHost = "github.com"
+	openAIHost    = "api.openai.com"
 
 	// These limits are fixed production values.  They bound work performed by
 	// a single request without making them part of the public API.
@@ -208,18 +209,30 @@ func validateRequest(req *http.Request) (string, bool) {
 	if u.Scheme != "https" || u.User != nil || u.Opaque != "" || u.Fragment != "" || u.RawFragment != "" {
 		return "", false
 	}
-	if u.Host != githubHost && u.Host != openAIHost {
-		return "", false
-	}
-	// URL.Port is checked in addition to Host so a malformed authority cannot
-	// be normalized into an accepted origin.
-	if u.Port() != "" || u.Hostname() != u.Host {
+	hostname, ok := allowedHostname(u.Host)
+	if !ok {
 		return "", false
 	}
 	if req.Host != "" && req.Host != u.Host {
 		return "", false
 	}
-	return u.Host, true
+	return hostname, true
+}
+
+// allowedHostname accepts only the canonical authority or its explicit
+// default HTTPS port. The returned value is always port-free so DNS and TLS
+// SNI/certificate verification use the original allowlisted hostname.
+func allowedHostname(authority string) (string, bool) {
+	switch authority {
+	case githubHost, githubHost + ":443":
+		return githubHost, true
+	case githubGitHost, githubGitHost + ":443":
+		return githubGitHost, true
+	case openAIHost, openAIHost + ":443":
+		return openAIHost, true
+	default:
+		return "", false
+	}
 }
 
 func safeCandidates(answers []netip.Addr) ([]netip.Addr, bool) {

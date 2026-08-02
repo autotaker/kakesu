@@ -17,8 +17,10 @@ const (
 	ProviderOpenAI = "openai"
 
 	OperationGitHubRESTRead      = "github-rest-read"
+	OperationGitHubGitRead       = "github-git-read"
 	OperationOpenAIResponsesText = "openai-responses-text"
 	HostGitHub                   = "api.github.com"
+	HostGitHubGit                = "github.com"
 	HostOpenAI                   = "api.openai.com"
 
 	maxRulesTTL  = 24 * time.Hour
@@ -46,14 +48,16 @@ type Rules struct {
 	InitialRevocationEpoch uint64
 }
 
-// IssueSpec describes a provider-specific scope. Operation and destination
-// host are fixed by Provider and are intentionally absent from this type.
+// IssueSpec describes a provider-specific scope. Operation may be omitted for
+// the existing provider default, but Git Smart HTTP requires its explicit
+// Git-read operation. Destination host is always derived here.
 type IssueSpec struct {
 	AgentInstanceID string
 	UID             int
 	WorkspaceID     string
 	Provider        string
 	Repository      string
+	Operation       string
 	TTL             time.Duration
 	Uses            int
 }
@@ -345,9 +349,10 @@ func (r *Registry) validSpec(spec IssueSpec) bool {
 	}
 	switch spec.Provider {
 	case ProviderGitHub:
-		return validRepository(spec.Repository)
+		return validRepository(spec.Repository) &&
+			(spec.Operation == "" || spec.Operation == OperationGitHubRESTRead || spec.Operation == OperationGitHubGitRead)
 	case ProviderOpenAI:
-		return spec.Repository == ""
+		return spec.Repository == "" && (spec.Operation == "" || spec.Operation == OperationOpenAIResponsesText)
 	default:
 		return false
 	}
@@ -361,6 +366,9 @@ func makeScope(spec IssueSpec) scope {
 	operation, host := OperationOpenAIResponsesText, HostOpenAI
 	if spec.Provider == ProviderGitHub {
 		operation, host = OperationGitHubRESTRead, HostGitHub
+		if spec.Operation == OperationGitHubGitRead {
+			operation, host = OperationGitHubGitRead, HostGitHubGit
+		}
 	}
 	return scope{agentInstanceID: spec.AgentInstanceID, uid: spec.UID, workspaceID: spec.WorkspaceID, provider: spec.Provider, repository: spec.Repository, operation: operation, destinationHost: host}
 }

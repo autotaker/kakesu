@@ -92,14 +92,26 @@ func (c Controller) Format(state fmt.State, verb rune) {
 	_, _ = io.WriteString(state, "capabilitycontrol.Controller")
 }
 
-// Issue accepts only the provider and its minimum repository scope. Subject,
-// TTL, uses, operation, and host are fixed by trusted dependencies.
-func (c *Controller) Issue(ctx context.Context, provider, repository string) (string, error) {
+// Issue accepts only the provider, its minimum repository scope, and an
+// optional explicit operation selector. The omitted selector preserves the
+// existing REST/OpenAI behavior; Git Smart HTTP is never selected implicitly.
+// Subject, TTL, uses, and host remain fixed by trusted dependencies.
+func (c *Controller) Issue(ctx context.Context, provider, repository string, operations ...string) (string, error) {
 	if c == nil || c.registry == nil || isNil(c.resolver) || isNilContext(ctx) || ctx.Err() != nil {
 		return "", ErrDenied
 	}
+	if len(operations) > 1 {
+		return "", ErrDenied
+	}
+	operation := ""
+	if len(operations) == 1 {
+		operation = operations[0]
+	}
 	switch provider {
 	case capability.ProviderGitHub:
+		if operation != "" && operation != capability.OperationGitHubRESTRead && operation != capability.OperationGitHubGitRead {
+			return "", ErrDenied
+		}
 		if !canonicalRepository(repository) {
 			return "", ErrDenied
 		}
@@ -107,7 +119,7 @@ func (c *Controller) Issue(ctx context.Context, provider, repository string) (st
 			return "", ErrDenied
 		}
 	case capability.ProviderOpenAI:
-		if repository != "" || !c.openAIEnabled {
+		if repository != "" || !c.openAIEnabled || operation != "" && operation != capability.OperationOpenAIResponsesText {
 			return "", ErrDenied
 		}
 	default:
@@ -123,6 +135,7 @@ func (c *Controller) Issue(ctx context.Context, provider, repository string) (st
 		WorkspaceID:     subject.WorkspaceID,
 		Provider:        provider,
 		Repository:      repository,
+		Operation:       operation,
 		TTL:             issueTTL,
 		Uses:            issueUses,
 	})

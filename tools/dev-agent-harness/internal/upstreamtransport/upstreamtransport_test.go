@@ -40,7 +40,9 @@ func TestRoundTripRejectsBeforeResolver(t *testing.T) {
 		nil,
 		{URL: mustURL(t, "http://api.github.com/x")},
 		{URL: mustURL(t, "https://example.invalid/x")},
-		{URL: mustURL(t, "https://api.github.com:443/x")},
+		{URL: mustURL(t, "https://api.github.com:444/x")},
+		{URL: mustURL(t, "https://api.openai.com:444/x")},
+		{URL: mustURL(t, "https://github.com:444/x")},
 		{URL: mustURL(t, "https://user:pass@api.github.com/x")},
 		{URL: &url.URL{Scheme: "https", Opaque: "api.github.com/x"}},
 		{URL: mustURL(t, "https://api.github.com/x#fragment")},
@@ -54,6 +56,30 @@ func TestRoundTripRejectsBeforeResolver(t *testing.T) {
 	}
 	if resolves != 0 || dials != 0 {
 		t.Fatalf("invalid request reached network: resolves=%d dials=%d", resolves, dials)
+	}
+}
+
+func TestValidateRequestAcceptsCanonicalDefaultHTTPSPortForEveryPolicyHost(t *testing.T) {
+	for _, host := range []string{githubHost, githubGitHost, openAIHost} {
+		for _, authority := range []string{host, host + ":443"} {
+			request, err := http.NewRequest(http.MethodGet, "https://"+authority+"/allowed", nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			got, ok := validateRequest(request)
+			if !ok || got != host {
+				t.Fatalf("authority=%q host=(%q,%v)", authority, got, ok)
+			}
+		}
+
+		mismatch, err := http.NewRequest(http.MethodGet, "https://"+host+":443/allowed", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		mismatch.Host = host
+		if got, ok := validateRequest(mismatch); ok || got != "" {
+			t.Fatalf("Host mismatch accepted for %q: (%q,%v)", host, got, ok)
+		}
 	}
 }
 
@@ -239,6 +265,95 @@ func TestRoundTripTLSHostnameAndHTTP11(t *testing.T) {
 	}
 	if response.ProtoMajor != 1 || response.ProtoMinor != 1 {
 		t.Fatalf("unexpected protocol: %s", response.Proto)
+	}
+}
+
+func TestRoundTripGitHubGitHostUsesPinnedTLSAndOneDial(t *testing.T) {
+	certificate, roots := testCertificate(t, githubGitHost)
+	server, client := net.Pipe()
+	defer server.Close()
+	var serverName string
+	var serverErr error
+	go func() {
+		defer server.Close()
+		connection := tls.Server(server, &tls.Config{
+			Certificates: []tls.Certificate{certificate},
+			GetConfigForClient: func(hello *tls.ClientHelloInfo) (*tls.Config, error) {
+				serverName = hello.ServerName
+				return nil, nil
+			},
+		})
+		if err := connection.Handshake(); err != nil {
+			serverErr = err
+			return
+		}
+		request, err := http.ReadRequest(bufio.NewReader(connection))
+		if err != nil {
+			serverErr = err
+			return
+		}
+		if request.Host != githubGitHost+":443" || request.URL.Path != "/acme/widget.git/git-upload-pack" || request.ProtoMajor != 1 || request.ProtoMinor != 1 {
+			serverErr = errors.New("unexpected request")
+			return
+		}
+		_ = request.Body.Close()
+		response := &http.Response{StatusCode: http.StatusOK, ProtoMajor: 1, ProtoMinor: 1, Header: make(http.Header), Body: io.NopCloser(strings.NewReader("git"))}
+		response.Header.Set("Content-Length", "3")
+		serverErr = response.Write(connection)
+		_ = connection.Close()
+	}()
+
+	var resolved []string
+	var dialed []string
+	transport := newWithRootPool(func(_ context.Context, host string) ([]netip.Addr, error) {
+		resolved = append(resolved, host)
+		return []netip.Addr{netip.MustParseAddr("93.184.216.34")}, nil
+	}, func(_ context.Context, network, address string) (net.Conn, error) {
+		dialed = append(dialed, network+" "+address)
+		return client, nil
+	}, roots)
+	request, err := http.NewRequest(http.MethodPost, "https://github.com:443/acme/widget.git/git-upload-pack", strings.NewReader("0000"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	response, roundTripErr := transport.RoundTrip(request)
+	if roundTripErr != nil {
+		t.Fatalf("RoundTrip: %v", roundTripErr)
+	}
+	data, readErr := io.ReadAll(response.Body)
+	closeErr := response.Body.Close()
+	if readErr != nil || closeErr != nil || string(data) != "git" || response.ProtoMajor != 1 || response.ProtoMinor != 1 {
+		t.Fatalf("response data=%q read=%v close=%v proto=%s", data, readErr, closeErr, response.Proto)
+	}
+	if serverErr != nil || serverName != githubGitHost || fmt.Sprint(resolved) != "[github.com]" || fmt.Sprint(dialed) != "[tcp 93.184.216.34:443]" {
+		t.Fatalf("server=%v sni=%q resolved=%v dialed=%v", serverErr, serverName, resolved, dialed)
+	}
+}
+
+func TestGitHubGitHostNearMatchesRejectBeforeResolver(t *testing.T) {
+	resolves := 0
+	transport := newWithDependencies(func(context.Context, string) ([]netip.Addr, error) {
+		resolves++
+		return nil, errors.New("must not resolve")
+	}, func(context.Context, string, string) (net.Conn, error) { return nil, errors.New("must not dial") })
+	for _, rawURL := range []string{
+		"https://www.github.com/acme/widget.git/git-upload-pack",
+		"https://GITHUB.COM/acme/widget.git/git-upload-pack",
+		"https://github.com./acme/widget.git/git-upload-pack",
+		"https://github.com:444/acme/widget.git/git-upload-pack",
+		"https://user@github.com/acme/widget.git/git-upload-pack",
+		"http://github.com/acme/widget.git/git-upload-pack",
+	} {
+		request, err := http.NewRequest(http.MethodPost, rawURL, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if response, err := transport.RoundTrip(request); response != nil || !errors.Is(err, ErrTransport) {
+			t.Fatalf("url=%q response=%v err=%v", rawURL, response, err)
+		}
+	}
+	if resolves != 0 {
+		t.Fatalf("near matches resolved=%d", resolves)
 	}
 }
 

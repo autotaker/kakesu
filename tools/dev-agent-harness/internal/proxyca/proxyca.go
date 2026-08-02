@@ -1,5 +1,5 @@
 // Package proxyca creates the broker's short-lived in-memory TLS leaf
-// certificates for the two fixed upstream hostnames.
+// certificates for the fixed upstream hostnames.
 package proxyca
 
 import (
@@ -195,7 +195,7 @@ func randomSerial() (*big.Int, error) {
 }
 
 func exactHost(host string) bool {
-	return host == "api.github.com" || host == "api.openai.com"
+	return host == "api.github.com" || host == "github.com" || host == "api.openai.com"
 }
 
 func isNil(value any) bool {

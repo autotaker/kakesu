@@ -201,7 +201,7 @@ func TestIssueExtensionsChainValidityAndHostGate(t *testing.T) {
 	authority, ca, _, _ := newAuthority(t)
 	seenSerials := make(map[string]struct{})
 	seenKeys := make(map[string]struct{})
-	for _, host := range []string{"api.github.com", "api.openai.com"} {
+	for _, host := range []string{"api.github.com", "github.com", "api.openai.com"} {
 		certificate, err := authority.Issue(host)
 		if err != nil {
 			t.Fatal(err)
@@ -229,7 +229,7 @@ func TestIssueExtensionsChainValidityAndHostGate(t *testing.T) {
 		}
 		seenSerials[serial], seenKeys[key] = struct{}{}, struct{}{}
 	}
-	for _, host := range []string{"", "API.GITHUB.COM", "api.github.com.", "api.github.com:443", "*.github.com", "127.0.0.1", "api.example.com", "api.github.com\n"} {
+	for _, host := range []string{"", "API.GITHUB.COM", "api.github.com.", "api.github.com:443", "GITHUB.COM", "github.com.", "github.com:443", "www.github.com", "*.github.com", "127.0.0.1", "api.example.com", "api.github.com\n"} {
 		if certificate, err := authority.Issue(host); certificate.Certificate != nil || !errors.Is(err, ErrDenied) || (host != "" && strings.Contains(err.Error(), host)) {
 			t.Fatalf("host=%q certificate=%#v error=%v", host, certificate, err)
 		}
@@ -256,7 +256,7 @@ func TestTLSNetPipeHostnameVerification(t *testing.T) {
 	if !pool.AppendCertsFromPEM(caPEM) {
 		t.Fatal("failed to append CA")
 	}
-	for _, host := range []string{"api.github.com", "api.openai.com"} {
+	for _, host := range []string{"api.github.com", "github.com", "api.openai.com"} {
 		t.Run(host, func(t *testing.T) {
 			certificate, err := authority.Issue(host)
 			if err != nil {

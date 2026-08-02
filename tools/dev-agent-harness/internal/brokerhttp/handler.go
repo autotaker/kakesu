@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/autotaker/kakesu/tools/dev-agent-harness/internal/brokerexchange"
+	"github.com/autotaker/kakesu/tools/dev-agent-harness/internal/egresspolicy"
 	"github.com/autotaker/kakesu/tools/dev-agent-harness/internal/egresstransaction"
 )
 
@@ -117,9 +118,12 @@ func mapRequest(request *http.Request, maxBody int) (egresstransaction.Request, 
 		return egresstransaction.Request{}, false
 	}
 	authorization := append([]string(nil), request.Header.Values("Authorization")...)
-	path := request.URL.Path
+	target := request.URL.Path
+	if request.URL.RawQuery != "" {
+		target += "?" + request.URL.RawQuery
+	}
 	return egresstransaction.Request{
-		Method: request.Method, URL: "https://" + request.Host + path,
+		Method: request.Method, URL: "https://" + request.Host + target,
 		ContentType: first(contentTypes), Body: body, Authorization: authorization,
 	}, true
 }
@@ -133,18 +137,33 @@ func validProtocolAndTarget(request *http.Request) bool {
 	}
 	if request.URL == nil || request.URL.Scheme != "" || request.URL.Host != "" || request.URL.User != nil ||
 		request.URL.Opaque != "" || request.URL.Fragment != "" || request.URL.RawFragment != "" ||
-		request.URL.RawQuery != "" || request.URL.ForceQuery || request.URL.RawPath != "" {
+		request.URL.ForceQuery || request.URL.RawPath != "" {
 		return false
 	}
 	path := request.URL.Path
-	if path == "" || path[0] != '/' || strings.HasPrefix(path, "//") || request.RequestURI == "" || request.RequestURI != path ||
+	target := path
+	if request.URL.RawQuery != "" {
+		target += "?" + request.URL.RawQuery
+	}
+	if path == "" || path[0] != '/' || strings.HasPrefix(path, "//") || request.RequestURI == "" || request.RequestURI != target ||
 		strings.ContainsAny(path, "%?#") || !visibleASCII(path) {
 		return false
 	}
 	if !validHost(request.Host) || len(request.Header.Values("Host")) != 0 {
 		return false
 	}
+	if request.URL.RawQuery != "" && !validGitDiscoveryQuery(request) {
+		return false
+	}
 	return true
+}
+
+func validGitDiscoveryQuery(request *http.Request) bool {
+	return request != nil && request.URL != nil && request.Method == http.MethodGet &&
+		(request.Host == egresspolicy.GitHubGitHost || request.Host == egresspolicy.GitHubGitHost+":443") &&
+		request.URL.RawQuery == "service=git-upload-pack" &&
+		strings.HasSuffix(request.URL.Path, ".git/info/refs") &&
+		!strings.ContainsAny(request.URL.RawQuery, "%#&;") && visibleASCII(request.URL.RawQuery)
 }
 
 func validHost(host string) bool {
@@ -243,7 +262,16 @@ func connectionHasUpgrade(values []string) bool {
 
 func validResponse(response brokerexchange.Response) bool {
 	return response.StatusCode >= http.StatusOK && response.StatusCode < http.StatusMultipleChoices &&
-		len(response.Body) <= maxResponseBytes && (response.ContentType == "" || response.ContentType == "application/json")
+		len(response.Body) <= maxResponseBytes && validResponseContentType(response.ContentType)
+}
+
+func validResponseContentType(value string) bool {
+	switch value {
+	case "", "application/json", egresspolicy.GitUploadPackAdvertise, egresspolicy.GitUploadPackResult:
+		return true
+	default:
+		return false
+	}
 }
 
 func writeDenied(writer http.ResponseWriter) {
@@ -263,7 +291,7 @@ func writeSuccess(writer http.ResponseWriter, response brokerexchange.Response) 
 	clearHeaders(writer)
 	setFixedHeaders(writer)
 	if response.ContentType != "" {
-		writer.Header().Set("Content-Type", "application/json")
+		writer.Header().Set("Content-Type", response.ContentType)
 	}
 	body := append([]byte(nil), response.Body...)
 	writer.Header().Set("Content-Length", strconv.Itoa(len(body)))

@@ -51,6 +51,49 @@ func githubConsume(registry *capability.Registry, handle string, subject egresst
 	})
 }
 
+func githubGitConsume(registry *capability.Registry, handle string, subject egresstransaction.Subject) (capability.Grant, error) {
+	return registry.Consume(capability.Request{
+		Handle: handle, AgentInstanceID: subject.AgentInstanceID, UID: subject.UID,
+		WorkspaceID: subject.WorkspaceID, Provider: capability.ProviderGitHub,
+		Repository: "octo/repo", Operation: capability.OperationGitHubGitRead,
+		DestinationHost: capability.HostGitHubGit,
+	})
+}
+
+func TestGitReadSelectorIssuesOnlyGitReadScope(t *testing.T) {
+	registry := testRegistry(t)
+	controller := testController(t, registry, controlSubject, []string{"model-a"})
+	for _, operations := range [][]string{{"git-read"}, {"github-write"}, {capability.OperationGitHubGitRead, "extra"}} {
+		if handle, err := controller.Issue(context.Background(), capability.ProviderGitHub, "octo/repo", operations...); handle != "" || !errors.Is(err, ErrDenied) {
+			t.Fatalf("operations %q=(%q,%v)", operations, handle, err)
+		}
+	}
+	if handle, err := controller.Issue(context.Background(), capability.ProviderOpenAI, "", capability.OperationGitHubGitRead); handle != "" || !errors.Is(err, ErrDenied) {
+		t.Fatalf("OpenAI Git selector=(%q,%v)", handle, err)
+	}
+
+	handle, err := controller.Issue(context.Background(), capability.ProviderGitHub, "octo/repo", capability.OperationGitHubGitRead)
+	if err != nil || !strings.HasPrefix(handle, "cap_") {
+		t.Fatalf("Git issue=(%q,%v)", handle, err)
+	}
+	if _, err := githubConsume(registry, handle, controlSubject); !errors.Is(err, capability.ErrDenied) {
+		t.Fatalf("Git grant crossed into REST: %v", err)
+	}
+	wrongSubject := controlSubject
+	wrongSubject.AgentInstanceID = "other-agent"
+	if _, err := githubGitConsume(registry, handle, wrongSubject); !errors.Is(err, capability.ErrDenied) {
+		t.Fatalf("Git grant crossed subject: %v", err)
+	}
+	grant, err := githubGitConsume(registry, handle, controlSubject)
+	if err != nil || grant.Operation != capability.OperationGitHubGitRead || grant.DestinationHost != capability.HostGitHubGit ||
+		grant.ExpiresAt.Sub(grant.IssuedAt) != issueTTL || grant.RemainingUses != 0 {
+		t.Fatalf("Git grant=(%+v,%v)", grant, err)
+	}
+	if _, err := githubGitConsume(registry, handle, controlSubject); !errors.Is(err, capability.ErrDenied) {
+		t.Fatal("Git grant was not single use")
+	}
+}
+
 func TestIssueUsesPeerSubjectAllowlistAndFixedLease(t *testing.T) {
 	registry := testRegistry(t)
 	controller := testController(t, registry, controlSubject, []string{"model-a"})

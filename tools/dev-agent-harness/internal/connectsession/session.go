@@ -28,6 +28,7 @@ const (
 	maxHTTPInput       = (1 << 20) + maxConnectHeader
 	maxUserAgentBytes  = 256
 	githubHost         = "api.github.com"
+	githubGitHost      = "github.com"
 	openAIHost         = "api.openai.com"
 	connectDenied      = "HTTP/1.1 403 Forbidden\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
 	connectEstablished = "HTTP/1.1 200 Connection Established\r\nContent-Length: 0\r\n\r\n"
@@ -53,7 +54,7 @@ type Authority interface {
 // CapabilityController applies peer-bound issuance and revocation policy.
 // The session supplies only the minimum provider/repository request fields.
 type CapabilityController interface {
-	Issue(context.Context, string, string) (string, error)
+	Issue(context.Context, string, string, ...string) (string, error)
 	Revoke(context.Context, string) error
 }
 type Rules struct {
@@ -212,11 +213,17 @@ func (s *Session) serveControl(ctx context.Context, conn net.Conn, header []byte
 		return denyInitial(conn, ctx)
 	}
 	if request.issue {
-		provider, repository, ok := decodeIssueBody(body)
+		provider, repository, operation, ok := decodeIssueBody(body)
 		if !ok {
 			return denyInitial(conn, ctx)
 		}
-		handle, err := s.control.Issue(ctx, provider, repository)
+		var handle string
+		var err error
+		if operation == "" {
+			handle, err = s.control.Issue(ctx, provider, repository)
+		} else {
+			handle, err = s.control.Issue(ctx, provider, repository, operation)
+		}
 		if err != nil || !canonicalHandle(handle) {
 			return denyInitial(conn, ctx)
 		}
@@ -311,6 +318,8 @@ func connectTarget(header []byte) string {
 	switch line[1] {
 	case githubHost + ":443":
 		return githubHost
+	case githubGitHost + ":443":
+		return githubGitHost
 	case openAIHost + ":443":
 		return openAIHost
 	default:
@@ -411,49 +420,56 @@ func canonicalContentLength(value string) (int, bool) {
 	return parsed, err == nil
 }
 
-func decodeIssueBody(body []byte) (string, string, bool) {
+func decodeIssueBody(body []byte) (string, string, string, bool) {
 	if len(body) == 0 || len(body) > maxControlBody || !utf8.Valid(body) {
-		return "", "", false
+		return "", "", "", false
 	}
 	decoder := json.NewDecoder(bytes.NewReader(body))
 	token, err := decoder.Token()
 	if err != nil || token != json.Delim('{') {
-		return "", "", false
+		return "", "", "", false
 	}
-	values := make(map[string]string, 2)
+	values := make(map[string]string, 3)
 	for decoder.More() {
 		keyToken, err := decoder.Token()
 		key, ok := keyToken.(string)
-		if err != nil || !ok || key != "provider" && key != "repository" {
-			return "", "", false
+		if err != nil || !ok || key != "provider" && key != "repository" && key != "operation" {
+			return "", "", "", false
 		}
 		if _, duplicate := values[key]; duplicate {
-			return "", "", false
+			return "", "", "", false
 		}
 		var value string
 		if err := decoder.Decode(&value); err != nil || value == "" {
-			return "", "", false
+			return "", "", "", false
 		}
 		values[key] = value
 	}
 	if token, err = decoder.Token(); err != nil || token != json.Delim('}') {
-		return "", "", false
+		return "", "", "", false
 	}
 	if _, err := decoder.Token(); err != io.EOF {
-		return "", "", false
+		return "", "", "", false
 	}
 	provider, present := values["provider"]
 	if !present {
-		return "", "", false
+		return "", "", "", false
 	}
 	repository, hasRepository := values["repository"]
+	operation, hasOperation := values["operation"]
 	if provider == "github" {
-		return provider, repository, hasRepository && len(values) == 2
+		if !hasRepository {
+			return "", "", "", false
+		}
+		if !hasOperation && len(values) == 2 {
+			return provider, repository, "", true
+		}
+		return provider, repository, operation, hasOperation && operation == "github-git-read" && len(values) == 3
 	}
 	if provider == "openai" {
-		return provider, "", !hasRepository && len(values) == 1
+		return provider, "", "", !hasRepository && !hasOperation && len(values) == 1
 	}
-	return "", "", false
+	return "", "", "", false
 }
 
 func canonicalHandle(handle string) bool {
@@ -465,7 +481,7 @@ func canonicalHandle(handle string) bool {
 }
 
 func validConnect(header []byte, target string) bool {
-	if len(header) == 0 || (target != githubHost && target != openAIHost) {
+	if len(header) == 0 || (target != githubHost && target != githubGitHost && target != openAIHost) {
 		return false
 	}
 	lines := bytes.Split(header, []byte("\r\n"))

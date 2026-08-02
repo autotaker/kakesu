@@ -6,11 +6,11 @@ Kakesuを開発するための外部開発基盤である。Kakesu本体のラ�
 `config_dir/credentials` 認証情報束、既存constructorの依存構成、ソケット受領、Serveの順に一回ずつ進み、どの失敗も固定診断へ
 畳む。SIGINT/SIGTERMは協調的なキャンセル処理へ変換される。
 
-その他の補助バイナリは従来どおり`--version`と検査系の明示面だけを提供し、未実装の通常起動はfail-closedで拒否する。
+その他の補助実行ファイルは従来どおり`--version`と検査系の明示面だけを提供し、未実装の通常起動はfail-closedで拒否する。
 
 ## プロバイダー上流HTTPS 転送方式
 
-`internal/upstreamtransport` は、ブローカーから `api.github.com` と `api.openai.com` へ出るための注入可能な
+`internal/upstreamtransport` は、ブローカーから `api.github.com`、`github.com`、`api.openai.com` へ出るための注入可能な
 `http.RoundTripper` 境界である。各リクエストでDNSを一度だけ解決し、全answerを検査してから安全なIP literalの
 `*:443`へ直接接続する。TLSは元のhostnameで証明書とSNIを検証し、TLS 1.2以上・HTTP/1.1だけを使用する。
 プロキシ、リダイレクト、keep-alive、自動compression、接続後の再試行はこの境界にない。実プロバイダー、実Internet DNS、
@@ -87,12 +87,12 @@ GitHub installation の受理は後続の live E2E 境界で確認する。
 
 `internal/upstreamforwarder` は、既存の `egresstransaction.PreparedRequest` を同じ
 `egresspolicy.Policy` で再評価してから、注入済み `http.RoundTripper` を同期的に一度だけ
-呼び出す信頼済みブローカー境界である。送信時のヘッダーは実 `Bearer` 認証、固定の
-`Accept: application/json` と `User-Agent`、OpenAI の場合だけ `Content-Type: application/json`
-に限定する。リダイレクト、再試行、既定転送方式、環境プロキシは選択しない。
+呼び出す信頼済みブローカー境界である。REST/OpenAIは実`Bearer`認証とJSONヘッダーを維持する。
+Git Smart HTTP readだけはブローカー内で組み立てた`x-access-token:<real token>`のBasic認証と、
+discovery/upload-packに対応する厳密なGitメディア型を送る。リダイレクト、再試行、既定転送方式、環境プロキシは選択しない。
 
-2xxレスポンスは上限付きで全量を読み、本文を閉じてからUTF-8の有効なJSONとJSONメディア型を
-確認する。成功時だけHTTP状態コード、正規化したメディア型、独立コピーした本文をリクエスト単位の
+2xxレスポンスは上限付きで全量を読み、本文を閉じてから、REST/OpenAIはUTF-8の有効なJSONとJSONメディア型を、
+Git readは200と操作対応メディア型を検査する。Git本文はバイト列のまま扱う。成功時だけHTTP状態コード、メディア型、独立コピーした本文をリクエスト単位の
 sinkへ一度渡す。上流ヘッダー、プロバイダーエラー本文、URL、スコープ、認証情報、下位エラーは
 sinkと公開エラーに出さない。実プロバイダー、実認証情報、DNS/TLS、Agent側レスポンスwriterへの接続は
 このhermetic境界の対象外であり、後続のlive E2Eで確認する。
@@ -114,7 +114,7 @@ sinkと公開エラーに出さない。実プロバイダー、実認証情報�
 
 `internal/brokerhttp` は、TLS終端済みの `net/http` リクエストから HTTP/1.1 の
 origin-form と既知の本文長形式だけを受け取り、コンテキストだけから解決した呼出元と独立コピーした
-メソッド、Host/パス、Content-Type、Authorization、上限内本文を一度だけ既存の
+メソッド、Host/パス、discoveryに限る正規`service=git-upload-pack`クエリ、Content-Type、Authorization、上限内本文を一度だけ既存の
 `brokerexchange` へ渡す。成功時は2xxの縮退済みレスポンスと固定のno-store/nosniff ヘッダーだけを
 返し、入力不整合、呼出元解決失敗、交換拒否は空の403へ畳む。
 
@@ -125,7 +125,7 @@ origin-form と既知の本文長形式だけを受け取り、コンテキス�
 ## ブローカー内プロキシCA
 
 `internal/proxyca` は、メモリで受け取った単一のECDSA P-256 CAと対応鍵を検証し、公開CA証明書の
-コピーだけを返す。`api.github.com` と `api.openai.com` の完全一致名に限り、呼出しごとに新しい
+コピーだけを返す。`api.github.com`、`github.com`、`api.openai.com` の完全一致名に限り、呼出しごとに新しい
 P-256 leaf鍵と短命のサーバー証明書を発行する。CA秘密鍵、入力PEM、leaf秘密鍵は公開値や診断へ
 出さず、証明書・鍵・シリアル番号を呼出し間で共有しない。
 
@@ -135,7 +135,7 @@ P-256 leaf鍵と短命のサーバー証明書を発行する。CA秘密鍵、�
 
 ## Agent側CONNECTセッション
 
-`internal/connectsession` は、受理済みの一つの接続だけを所有し、厳格な二つのホスト向けCONNECTまたは
+`internal/connectsession` は、受理済みの一つの接続だけを所有し、厳格な三つのホスト向けCONNECTまたは
 同じソケット上の一操作制御を明確に分岐する。CONNECTでは発行済み証明書でTLS 1.2以上・SNI一致・
 ALPN `http/1.1`を終端し、呼び出し元コンテキストを引き継いだHTTP/1.1リクエスト一件だけを注入済み
 `brokerhttp.Handler`へ同期的に渡す。制御では`POST /v1/capabilities`によるGitHub/OpenAIケイパビリティ発行と、
@@ -174,8 +174,9 @@ systemd、または VPS の live 配置を検証しない。
 
 `internal/capabilitycontrol` は、`brokerlistener.Resolver`が接続コンテキストから解決したAgentインスタンス、UID 0以外、
 workspaceだけを主体として、本番トランザクションと同じメモリー内`capability.Registry`へ短命・一回限りのhandleを
-発行する。リクエストから主体、TTL、使用回数、操作、ホストを受け取らない。GitHubは設定allowlist内の正規
-`owner/repo`一件に固定し、OpenAIは設定のモデルallowlistが非空の場合だけプロバイダースコープを発行する。個別モデルは
+発行する。リクエストから主体、TTL、使用回数、ホストを受け取らない。GitHubは設定allowlist内の正規
+`owner/repo`一件に固定し、既存のselector省略はREST read、明示`operation=github-git-read`だけは`github.com`のGit readを発行する。
+どちらもTTL 5分・一回使用である。OpenAIは設定のモデルallowlistが非空の場合だけプロバイダースコープを発行する。個別モデルは
 制御やケイパビリティスコープへ複製せず、既存の外向き通信ポリシーが実リクエスト本文から検査する。
 
 失効は同じ接続元由来の主体のインスタンス/UID/workspaceが完全一致する正規handle一件だけを削除する。
@@ -239,9 +240,11 @@ unitの配置だけで、enable/start/restartは行わない。
 `internal/egresspolicy` は、TLS終端後の後続コンポーネントが利用する副作用のないGo製
 allowlist判断コアである。`New(Rules)` が許可するGitHubリポジトリとOpenAIモデル、
 JSON本文上限、出力トークン上限を検証・コピーし、`Policy.Authorize(Request)` は入力値だけを
-調べて固定された判断を返す。許可面は次の二つだけで、未知の操作面は拒否となる。
+調べて固定された判断を返す。許可面は次の三つだけで、未知の操作面は拒否となる。
 
 - `GET`/`HEAD https://api.github.com[:443]/repos/{owner}/{repo}` とその正規な子パス
+- `GET https://github.com[:443]/{owner}/{repo}.git/info/refs?service=git-upload-pack` と
+  `POST https://github.com[:443]/{owner}/{repo}.git/git-upload-pack`（厳密なリクエストメディア型・非空で上限付きのバイト列本文）
 - `POST https://api.openai.com[:443]/v1/responses` の追加パラメーターを含まない`application/json`、
   `store=false`・`stream=false`の上限付きテキスト専用本文
 
@@ -258,9 +261,10 @@ URLのパーセント符号化、ユーザー情報、クエリ、フラグメ�
 
 `internal/capability` は、Agentへ渡す `cap_...` を実認証情報ではなく、in-memory レジストリへの
 短命な参照として発行する。`New(Rules)` でポリシーバージョン、TTL、使用回数、失効世代の
-上限を固定し、`Issue(IssueSpec)` は次の二つのプロバイダー スコープだけを生成する。
+上限を固定し、`Issue(IssueSpec)` は次の三つのスコープだけを生成する。
 
 - GitHub: リポジトリ必須、`github-rest-read`、`api.github.com`
+- GitHub Git: リポジトリと明示操作必須、`github-git-read`、`github.com`
 - OpenAI: リポジトリなし、`openai-responses-text`、`api.openai.com`
 
 handleは32バイトのcrypto/rand値をpaddingなしbase64urlで符号化したものだが、レジストリが保持する
@@ -282,8 +286,12 @@ productionではmonotonic elapsedを内部TTLに使い、呼出元へ返すIssue
 正規 プロバイダー スコープ を返し、`Transaction.Execute` はその スコープ に
 厳密な `Authorization` ケイパビリティ 値を束縛して `Registry.Consume` を一度
 だけ実行する。消費成功後だけ注入済み resolver を呼び、visible ASCII の
-認証情報 を上流用 `Bearer` 値へ変換して trusted な Forwarder へ同期的に
+認証情報をREST/OpenAIでは上流用`Bearer`へ、Git readではAgentが提示した厳密な
+`Basic base64(x-access-token:cap_...)`を消費後に`Basic base64(x-access-token:<real token>)`へ置換してtrustedなForwarderへ同期的に
 一度だけ渡す。
+
+Git readはupload-pack discoveryとPOSTだけを許可し、receive-pack/push、認証情報ヘルパー、Git config/launcher、
+実`clone/fetch/pull`は含まない。hermeticテストは実GitHub認証情報、実DNS/TLS、別UID/NSS、systemd/VPS配置を保証しない。
 
 トランザクション は prepared リクエスト や 認証情報 を返さず、ケイパビリティ handle
 や caller 所有の リクエスト slice も保持しない。resolver/Forwarder の失敗は

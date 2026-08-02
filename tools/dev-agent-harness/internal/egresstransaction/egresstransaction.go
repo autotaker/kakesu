@@ -4,6 +4,7 @@
 package egresstransaction
 
 import (
+	"encoding/base64"
 	"strings"
 
 	"github.com/autotaker/kakesu/tools/dev-agent-harness/internal/capability"
@@ -50,8 +51,8 @@ type Request struct {
 }
 
 // PreparedRequest is the only value handed to a trusted Forwarder. Body is an
-// independent copy; Authorization contains only an upstream Bearer value and
-// never the opaque capability handle.
+// independent copy; Authorization contains only the resolved upstream value
+// in the scheme required by Scope and never the opaque capability handle.
 type PreparedRequest struct {
 	Method        string
 	URL           string
@@ -122,7 +123,7 @@ func (t *Transaction) Execute(subject Subject, req Request) error {
 	if err != nil || decision == egresspolicy.DecisionDeny {
 		return ErrDenied
 	}
-	handle, ok := extractCapability(scope.Provider, req.Authorization)
+	handle, ok := extractCapability(scope, req.Authorization)
 	if !ok {
 		return ErrDenied
 	}
@@ -139,10 +140,14 @@ func (t *Transaction) Execute(subject Subject, req Request) error {
 	if err != nil || !validCredential(credential, t.maxCredentialBytes) {
 		return ErrDenied
 	}
+	authorization := "Bearer " + credential
+	if scope.Operation == capability.OperationGitHubGitRead {
+		authorization = "Basic " + base64.StdEncoding.EncodeToString([]byte("x-access-token:"+credential))
+	}
 	prepared := PreparedRequest{
 		Method: req.Method, URL: req.URL, ContentType: req.ContentType,
 		Body: append([]byte(nil), req.Body...), Scope: scope,
-		Authorization: "Bearer " + credential,
+		Authorization: authorization,
 	}
 	if err := t.forwarder.Forward(prepared); err != nil {
 		return ErrDenied
@@ -157,16 +162,19 @@ func grantMatches(grant capability.Grant, subject Subject, scope egresspolicy.Sc
 		grant.DestinationHost == scope.DestinationHost
 }
 
-func extractCapability(provider string, values []string) (string, bool) {
+func extractCapability(scope egresspolicy.Scope, values []string) (string, bool) {
 	if len(values) != 1 {
 		return "", false
 	}
 	value := values[0]
+	if scope.Operation == capability.OperationGitHubGitRead {
+		return extractGitBasicCapability(value)
+	}
 	if strings.Count(value, " ") != 1 {
 		return "", false
 	}
 	var prefix string
-	switch provider {
+	switch scope.Provider {
 	case capability.ProviderOpenAI:
 		prefix = "Bearer "
 	case capability.ProviderGitHub:
@@ -193,6 +201,35 @@ func extractCapability(provider string, values []string) (string, bool) {
 		}
 	}
 	return handle, true
+}
+
+func extractGitBasicCapability(value string) (string, bool) {
+	const prefix = "Basic "
+	if !strings.HasPrefix(value, prefix) || strings.Count(value, " ") != 1 {
+		return "", false
+	}
+	encoded := strings.TrimPrefix(value, prefix)
+	if encoded == "" || len(encoded) > 8*1024 {
+		return "", false
+	}
+	decoded, err := base64.StdEncoding.DecodeString(encoded)
+	if err != nil || base64.StdEncoding.EncodeToString(decoded) != encoded ||
+		strings.Count(string(decoded), ":") != 1 || !strings.HasPrefix(string(decoded), "x-access-token:") {
+		return "", false
+	}
+	handle := strings.TrimPrefix(string(decoded), "x-access-token:")
+	if !canonicalHandle(handle) {
+		return "", false
+	}
+	return handle, true
+}
+
+func canonicalHandle(handle string) bool {
+	if len(handle) != len("cap_")+43 || !strings.HasPrefix(handle, "cap_") {
+		return false
+	}
+	raw, err := base64.RawURLEncoding.DecodeString(strings.TrimPrefix(handle, "cap_"))
+	return err == nil && len(raw) == 32 && "cap_"+base64.RawURLEncoding.EncodeToString(raw) == handle
 }
 
 func validCredential(value string, max int) bool {

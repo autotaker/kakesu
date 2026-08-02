@@ -6,7 +6,7 @@ qa_agent: "qa-agent-terra-medium"
 approved_by: "main-agent-sol-high"
 approved_at: "2026-08-02T01:20:43Z"
 revision: 1
-implementation_reviewed_at: ""
+implementation_reviewed_at: "2026-08-02T01:50:45Z"
 expectation_changed: false
 expectation_change_approved_by: ""
 ---
@@ -51,10 +51,10 @@ zero exitだけでは不十分である。candidate不一致、test欠落/skip/�
 
 ## 実装後の再確認
 
-- [ ] HANDOVERの`candidate_commit`を基に、同一candidateをQA-001〜006で独立に評価した。
-- [ ] QA-001〜005のfocused Go race suiteを一回だけ実行し、正規Git read、push拒否、strict negative boundaries、Basic credential replacement、binary response検査、REST/OpenAI回帰のfailure detectionを確認した。
-- [ ] QA-006のcandidate diff、許可20 path、行数、対象外差分、DEV `make check`/`git diff --check`、Reviewer証跡を独立監査した。
-- [ ] QA-007をunit PASSと分離して `blocked` のまま記録した。
+- [x] HANDOVERの`candidate_commit`を基に、同一candidateをQA-001〜006で独立に評価した。
+- [x] QA-001〜005のfocused Go race suiteを一回だけ実行し、正規Git read、push拒否、strict negative boundaries、Basic credential replacement、binary response検査、REST/OpenAI回帰のfailure detectionを確認した。
+- [x] QA-006のcandidate diff、許可20 path、行数、対象外差分、DEV `make check`/`git diff --check`、Reviewer証跡を独立監査した。
+- [x] QA-007をunit PASSと分離して `blocked` のまま記録した。
 - [ ] 期待結果または範囲を変更した場合、main Agentの承認を得た。
 
 ## 改訂履歴
