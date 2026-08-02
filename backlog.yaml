@@ -1175,3 +1175,21 @@ tasks:
       dev: dev-agent-luna-xhigh
       reviewer: reviewer-agent-terra-medium
       qa: qa-agent-terra-medium
+  - id: TASK-0065
+    title: Git read用credential helperを実装する
+    type: feature
+    change_class: product
+    epic: EPIC-001
+    status: dev
+    priority: P1
+    estimate_points: 1
+    task_dir: tasks/TASK-0065-git-credential-helper
+    depends_on: []
+    branch: task/TASK-0065-git-credential-helper
+    worktree: worktrees/TASK-0065-git-credential-helper
+    assignees:
+      main: main-agent-sol-high
+      planner: planner-agent-terra-medium
+      dev: dev-agent-sol-high
+      reviewer: reviewer-agent-terra-medium
+      qa: qa-agent-terra-medium
