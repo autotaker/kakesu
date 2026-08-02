@@ -209,6 +209,7 @@
       "title": "Development Agent Harness Git Credential Helper",
       "links": [
         "../../../tasks/TASK-0065-git-credential-helper/HANDOVER.md",
+        "../../../tasks/TASK-0066-proxy-ca-control-client/HANDOVER.md",
         "development-agent-harness-capability-registry.md",
         "development-agent-harness-egress-transaction.md"
       ]
@@ -239,6 +240,7 @@
       "links": [
         "../../../tasks/TASK-0050-dev-agent-proxy-ca/HANDOVER.md",
         "../../../tasks/TASK-0063-dev-agent-git-smart-http-read/HANDOVER.md",
+        "../../../tasks/TASK-0066-proxy-ca-control-client/HANDOVER.md",
         "development-agent-harness-egress-transaction.md",
         "development-agent-harness-egress-policy.md"
       ]

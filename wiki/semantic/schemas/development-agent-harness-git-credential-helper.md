@@ -23,14 +23,17 @@ clientはconfigure済み`runstatedir/dev-agent-harness/egress.sock`からlink時
 
 `get`は`provider=github`、repository、`operation=github-git-read`のexact Issue wireを送り、唯一のboundedな200 JSON handle responseだけを受理する。`erase`はcanonical handleに対するexact DELETE wireと204 responseだけを受理する。chunked又は余分なheader/body/bytes、malformed response、early EOF、非canonical handle、非成功statusは固定拒否へ縮退する。成功・失敗ともconnectionはcloseし、control protocolの値を診断へ反映しない。
 
+同じ固定socketの公開CA取得はhelper入力ではなく、exact `GET /v1/proxy-ca`のcertificate-only control境界に分離される。server/clientは独立にCAを検証し、fresh public PEM copyだけを扱う。helper自身はそのPEM、trust file、launcher又はGitのtrust設定を作成・変更しない。
+
 ## 非漏洩と適用外
 
 helperはGit config、`credential.useHttpPath`、proxy/CA environment、launcher、clone/fetch/pull、push、credentialのdisk/cache/state保存を変更しない。GitHub App tokenの取得・置換、Capability Registry/control server、Smart HTTP policyも所有しない。発行したhandleの利用時の実token置換とallowlist再検証は既存egress transactionの境界に残る。
 
-hermetic stream、fake dialer、`net.Pipe`の確認はwire、順序、上限、close/deadline、拒否、非漏洩を対象とする。実配置socket、実Git invocation、別UID、GitHub、DNS/TLS、systemd/VPS、restart/rollback/cleanupはlive E2Eとして未確認であり、hermetic PASSで代替しない。
+hermetic stream、fake dialer、`net.Pipe`の確認はwire、順序、上限、close/deadline、拒否、非漏洩を対象とする。実配置socket、実Git invocation、別UID、GitHub、DNS/TLS、systemd/VPS、launcher/trust-file lifecycle、restart/rollback/cleanupはlive E2Eとして未実装・未確認であり、hermetic PASSで代替しない。
 
 ## 関連
 
 - [TASK-0065 HANDOVER](../../../tasks/TASK-0065-git-credential-helper/HANDOVER.md)
+- [TASK-0066 HANDOVER](../../../tasks/TASK-0066-proxy-ca-control-client/HANDOVER.md)
 - [Development Agent Harness Capability Registry](development-agent-harness-capability-registry.md)
 - [Development Agent Harness Egress Transaction](development-agent-harness-egress-transaction.md)

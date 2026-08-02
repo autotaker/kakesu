@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "task_id": "TASK-0066",
+  "handover_sha256": "a7e537bf2d8c6dc04f13900af77bc95be42c381040afae7b458d9a8b352d8b64",
+  "ingested_at": "2026-08-02T03:42:26Z",
+  "updated_pages": [
+    "wiki/semantic/schemas/development-agent-harness-proxy-ca.md",
+    "wiki/semantic/schemas/development-agent-harness-git-credential-helper.md"
+  ],
+  "created_decisions": [],
+  "deferred": [
+    "launcherによるtrust file、CA file lifecycle、OS trust store、実OS Unix socket/permissions/別UID、実Git/libcurl trust、GitHub/OpenAI/DNS/TLS、systemd/VPS、restart/rollback/cleanupは未実装又はlive E2Eとして未確認であり、hermetic testのPASSで代替しない。"
+  ]
+}
